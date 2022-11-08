@@ -23,16 +23,58 @@ process.on('SIGINT', () => {
 const sleep = (seconds: number) =>
   new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 
+type ExitMessage = {
+  message: {
+    epoch: string
+    validator_index: string
+  }
+  signature: string
+}
+
+type EthDoExitMessage = {
+  exit: ExitMessage
+  fork_version: string
+}
+
 const provider = new ethers.providers.JsonRpcProvider(EXECUTION_NODE)
 const abi = JSON.parse((await fs.readFile('ValidatorExitBus.json')).toString())
 const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider)
 const lastBlock = (await provider.getBlock('finalized')).number
 
-const loadAndProcess = async (eventsNumber: number) => {
+const loadMessages = async () => {
+  const folder = await fs.readdir(MESSAGES_LOCATION)
+  const messages: (ExitMessage | EthDoExitMessage)[] = []
+  for (const file of folder) {
+    const read = await fs.readFile(`${MESSAGES_LOCATION}/${file}`)
+    const parsed = JSON.parse(read.toString())
+    // Accounting for both ethdo and raw formats
+    messages.push(parsed.exit ? parsed.exit : parsed)
+  }
+  return messages as ExitMessage[]
+}
+
+const getValidatorId = async (pubKey: string) => {
+  const req = await fetch(
+    CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/validators/' + pubKey
+  )
+  const res = await req.json()
+  const validatorIndex = res.data.index
+  console.debug(`Validator index for ${pubKey} is ${validatorIndex}`)
+  return validatorIndex
+}
+
+const loadAndProcess = async (
+  messages: ExitMessage[],
+  eventsNumber: number
+) => {
   const events = await loadEvents(eventsNumber)
+  console.debug(`Loaded ${events.length} events`)
   const filteredEvents = filterEvents(events)
+  console.debug(`Filtered to ${filteredEvents.length} for us`)
+
   for (const event of filteredEvents) {
-    await processExit(event.args.validatorPubkey)
+    console.debug(`Handling exit for ${event.args.validatorPubkey}`)
+    await processExit(messages, event.args.validatorPubkey)
   }
 }
 
@@ -40,7 +82,6 @@ const loadEvents = async (blocksBehind: number) => {
   const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
   const startBlock = lastBlock - blocksBehind
   const logs = await contract.queryFilter(filter, startBlock, lastBlock)
-  console.debug(`Loaded ${logs.length}`)
   return logs
 }
 
@@ -55,38 +96,44 @@ const isExiting = async (pubkey: string) => {
 
   switch (res.data.status) {
     case 'active_exiting':
+      console.debug('Validator is exiting already, skipping')
       return true
     case 'exited_unslashed':
+      console.debug('Validator has exited already, skipping')
       return true
     case 'exited_slashed':
+      console.debug('Validator has exited already, skipping')
       return true
     case 'withdrawal_possible': // already exited
+      console.debug('Validator has exited already, skipping')
       return true
     case 'withdrawal_done': // already exited
+      console.debug('Validator has exited already, skipping')
       return true
     default:
+      console.debug('Validator is not exiting yet')
       return false
   }
 }
 
-const processExit = async (pubkey: string) => {
-  if (await isExiting(pubkey)) return
+const processExit = async (messages: ExitMessage[], pubKey: string) => {
+  if (await isExiting(pubKey)) return
 
-  const file = await fs.readFile(`${MESSAGES_LOCATION}/${pubkey}.json`)
+  const validatorId = await getValidatorId(pubKey)
+  const message = messages.find(
+    (msg) => msg.message.validator_index === validatorId
+  )
 
-  if (!file) {
+  if (!message) {
     console.error(
-      'Validator needs to be exited but required file was not found / accessible!'
+      'Validator needs to be exited but required message was not found / accessible!'
     )
     return
   }
 
-  const parsed = JSON.parse(file.toString())
-
   try {
-    // We can handle both ethdo format or raw
-    await sendExitRequest((parsed.exit ? parsed.exit : parsed).toString())
-    console.log('Message sent successfully to exit', pubkey)
+    await sendExitRequest(message)
+    console.log('Message sent successfully to exit', pubKey)
   } catch (e) {
     console.log(
       'Request to consensus node failed with',
@@ -95,13 +142,13 @@ const processExit = async (pubkey: string) => {
   }
 }
 
-const sendExitRequest = async (message: string) => {
+const sendExitRequest = async (message: ExitMessage) => {
   const req = await fetch(
     CONSENSUS_NODE + '/eth/v1/beacon/pool/voluntary_exits',
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: message,
+      body: JSON.stringify(message),
     }
   )
 
@@ -111,16 +158,20 @@ const sendExitRequest = async (message: string) => {
   }
 }
 
-console.log(`Started, reacting only to requests for operator ${OPERATOR_ID}`)
+console.log(`Loading messages from ${MESSAGES_LOCATION}`)
+const messages = await loadMessages()
+console.log(`Loaded ${messages.length} messages`)
+
+console.log(`Starting, searching only for requests for operator ${OPERATOR_ID}`)
 
 console.log(`Fetching historical events for ${BLOCKS_PRELOAD} blocks`)
-await loadAndProcess(parseInt(BLOCKS_PRELOAD))
+await loadAndProcess(messages, parseInt(BLOCKS_PRELOAD))
 await sleep(parseInt(SLEEP))
 
 console.log('Starting a polling loop for new data')
 do {
-  console.log(`Polling ${BLOCKS_LOOP} last events`)
-  await loadAndProcess(parseInt(BLOCKS_LOOP))
+  console.log(`Polling ${BLOCKS_LOOP} last blocks for events`)
+  await loadAndProcess(messages, parseInt(BLOCKS_LOOP))
   console.log(`Sleeping for ${SLEEP} seconds`)
   await sleep(parseInt(SLEEP))
 } while (true)
