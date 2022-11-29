@@ -25,6 +25,7 @@ export const env = {
   BLOCKS_LOOP: num(BLOCKS_LOOP, 'Please, setup BLOCKS_LOOP. Example: 100'),
   SLEEP: num(SLEEP, 'Please, setup SLEEP. Example: 10'),
   MESSAGES_LOCATION: str(MESSAGES_LOCATION, 'Please, setup MESSAGES_LOCATION. Example: messages'),
+  
   RUN_METRICS: optional_bool(RUN_METRICS, 'Please, setup RUN_METRICS. Example: false'),
   METRICS_PORT: optional_num(METRICS_PORT, 'Please, setup METRICS_PORT. Example: 8080'),
 }
