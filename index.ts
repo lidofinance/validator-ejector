@@ -2,6 +2,8 @@ import { ethers } from 'ethers'
 import fs from 'fs/promises'
 
 import dotenv from 'dotenv'
+import { pollingLastBlocksDurationSeconds, serveMetrics } from './lib/prom'
+
 dotenv.config()
 
 const {
@@ -13,6 +15,8 @@ const {
   BLOCKS_LOOP,
   SLEEP,
   MESSAGES_LOCATION,
+  RUN_METRICS,
+  METRICS_PORT
 } = process.env
 
 process.on('SIGINT', () => {
@@ -67,6 +71,7 @@ const loadAndProcess = async (
   messages: ExitMessage[],
   eventsNumber: number
 ) => {
+  const end = pollingLastBlocksDurationSeconds.startTimer()
   const events = await loadEvents(eventsNumber)
   console.debug(`Loaded ${events.length} events`)
   const filteredEvents = filterEvents(events)
@@ -76,6 +81,7 @@ const loadAndProcess = async (
     console.debug(`Handling exit for ${event.args.validatorPubkey}`)
     await processExit(messages, event.args.validatorPubkey)
   }
+  end({ eventsNumber })
 }
 
 const loadEvents = async (blocksBehind: number) => {
@@ -156,6 +162,10 @@ const sendExitRequest = async (message: ExitMessage) => {
     const message = (await req.json()).message
     throw new Error(message)
   }
+}
+
+if (RUN_METRICS && METRICS_PORT) {
+    serveMetrics(parseInt(METRICS_PORT, 10))
 }
 
 console.log(`Loading messages from ${MESSAGES_LOCATION}`)
