@@ -1,10 +1,12 @@
 export class ValidationError extends Error {}
 
-export const make = <T>(parseFn: (input: string) => T) => {
-  return (str?: string) => {
+export const make = <T>(
+  parseFn: (input: string, errorMessage?: string) => T
+) => {
+  return (str?: string, errorMessage?: string) => {
     try {
-      if (!str) throw new ValidationError('Empty value')
-      return parseFn(str)
+      if (!str) throw new ValidationError(errorMessage || 'Empty value')
+      return parseFn(str, errorMessage)
     } catch (error) {
       // TODO: logger
       console.log(error.message)
@@ -14,29 +16,31 @@ export const make = <T>(parseFn: (input: string) => T) => {
 }
 
 export const makeOptional = <T>(parseFn: (input: string) => T) => {
-  return (str?: string) => {
+  return (str?: string, errorMessage?: string) => {
     if (!str) return
-    return make(parseFn)(str)
+    return make(parseFn)(str, errorMessage)
   }
 }
 
-const _num = (input: string) => {
+const _num = (input: string, errorMessage?: string) => {
   const coerced = parseFloat(input)
   if (Number.isNaN(coerced))
-    throw new ValidationError(`Invalid number input: "${input}"`)
+    throw new ValidationError(
+      errorMessage || `Invalid number input: "${input}"`
+    )
   return coerced
 }
 export const num = make(_num)
 export const optional_num = makeOptional(_num)
 
-const _str = (input: string) => {
+const _str = (input: string, errorMessage?: string) => {
   if (typeof input === 'string') return input
-  throw new ValidationError(`Not a string: "${input}"`)
+  throw new ValidationError(errorMessage || `Not a string: "${input}"`)
 }
 export const str = make(_str)
 export const optional_str = makeOptional(_str)
 
-const _bool = (input: string | boolean) => {
+const _bool = (input: string | boolean, errorMessage?: string) => {
   switch (input) {
     case true:
     case 'true':
@@ -45,7 +49,9 @@ const _bool = (input: string | boolean) => {
     case 'false':
       return false
     default:
-      throw new ValidationError(`Invalid bool input: "${input}"`)
+      throw new ValidationError(
+        errorMessage || `Invalid bool input: "${input}"`
+      )
   }
 }
 export const bool = make(_bool)
