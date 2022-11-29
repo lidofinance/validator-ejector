@@ -80,7 +80,7 @@ export const retry =
         response = await next(config)
       } catch (error) {
         if (error.name === 'AbortError' && !retryConfig.ignoreAbort) throw error
-        if (isNotServerError(error)) throw error
+        if (isNotServerError(error) && error.name !== 'AbortError') throw error
         if (maxTries <= config.attempt) throw error
 
         response = await loop()
@@ -112,3 +112,25 @@ export const notOkError = (): Middleware => async (config, next) => {
   }
   return response
 }
+
+export const abort =
+  (ms: number): Middleware =>
+  async (config, next) => {
+    let response!: Response
+    const controller = new AbortController()
+
+    const { signal } = controller
+    config.signal = signal
+
+    const timeout = setTimeout(() => {
+      controller.abort()
+    }, ms)
+
+    try {
+      response = await next(config)
+    } finally {
+      clearTimeout(timeout)
+      delete config.signal
+    }
+    return response
+  }

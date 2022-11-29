@@ -38,6 +38,7 @@ const fetchCall = ({ url, baseUrl, ...rest }: RequestConfig) =>
  *   retry(3, { ignoreAbort: true }),
  *   loggerMiddleware(logger),
  *   notOkError(),
+ *   abort(1000)
  * ])
  * const res = await myRequest('http://some-url')
  * ```
