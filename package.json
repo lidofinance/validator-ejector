@@ -16,6 +16,7 @@
     "start:prom-only": "ts-node lib/prom.ts"
   },
   "devDependencies": {
-    "@types/node": "^18.11.9"
+    "@types/node": "18.11.9",
+    "prettier": "2.8.0"
   }
 }
