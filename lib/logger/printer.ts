@@ -19,6 +19,10 @@ export const printer = {
     if (level === 'error') {
       console['warn'](colorTable['warn'], 'Debug details:')
       console['warn'](colorTable['warn'], JSON.stringify(rest, null, 2))
+      return
+    }
+    if (rest.details) {
+        console[level](colorTable[level], JSON.stringify(rest.details, null, 2))
     }
   },
 }
