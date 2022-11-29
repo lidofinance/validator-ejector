@@ -1,8 +1,5 @@
-import { formatter } from './formatter.js'
+import { printer } from './printer.js'
 import type { LoggerOptions, Logger } from './types'
-
-const stdout = console.info.bind(console)
-const stderr = console.error.bind(console)
 
 const LOG_LEVELS = ['debug', 'info', 'log', 'warn', 'error']
 
@@ -37,10 +34,9 @@ export const makeLogger = (options?: LoggerOptions) => {
         }
       }
 
-      const stream = logLevelOrder >= 2 ? stdout : stderr
-      const format = pretty ? formatter.simple : formatter.json
+      const print = pretty ? printer.simple : printer.json
 
-      stream(format(output))
+      print(output, logLevel)
     }
     return logger
   }, {}) as Logger

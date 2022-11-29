@@ -10,7 +10,7 @@ export const make = <T>(
       if (!str) throw new ValidationError(errorMessage || 'Empty value')
       return parseFn(str, errorMessage)
     } catch (error) {
-      logger.error(error.message)
+      logger.warn(error.message)
       process.exit(1)
     }
   }
