@@ -1,5 +1,6 @@
 import { serveMetrics, config, logger } from './lib.js'
 import { run } from './app/index.js'
+
 const { RUN_METRICS, METRICS_PORT } = config
 
 process.on('SIGINT', () => {

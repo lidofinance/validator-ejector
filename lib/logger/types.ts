@@ -3,12 +3,14 @@ type ArrayElement<ArrayType extends readonly unknown[]> =
 
 export type LogLevels = ['debug', 'info', 'log', 'warn', 'error']
 
+export type LogLevelsUnion = ArrayElement<LogLevels>
+
 export type Logger = Record<
-  ArrayElement<LogLevels>,
+  LogLevelsUnion,
   (message: string, details?: any) => void
 >
 
 export type LoggerOptions = {
-  level?: ArrayElement<LogLevels>
-  pretty?: boolean
+  level: LogLevelsUnion
+  pretty: boolean
 }

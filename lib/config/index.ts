@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import {
   num,
   optional_bool,
+  optional_level_attr,
   optional_num,
   optional_str,
   str,
@@ -69,13 +70,15 @@ export const makeConfig = () => ({
     false,
 
   JOB_INTERVAL:
-    optional_num(JOB_INTERVAL, 'Invalid variable, using default variable: 10_000') ||
-    10_000,
+    optional_num(
+      JOB_INTERVAL,
+      'Invalid variable, using default variable: 10_000'
+    ) || 10_000,
 })
 
 export const makeLoggerConfig = () => ({
   LOGGER_LEVEL:
-    optional_str(
+    optional_level_attr(
       LOGGER_LEVEL,
       'Invalid variable, using default variable: error'
     ) || 'error',

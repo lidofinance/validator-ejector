@@ -15,8 +15,6 @@ export * from './lib/prom/index.js'
 export const loggerConfig = makeLoggerConfig()
 
 export const logger = makeLogger({
-  // @ts-ignore
-  // TODO: fix types
   level: loggerConfig.LOGGER_LEVEL,
   pretty: loggerConfig.LOGGER_PRETTY,
 })

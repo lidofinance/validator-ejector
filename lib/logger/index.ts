@@ -3,11 +3,8 @@ import type { LoggerOptions, Logger } from './types'
 
 export const LOG_LEVELS = ['debug', 'info', 'log', 'warn', 'error']
 
-export const makeLogger = (options?: LoggerOptions) => {
-  const {
-    level = 'error',
-    pretty = true,
-  }: LoggerOptions = options || {}
+export const makeLogger = (options: LoggerOptions) => {
+  const { level, pretty }: LoggerOptions = options
   return LOG_LEVELS.reduce((logger, logLevel) => {
     logger[logLevel] = (message: string, details?: any) => {
       const logLevelOrder = LOG_LEVELS.indexOf(logLevel)
@@ -21,7 +18,7 @@ export const makeLogger = (options?: LoggerOptions) => {
         message,
         details,
         level: logLevel,
-        timestamp: Date.now() / 1000
+        timestamp: Date.now() / 1000,
       }
 
       if (details instanceof Error) {

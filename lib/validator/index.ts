@@ -1,4 +1,5 @@
 import { logger } from '../../lib.js'
+import type { LogLevelsUnion } from '../logger/types'
 
 export class ValidationError extends Error {}
 
@@ -57,3 +58,16 @@ const _bool = (input: string | boolean, errorMessage?: string) => {
 }
 export const bool = make(_bool)
 export const optional_bool = makeOptional(_bool)
+
+const isLevelAttr = (input: string): input is LogLevelsUnion =>
+  ['debug', 'info', 'log', 'warn', 'error'].includes(input)
+
+const _level_attr = (
+  input: string,
+  errorMessage?: string
+) => {
+  if (isLevelAttr(input)) return input
+  throw new ValidationError(errorMessage || `Invalid level input: "${input}"`)
+}
+export const level_attr = make(_level_attr)
+export const optional_level_attr = makeOptional(_level_attr)
