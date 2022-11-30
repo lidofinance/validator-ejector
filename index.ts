@@ -282,7 +282,7 @@ const sendExitfetch = async (message: ExitMessage) => {
 if (RUN_METRICS && METRICS_PORT) {
   serveMetrics(METRICS_PORT)
 }
-console.log('???')
+
 logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
 const messages = await loadMessages()
 logger.log(`Loaded ${messages.length} messages`)
