@@ -1,10 +1,9 @@
-import { ethers } from 'ethers'
-
 import { config, logger, jobRunner } from '../lib.js'
 
-import { ValidatorExitBus__factory } from '../lib/abi/index.js'
 import {
   filterEvents,
+  getETH,
+  getLastBlock,
   loadEvents,
   loadMessages,
   processExit,
@@ -12,8 +11,6 @@ import {
 } from './controller.js'
 
 const {
-  EXECUTION_NODE,
-  CONTRACT_ADDRESS,
   OPERATOR_ID,
   BLOCKS_PRELOAD,
   MESSAGES_LOCATION,
@@ -22,9 +19,8 @@ const {
 export const run = async () => {
   logger.info('Application started', config)
 
-  const provider = new ethers.providers.JsonRpcProvider(EXECUTION_NODE)
-  const contract = ValidatorExitBus__factory.connect(CONTRACT_ADDRESS, provider)
-  const lastBlock = (await provider.getBlock('finalized')).number
+  const { contract, provider } = getETH()
+  const lastBlock = await getLastBlock(provider)
 
   logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
   const messages = await loadMessages()

@@ -11,8 +11,10 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 import { EthDoExitMessage, ExitMessage } from './types.js'
 import { config, logger, api } from '../lib.js'
 import { ValidatorExitBus } from '../lib/abi/ValidatorExitBus.js'
+import { ValidatorExitBus__factory } from '../lib/abi/index.js'
 
-const { OPERATOR_ID, MESSAGES_LOCATION } = config
+const { OPERATOR_ID, MESSAGES_LOCATION, EXECUTION_NODE, CONTRACT_ADDRESS } =
+  config
 
 export const loadMessages = async () => {
   const folder = await fs.readdir(MESSAGES_LOCATION)
@@ -122,4 +124,16 @@ export const loadEvents = async (
   const startBlock = lastBlock - blocksBehind
   const logs = await contract.queryFilter(filter, startBlock, lastBlock)
   return logs
+}
+
+export const getETH = () => {
+  const provider = new ethers.providers.JsonRpcProvider(EXECUTION_NODE)
+  const contract = ValidatorExitBus__factory.connect(CONTRACT_ADDRESS, provider)
+  return { provider, contract }
+}
+
+export const getLastBlock = async (
+  provider: ethers.providers.JsonRpcProvider
+) => {
+  return (await provider.getBlock('finalized')).number
 }
