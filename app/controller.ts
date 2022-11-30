@@ -10,6 +10,7 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 import { EthDoExitMessage, ExitMessage } from './types.js'
 import { config, logger, api } from '../lib.js'
+import { ValidatorExitBus } from '../lib/abi/ValidatorExitBus.js'
 
 const { OPERATOR_ID, MESSAGES_LOCATION } = config
 
@@ -110,4 +111,15 @@ export const processExit = async (messages: ExitMessage[], pubKey: string) => {
       e instanceof Error ? e.message : e
     )
   }
+}
+
+export const loadEvents = async (
+  contract: ValidatorExitBus,
+  lastBlock: number,
+  blocksBehind: number
+) => {
+  const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
+  const startBlock = lastBlock - blocksBehind
+  const logs = await contract.queryFilter(filter, startBlock, lastBlock)
+  return logs
 }

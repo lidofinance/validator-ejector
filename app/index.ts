@@ -5,6 +5,7 @@ import { config, logger, jobRunner } from '../lib.js'
 import { ValidatorExitBus__factory } from '../lib/abi/index.js'
 import {
   filterEvents,
+  loadEvents,
   loadMessages,
   processExit,
   verifyMessages,
@@ -25,13 +26,6 @@ export const run = async () => {
   const contract = ValidatorExitBus__factory.connect(CONTRACT_ADDRESS, provider)
   const lastBlock = (await provider.getBlock('finalized')).number
 
-  const loadEvents = async (blocksBehind: number) => {
-    const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
-    const startBlock = lastBlock - blocksBehind
-    const logs = await contract.queryFilter(filter, startBlock, lastBlock)
-    return logs
-  }
-
   logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
   const messages = await loadMessages()
   logger.log(`Loaded ${messages.length} messages`)
@@ -45,7 +39,8 @@ export const run = async () => {
   logger.log(`requesting historical events for ${BLOCKS_PRELOAD} blocks`)
 
   await jobRunner(async (eventsNumber) => {
-    const events = await loadEvents(eventsNumber)
+    const events = await loadEvents(contract, lastBlock, eventsNumber)
+
     logger.debug(`Loaded ${events.length} events`)
     const filteredEvents = filterEvents(events)
     logger.debug(`Filtered to ${filteredEvents.length} for us`)
