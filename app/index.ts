@@ -19,6 +19,8 @@ const {
 } = config
 
 export const run = async () => {
+  logger.info('Application started', config)
+
   const provider = new ethers.providers.JsonRpcProvider(EXECUTION_NODE)
   const contract = ValidatorExitBus__factory.connect(CONTRACT_ADDRESS, provider)
   const lastBlock = (await provider.getBlock('finalized')).number
@@ -37,7 +39,9 @@ export const run = async () => {
   await verifyMessages(messages)
 
   logger.log('Validated messages')
-  logger.log(`Starting, searching only for requests for operator ${OPERATOR_ID}`)
+  logger.log(
+    `Starting, searching only for requests for operator ${OPERATOR_ID}`
+  )
   logger.log(`requesting historical events for ${BLOCKS_PRELOAD} blocks`)
 
   await jobRunner(async (eventsNumber) => {

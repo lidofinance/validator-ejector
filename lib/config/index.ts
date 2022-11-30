@@ -4,7 +4,6 @@ import {
   optional_bool,
   optional_level_attr,
   optional_num,
-  optional_str,
   str,
 } from '../validator/index.js'
 
@@ -17,7 +16,6 @@ const {
   OPERATOR_ID,
   BLOCKS_PRELOAD,
   BLOCKS_LOOP,
-  SLEEP,
   MESSAGES_LOCATION,
 
   RUN_METRICS,
@@ -50,7 +48,6 @@ export const makeConfig = () => ({
     'Please, setup BLOCKS_PRELOAD. Example: 10000'
   ),
   BLOCKS_LOOP: num(BLOCKS_LOOP, 'Please, setup BLOCKS_LOOP. Example: 100'),
-  SLEEP: num(SLEEP, 'Please, setup SLEEP. Example: 10'),
   MESSAGES_LOCATION: str(
     MESSAGES_LOCATION,
     'Please, setup MESSAGES_LOCATION. Example: messages'
@@ -65,26 +62,12 @@ export const makeConfig = () => ({
     'Please, setup METRICS_PORT. Example: 8080'
   ),
 
-  DRY_RUN:
-    optional_bool(DRY_RUN, 'Invalid variable, using default variable: false') ||
-    false,
+  DRY_RUN: optional_bool(DRY_RUN) || false,
 
-  JOB_INTERVAL:
-    optional_num(
-      JOB_INTERVAL,
-      'Invalid variable, using default variable: 10_000'
-    ) || 10_000,
+  JOB_INTERVAL: optional_num(JOB_INTERVAL) || 10_000,
 })
 
 export const makeLoggerConfig = () => ({
-  LOGGER_LEVEL:
-    optional_level_attr(
-      LOGGER_LEVEL,
-      'Invalid variable, using default variable: error'
-    ) || 'error',
-  LOGGER_PRETTY:
-    optional_bool(
-      LOGGER_PRETTY,
-      'Invalid variable, using default variable: false'
-    ) || false,
+  LOGGER_LEVEL: optional_level_attr(LOGGER_LEVEL) || 'error',
+  LOGGER_PRETTY: optional_bool(LOGGER_PRETTY) || false,
 })

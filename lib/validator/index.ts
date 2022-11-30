@@ -1,9 +1,6 @@
-import { makeLogger } from '../logger/index.js'
 import type { LogLevelsUnion } from '../logger/types'
-
+import { logger } from '../../lib.js'
 export class ValidationError extends Error {}
-
-const validatorLogger = makeLogger({ level: 'error', pretty: false })
 
 export const make = <T>(
   parseFn: (input: string, errorMessage?: string) => T
@@ -13,7 +10,7 @@ export const make = <T>(
       if (!str) throw new ValidationError(errorMessage || 'Empty value')
       return parseFn(str, errorMessage)
     } catch (error) {
-      validatorLogger.error(error.message)
+      logger.error(error.message)
       process.exit(1)
     }
   }
@@ -26,8 +23,9 @@ export const makeOptional = <T>(
     if (!str) return
     try {
       return parseFn(str, errorMessage)
-    } catch (error) {
-      validatorLogger.warn(error.message)
+    } catch (_) {
+      if (errorMessage) logger.warn(errorMessage)
+      return
     }
   }
 }
