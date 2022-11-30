@@ -1,5 +1,7 @@
-import { ethers } from 'ethers'
 import fs from 'fs/promises'
+
+import { ethers } from 'ethers'
+import bls from '@chainsafe/bls'
 
 import dotenv from 'dotenv'
 dotenv.config()
@@ -20,6 +22,11 @@ process.on('SIGINT', () => {
   console.info('Shutting down')
   process.exit(0)
 })
+
+import { ssz } from '@lodestar/types'
+import { fromHex, toHexString } from '@lodestar/utils'
+import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
+import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 const sleep = (seconds: number) =>
   new Promise((resolve) => setTimeout(resolve, seconds * 1000))
@@ -54,14 +61,112 @@ const loadMessages = async () => {
   return messages as ExitMessage[]
 }
 
-const getValidatorId = async (pubKey: string) => {
+const verifyMessages = async (messages: ExitMessage[]): Promise<void> => {
+  const genesis = await getGenesis()
+  const state = await getState()
+
+  for (const m of messages) {
+    const { message, signature: rawSignature } = m
+    const { validator_index: validatorIndex, epoch } = message
+
+    const pubKey = fromHex(await getValidatorPubkey(validatorIndex))
+    const signature = fromHex(rawSignature)
+
+    const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
+    const CURRENT_FORK = fromHex(state.current_version)
+    const PREVIOUS_FORK = fromHex(state.previous_version)
+
+    const verifyFork = (fork: Uint8Array) => {
+      const domain = computeDomain(
+        DOMAIN_VOLUNTARY_EXIT,
+        fork,
+        GENESIS_VALIDATORS_ROOT
+      )
+
+      const parsedExit = {
+        epoch: parseInt(epoch),
+        validatorIndex: parseInt(validatorIndex),
+      }
+
+      const signingRoot = computeSigningRoot(
+        ssz.phase0.VoluntaryExit,
+        parsedExit,
+        domain
+      )
+
+      const isValid = bls.verify(pubKey, signingRoot, signature)
+
+      console.debug(
+        `Singature ${
+          isValid ? 'valid' : 'invalid'
+        } for validator ${validatorIndex} for fork ${toHexString(fork)}`
+      )
+
+      return isValid
+    }
+
+    let isValid = false
+
+    isValid = verifyFork(CURRENT_FORK)
+    if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
+
+    if (!isValid)
+      console.error(`Invalid signature for validator ${validatorIndex}`)
+  }
+}
+
+const getGenesis = async () => {
+  const req = await fetch(CONSENSUS_NODE + '/eth/v1/beacon/genesis')
+  const res = await req.json()
+
+  type GenesisData = {
+    genesis_time: string
+    genesis_validators_root: string
+    genesis_fork_version: string
+  }
+  const genesis: GenesisData = res.data
+  console.debug('Fetched genesis data')
+  return genesis
+}
+
+const getState = async () => {
+  const req = await fetch(
+    CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/fork'
+  )
+  const res = await req.json()
+
+  type StateData = {
+    previous_version: string
+    current_version: string
+    epoch: string
+  }
+  const state: StateData = res.data
+  console.debug('Fetched state data')
+  return state
+}
+
+const getValidatorIndex = async (pubKey: string) => {
   const req = await fetch(
     CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/validators/' + pubKey
   )
   const res = await req.json()
+
   const validatorIndex = res.data.index
   console.debug(`Validator index for ${pubKey} is ${validatorIndex}`)
   return validatorIndex
+}
+
+const getValidatorPubkey = async (validatorIndex: string) => {
+  const req = await fetch(
+    CONSENSUS_NODE +
+      '/eth/v1/beacon/states/finalized/validators/' +
+      validatorIndex
+  )
+  const res = await req.json()
+
+  const pubKey: string = res.data.validator.pubkey
+  console.debug(`Validator pubkey for ${validatorIndex} is ${pubKey}`)
+  return pubKey
 }
 
 const loadAndProcess = async (
@@ -120,9 +225,9 @@ const isExiting = async (pubkey: string) => {
 const processExit = async (messages: ExitMessage[], pubKey: string) => {
   if (await isExiting(pubKey)) return
 
-  const validatorId = await getValidatorId(pubKey)
+  const validatorIndex = await getValidatorIndex(pubKey)
   const message = messages.find(
-    (msg) => msg.message.validator_index === validatorId
+    (msg) => msg.message.validator_index === validatorIndex
   )
 
   if (!message) {
@@ -167,6 +272,8 @@ const sendExitRequest = async (message: ExitMessage) => {
 console.log(`Loading messages from ${MESSAGES_LOCATION}`)
 const messages = await loadMessages()
 console.log(`Loaded ${messages.length} messages`)
+await verifyMessages(messages)
+console.log('Validated messages')
 
 console.log(`Starting, searching only for requests for operator ${OPERATOR_ID}`)
 
