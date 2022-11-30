@@ -53,8 +53,8 @@ export const verifyMessages = async (
       )
 
       const parsedExit = {
-        epoch: parseInt(epoch),
-        validatorIndex: parseInt(validatorIndex),
+        epoch: parseInt(epoch, 10),
+        validatorIndex: parseInt(validatorIndex, 10),
       }
 
       const signingRoot = computeSigningRoot(
