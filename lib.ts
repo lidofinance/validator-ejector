@@ -36,6 +36,6 @@ export const api = makeApi(request, logger, config)
 
 export const jobRunner = makeJobRunner(
   'validator-ejector',
-  { config, logger },
+  { config, logger, metric: metrics.jobDuration },
   { start: config.BLOCKS_PRELOAD, pooling: config.BLOCKS_LOOP }
 )

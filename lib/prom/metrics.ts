@@ -17,7 +17,16 @@ const requestDurationSeconds = new client.Histogram({
 })
 register.registerMetric(requestDurationSeconds)
 
+const jobDuration = new client.Histogram({
+  name: 'job_duration_seconds',
+  help: 'Duration of cron jobs',
+  buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
+  labelNames: ['name', 'interval', 'result'] as const,
+})
+register.registerMetric(jobDuration)
+
 export const metrics = {
   pollingLastBlocksDurationSeconds,
   requestDurationSeconds,
+  jobDuration
 }

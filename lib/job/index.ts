@@ -1,4 +1,5 @@
-import { logger } from 'ethers'
+import client, { Histogram } from 'prom-client'
+
 import { makeLogger } from '../logger'
 
 const jobLockMap: Record<string, boolean> = {}
@@ -8,23 +9,30 @@ export const makeJobRunner = (
   di: {
     config: { JOB_INTERVAL: number }
     logger: ReturnType<typeof makeLogger>
+    metric: Histogram<'result' | 'name' | 'interval' | 'label'>
   },
   initial: { start: number; pooling: number }
 ) => {
-  // TODO: prom
   return async (cb: (handlerValue: number) => Promise<void>) => {
     const handler = async (handlerValue: number) => {
       if (jobLockMap[name]) return
       jobLockMap[name] = true
 
+      const end = di.metric.startTimer({
+        name,
+        interval: di.config.JOB_INTERVAL,
+      })
+
       try {
-        logger.debug('Job started', { name })
+        di.logger.debug('Job started', { name })
         await cb(handlerValue)
+        end({ result: 'success' })
       } catch (error) {
-        logger.warn('Job ended with error', error)
+        di.logger.warn('Job ended with error', error)
+        end({ result: 'error' })
       } finally {
         jobLockMap[name] = false
-        logger.debug('Job ended', { name })
+        di.logger.debug('Job ended', { name })
       }
     }
     await handler(initial.start)
