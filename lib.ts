@@ -5,10 +5,13 @@ import {
   notOkError,
   retry,
   abort,
+  prom,
 } from './lib/request/middlewares.js'
 import { makeConfig, makeLoggerConfig } from './lib/config/index.js'
 import { makeApi } from './lib/api/index.js'
 import { makeJobRunner } from './lib/job/index.js'
+
+import { metrics } from './lib/prom/index.js'
 
 export * from './lib/prom/index.js'
 
@@ -24,6 +27,7 @@ export const config = makeConfig()
 export const request = makeRequest([
   retry(3),
   loggerMiddleware(logger),
+  prom(metrics.requestDurationSeconds),
   notOkError(),
   abort(5000),
 ])

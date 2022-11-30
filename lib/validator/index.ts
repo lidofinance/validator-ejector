@@ -1,7 +1,9 @@
-import { logger } from '../../lib.js'
+import { makeLogger } from '../logger/index.js'
 import type { LogLevelsUnion } from '../logger/types'
 
 export class ValidationError extends Error {}
+
+const validatorLogger = makeLogger({ level: 'error', pretty: false })
 
 export const make = <T>(
   parseFn: (input: string, errorMessage?: string) => T
@@ -11,16 +13,22 @@ export const make = <T>(
       if (!str) throw new ValidationError(errorMessage || 'Empty value')
       return parseFn(str, errorMessage)
     } catch (error) {
-      logger.warn(error.message)
+      validatorLogger.error(error.message)
       process.exit(1)
     }
   }
 }
 
-export const makeOptional = <T>(parseFn: (input: string) => T) => {
+export const makeOptional = <T>(
+  parseFn: (input: string, errorMessage?: string) => T
+) => {
   return (str?: string, errorMessage?: string) => {
     if (!str) return
-    return make(parseFn)(str, errorMessage)
+    try {
+      return parseFn(str, errorMessage)
+    } catch (error) {
+      validatorLogger.warn(error.message)
+    }
   }
 }
 
@@ -62,10 +70,7 @@ export const optional_bool = makeOptional(_bool)
 const isLevelAttr = (input: string): input is LogLevelsUnion =>
   ['debug', 'info', 'log', 'warn', 'error'].includes(input)
 
-const _level_attr = (
-  input: string,
-  errorMessage?: string
-) => {
+const _level_attr = (input: string, errorMessage?: string) => {
   if (isLevelAttr(input)) return input
   throw new ValidationError(errorMessage || `Invalid level input: "${input}"`)
 }
