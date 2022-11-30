@@ -248,7 +248,7 @@ const processExit = async (messages: ExitMessage[], pubKey: string) => {
   }
 
   try {
-    await sendExitfetch(message)
+    await sendExitRequest(message)
     logger.log('Message sent successfully to exit', pubKey)
   } catch (e) {
     logger.log(
@@ -258,7 +258,7 @@ const processExit = async (messages: ExitMessage[], pubKey: string) => {
   }
 }
 
-const sendExitfetch = async (message: ExitMessage) => {
+const sendExitRequest = async (message: ExitMessage) => {
   if (DRY_RUN) {
     logger.info('Not sending an exit in a dry run mode')
     return
