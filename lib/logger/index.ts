@@ -1,7 +1,7 @@
 import { printer } from './printer.js'
 import type { LoggerOptions, Logger } from './types'
 
-const LOG_LEVELS = ['debug', 'info', 'log', 'warn', 'error']
+export const LOG_LEVELS = ['debug', 'info', 'log', 'warn', 'error']
 
 export const makeLogger = (options?: LoggerOptions) => {
   const {

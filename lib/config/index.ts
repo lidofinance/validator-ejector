@@ -1,5 +1,11 @@
 import dotenv from 'dotenv'
-import { num, optional_bool, optional_num, str } from '../validator/index.js'
+import {
+  num,
+  optional_bool,
+  optional_num,
+  optional_str,
+  str,
+} from '../validator/index.js'
 
 dotenv.config()
 
@@ -12,8 +18,12 @@ const {
   BLOCKS_LOOP,
   SLEEP,
   MESSAGES_LOCATION,
+
   RUN_METRICS,
   METRICS_PORT,
+
+  LOGGER_LEVEL,
+  LOGGER_PRETTY,
 } = process.env
 
 export const makeConfig = () => ({
@@ -49,4 +59,17 @@ export const makeConfig = () => ({
     METRICS_PORT,
     'Please, setup METRICS_PORT. Example: 8080'
   ),
+})
+
+export const makeLoggerConfig = () => ({
+  LOGGER_LEVEL:
+    optional_str(
+      LOGGER_LEVEL,
+      'Invalid variable, using default variable: error'
+    ) || 'error',
+  LOGGER_PRETTY:
+    optional_bool(
+      LOGGER_PRETTY,
+      'Invalid variable, using default variable: false'
+    ) || false,
 })
