@@ -24,7 +24,7 @@ export const run = async () => {
   const lastBlock = (await provider.getBlock('finalized')).number
 
   const loadEvents = async (blocksBehind: number) => {
-    const filter = contract.filters['ValidatorExitfetch'](null, OPERATOR_ID)
+    const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
     const startBlock = lastBlock - blocksBehind
     const logs = await contract.queryFilter(filter, startBlock, lastBlock)
     return logs
@@ -37,8 +37,8 @@ export const run = async () => {
   await verifyMessages(messages)
 
   logger.log('Validated messages')
-  logger.log(`Starting, searching only for fetchs for operator ${OPERATOR_ID}`)
-  logger.log(`fetching historical events for ${BLOCKS_PRELOAD} blocks`)
+  logger.log(`Starting, searching only for requests for operator ${OPERATOR_ID}`)
+  logger.log(`requesting historical events for ${BLOCKS_PRELOAD} blocks`)
 
   await jobRunner(async (eventsNumber) => {
     const events = await loadEvents(eventsNumber)
