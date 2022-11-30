@@ -13,6 +13,7 @@ const {
   BLOCKS_LOOP,
   SLEEP,
   MESSAGES_LOCATION,
+  DRY_RUN,
 } = process.env
 
 process.on('SIGINT', () => {
@@ -143,6 +144,11 @@ const processExit = async (messages: ExitMessage[], pubKey: string) => {
 }
 
 const sendExitRequest = async (message: ExitMessage) => {
+  if (DRY_RUN.toLowerCase() === 'true') {
+    console.info('Not sending an exit in a dry run mode')
+    return
+  }
+
   const req = await fetch(
     CONSENSUS_NODE + '/eth/v1/beacon/pool/voluntary_exits',
     {
