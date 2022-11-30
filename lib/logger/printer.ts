@@ -8,19 +8,16 @@ const colorTable = {
 
 const white = '\x1b[0m'
 
-const timestampFormat = (ts?: number) => {
-  if (!ts) return
-  const d = new Date(ts)
-  const date = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`
-  const color = white
-  return `${date}`
+const timestampFormat = (ts: number) => {
+  const d = new Date(ts * 1000)
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`
 }
 
 export const printer = {
   json<T>(target: T, level: string) {
     console[level](JSON.stringify(target))
   },
-  simple<T extends { message: string; details?: any; timestamp?: number }>(
+  simple<T extends { message: string; details?: any; timestamp: number }>(
     target: T,
     level: string
   ) {

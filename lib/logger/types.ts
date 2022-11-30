@@ -11,5 +11,4 @@ export type Logger = Record<
 export type LoggerOptions = {
   level?: ArrayElement<LogLevels>
   pretty?: boolean
-  timestamp?: boolean
 }

@@ -7,7 +7,6 @@ export const makeLogger = (options?: LoggerOptions) => {
   const {
     level = 'error',
     pretty = true,
-    timestamp = true,
   }: LoggerOptions = options || {}
   return LOG_LEVELS.reduce((logger, logLevel) => {
     logger[logLevel] = (message: string, details?: any) => {
@@ -16,15 +15,15 @@ export const makeLogger = (options?: LoggerOptions) => {
       const output: {
         message: string
         level: string
-        timestamp?: number
+        timestamp: number
         details?: any
       } = {
         message,
         details,
         level: logLevel,
+        timestamp: Date.now() / 1000
       }
 
-      if (timestamp) output.timestamp = Date.now()
       if (details instanceof Error) {
         output.details = {
           ...details,
