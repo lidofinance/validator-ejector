@@ -8,11 +8,11 @@ import {
   serveMetrics,
   config,
   logger,
+  api,
 } from './lib.js'
 
 const {
   EXECUTION_NODE,
-  CONSENSUS_NODE,
   CONTRACT_ADDRESS,
   OPERATOR_ID,
   BLOCKS_PRELOAD,
@@ -21,7 +21,6 @@ const {
   MESSAGES_LOCATION,
   RUN_METRICS,
   METRICS_PORT,
-  DRY_RUN,
 } = config
 
 process.on('SIGINT', () => {
@@ -68,14 +67,14 @@ const loadMessages = async () => {
 }
 
 const verifyMessages = async (messages: ExitMessage[]): Promise<void> => {
-  const genesis = await getGenesis()
-  const state = await getState()
+  const genesis = await api.genesis()
+  const state = await api.state()
 
   for (const m of messages) {
     const { message, signature: rawSignature } = m
     const { validator_index: validatorIndex, epoch } = message
 
-    const pubKey = fromHex(await getValidatorPubkey(validatorIndex))
+    const pubKey = fromHex(await api.validatorPubkey(validatorIndex))
     const signature = fromHex(rawSignature)
 
     const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
@@ -121,60 +120,6 @@ const verifyMessages = async (messages: ExitMessage[]): Promise<void> => {
   }
 }
 
-const getGenesis = async () => {
-  const req = await fetch(CONSENSUS_NODE + '/eth/v1/beacon/genesis')
-  const res = await req.json()
-
-  type GenesisData = {
-    genesis_time: string
-    genesis_validators_root: string
-    genesis_fork_version: string
-  }
-  const genesis: GenesisData = res.data
-  logger.debug('fetched genesis data')
-  return genesis
-}
-
-const getState = async () => {
-  const req = await fetch(
-    CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/fork'
-  )
-  const res = await req.json()
-
-  type StateData = {
-    previous_version: string
-    current_version: string
-    epoch: string
-  }
-  const state: StateData = res.data
-  logger.debug('fetched state data')
-  return state
-}
-
-const getValidatorIndex = async (pubKey: string) => {
-  const req = await fetch(
-    CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/validators/' + pubKey
-  )
-  const res = await req.json()
-
-  const validatorIndex = res.data.index
-  logger.debug(`Validator index for ${pubKey} is ${validatorIndex}`)
-  return validatorIndex
-}
-
-const getValidatorPubkey = async (validatorIndex: string) => {
-  const req = await fetch(
-    CONSENSUS_NODE +
-      '/eth/v1/beacon/states/finalized/validators/' +
-      validatorIndex
-  )
-  const res = await req.json()
-
-  const pubKey: string = res.data.validator.pubkey
-  logger.debug(`Validator pubkey for ${validatorIndex} is ${pubKey}`)
-  return pubKey
-}
-
 const loadAndProcess = async (
   messages: ExitMessage[],
   eventsNumber: number
@@ -204,38 +149,10 @@ const filterEvents = (events: ethers.Event[]) =>
     (event) => event.args?.nodeOperatorId.toString() === OPERATOR_ID
   )
 
-const isExiting = async (pubkey: string) => {
-  const req = await fetch(
-    CONSENSUS_NODE + '/eth/v1/beacon/states/finalized/validators/' + pubkey
-  )
-  const res = await req.json()
-
-  switch (res.data.status) {
-    case 'active_exiting':
-      logger.debug('Validator is exiting already, skipping')
-      return true
-    case 'exited_unslashed':
-      logger.debug('Validator has exited already, skipping')
-      return true
-    case 'exited_slashed':
-      logger.debug('Validator has exited already, skipping')
-      return true
-    case 'withdrawal_possible': // already exited
-      logger.debug('Validator has exited already, skipping')
-      return true
-    case 'withdrawal_done': // already exited
-      logger.debug('Validator has exited already, skipping')
-      return true
-    default:
-      logger.debug('Validator is not exiting yet')
-      return false
-  }
-}
-
 const processExit = async (messages: ExitMessage[], pubKey: string) => {
-  if (await isExiting(pubKey)) return
+  if (await api.isExiting(pubKey)) return
 
-  const validatorIndex = await getValidatorIndex(pubKey)
+  const validatorIndex = await api.validatorIndex(pubKey)
   const message = messages.find(
     (msg) => msg.message.validator_index === validatorIndex
   )
@@ -248,34 +165,13 @@ const processExit = async (messages: ExitMessage[], pubKey: string) => {
   }
 
   try {
-    await sendExitRequest(message)
+    await api.exitRequest(message)
     logger.log('Message sent successfully to exit', pubKey)
   } catch (e) {
     logger.log(
       'fetch to consensus node failed with',
       e instanceof Error ? e.message : e
     )
-  }
-}
-
-const sendExitRequest = async (message: ExitMessage) => {
-  if (DRY_RUN) {
-    logger.info('Not sending an exit in a dry run mode')
-    return
-  }
-
-  const req = await fetch(
-    CONSENSUS_NODE + '/eth/v1/beacon/pool/voluntary_exits',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message),
-    }
-  )
-
-  if (!req.ok) {
-    const message = (await req.json()).message
-    throw new Error(message)
   }
 }
 

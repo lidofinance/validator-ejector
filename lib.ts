@@ -1,4 +1,4 @@
-import {  makeLogger } from './lib/logger/index.js'
+import { makeLogger } from './lib/logger/index.js'
 import { makeRequest } from './lib/request/index.js'
 import {
   logger as loggerMiddleware,
@@ -7,6 +7,7 @@ import {
   abort,
 } from './lib/request/middlewares.js'
 import { makeConfig, makeLoggerConfig } from './lib/config/index.js'
+import { makeApi } from './lib/api/index.js'
 
 export * from './lib/prom/index.js'
 
@@ -27,3 +28,5 @@ export const request = makeRequest([
   notOkError(),
   abort(5000),
 ])
+
+export const api = makeApi(request, logger, config)
