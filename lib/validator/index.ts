@@ -1,4 +1,4 @@
-import { logger } from '../logger/index.js'
+import { logger } from '../../lib.js'
 
 export class ValidationError extends Error {}
 

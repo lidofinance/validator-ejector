@@ -1,5 +1,5 @@
 import client from "prom-client";
-import { register } from "./";
+import { register } from "../../lib.js";
 
 export const pollingLastBlocksDurationSeconds = new client.Histogram({
   name: "polling_last_blocks_duration_seconds",

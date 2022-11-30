@@ -8,6 +8,8 @@ type PromReturnTypeSerializer =
   | Partial<Record<string, string | number>>
   | undefined
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 const defaultSerializer = (
   config: InternalConfig,
   response: Response,
@@ -71,7 +73,10 @@ export const prom =
   }
 
 export const retry =
-  (maxTries = 3, retryConfig: { ignoreAbort: boolean }): Middleware =>
+  (
+    maxTries = 3,
+    retryConfig = { ignoreAbort: true, sleep: 2000 }
+  ): Middleware =>
   async (config, next) => {
     const loop = async () => {
       let response!: Response
@@ -82,7 +87,7 @@ export const retry =
         if (error.name === 'AbortError' && !retryConfig.ignoreAbort) throw error
         if (isNotServerError(error) && error.name !== 'AbortError') throw error
         if (maxTries <= config.attempt) throw error
-
+        await sleep(retryConfig.sleep)
         response = await loop()
       }
       return response

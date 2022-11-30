@@ -1,2 +1,2 @@
-export * from "./prom";
-export * from "./metrics";
+export * from "./prom.js";
+export * from "./metrics.js";

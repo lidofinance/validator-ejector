@@ -41,5 +41,3 @@ export const makeLogger = (options?: LoggerOptions) => {
     return logger
   }, {}) as Logger
 }
-
-export const logger = makeLogger()

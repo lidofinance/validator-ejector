@@ -45,7 +45,7 @@ const fetchCall = ({ url, baseUrl, ...rest }: RequestConfig) =>
  * @param middleware Middleware[]
  * @returns fetchLike
  */
-export const request = (middleware: Middleware[]) => {
+export const makeRequest = (middleware: Middleware[]) => {
   return (url: RequestInfo, requestConfig?: RequestConfig) => {
     // copy object bcs we can mutate it
     const internalConfig = { ...requestConfig } as InternalConfig
