@@ -26,6 +26,8 @@ const {
   LOGGER_PRETTY,
 
   DRY_RUN,
+
+  JOB_INTERVAL,
 } = process.env
 
 export const makeConfig = () => ({
@@ -65,6 +67,10 @@ export const makeConfig = () => ({
   DRY_RUN:
     optional_bool(DRY_RUN, 'Invalid variable, using default variable: false') ||
     false,
+
+  JOB_INTERVAL:
+    optional_num(JOB_INTERVAL, 'Invalid variable, using default variable: 10_000') ||
+    10_000,
 })
 
 export const makeLoggerConfig = () => ({

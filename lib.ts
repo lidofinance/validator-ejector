@@ -8,6 +8,7 @@ import {
 } from './lib/request/middlewares.js'
 import { makeConfig, makeLoggerConfig } from './lib/config/index.js'
 import { makeApi } from './lib/api/index.js'
+import { makeJobRunner } from './lib/job/index.js'
 
 export * from './lib/prom/index.js'
 
@@ -30,3 +31,9 @@ export const request = makeRequest([
 ])
 
 export const api = makeApi(request, logger, config)
+
+export const jobRunner = makeJobRunner(
+  'validator-ejector',
+  { config, logger },
+  { start: config.BLOCKS_PRELOAD, pooling: config.BLOCKS_LOOP }
+)
