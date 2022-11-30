@@ -1,10 +1,14 @@
-import type { RequestInit, Response as FetchResponse, RequestInfo as FetchRequestInfo } from 'node-fetch'
+import type {
+  RequestInit,
+  Response as FetchResponse,
+  RequestInfo as FetchRequestInfo,
+} from 'node-fetch'
 export interface RequestConfig extends RequestInit {
-  url: FetchRequestInfo
   baseUrl?: FetchRequestInfo
 }
 
 export interface InternalConfig extends RequestConfig {
+  url: FetchRequestInfo
   attempt: number
 }
 

@@ -37,7 +37,7 @@ export const extractErrorBody = async (
 export const isNotServerError = (error: Error) =>
   !(error instanceof HttpException) && !(error instanceof FetchError)
 
-const fetchCall = ({ url, baseUrl, ...rest }: RequestConfig) =>
+const fetchCall = ({ url, baseUrl, ...rest }: InternalConfig) =>
   fetch(getUrl(baseUrl, url), rest)
 
 /**

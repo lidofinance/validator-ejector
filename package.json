@@ -21,10 +21,13 @@
   "type": "module",
   "scripts": {
     "start": "ts-node index.ts",
-    "start:prom-only": "ts-node test.ts"
+    "start:prom-only": "ts-node test.ts",
+    "typechain": "typechain --target=ethers-v5 --out-dir ./lib/abi ValidatorExitBus.json"
   },
   "devDependencies": {
+    "@typechain/ethers-v5": "^10.1.1",
     "@types/node": "18.11.9",
-    "prettier": "2.8.0"
+    "prettier": "2.8.0",
+    "typechain": "^8.1.1"
   }
 }

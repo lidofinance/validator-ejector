@@ -24,6 +24,8 @@ const {
 
   LOGGER_LEVEL,
   LOGGER_PRETTY,
+
+  DRY_RUN,
 } = process.env
 
 export const makeConfig = () => ({
@@ -59,6 +61,10 @@ export const makeConfig = () => ({
     METRICS_PORT,
     'Please, setup METRICS_PORT. Example: 8080'
   ),
+
+  DRY_RUN:
+    optional_bool(DRY_RUN, 'Invalid variable, using default variable: false') ||
+    false,
 })
 
 export const makeLoggerConfig = () => ({

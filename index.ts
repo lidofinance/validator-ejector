@@ -3,10 +3,12 @@ import fs from 'fs/promises'
 import { ethers } from 'ethers'
 import bls from '@chainsafe/bls'
 
-import dotenv from 'dotenv'
-import { pollingLastBlocksDurationSeconds, serveMetrics } from './lib/prom'
-
-dotenv.config()
+import {
+  pollingLastBlocksDurationSeconds,
+  serveMetrics,
+  config,
+  logger,
+} from './lib.js'
 
 const {
   EXECUTION_NODE,
@@ -18,12 +20,12 @@ const {
   SLEEP,
   MESSAGES_LOCATION,
   RUN_METRICS,
-  METRICS_PORT
+  METRICS_PORT,
   DRY_RUN,
-} = process.env
+} = config
 
 process.on('SIGINT', () => {
-  console.info('Shutting down')
+  logger.info('Shutting down')
   process.exit(0)
 })
 
@@ -31,6 +33,7 @@ import { ssz } from '@lodestar/types'
 import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
+import { ValidatorExitBus__factory } from './lib/abi/index.js'
 
 const sleep = (seconds: number) =>
   new Promise((resolve) => setTimeout(resolve, seconds * 1000))
@@ -49,8 +52,7 @@ type EthDoExitMessage = {
 }
 
 const provider = new ethers.providers.JsonRpcProvider(EXECUTION_NODE)
-const abi = JSON.parse((await fs.readFile('ValidatorExitBus.json')).toString())
-const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider)
+const contract = ValidatorExitBus__factory.connect(CONTRACT_ADDRESS, provider)
 const lastBlock = (await provider.getBlock('finalized')).number
 
 const loadMessages = async () => {
@@ -100,7 +102,7 @@ const verifyMessages = async (messages: ExitMessage[]): Promise<void> => {
 
       const isValid = bls.verify(pubKey, signingRoot, signature)
 
-      console.debug(
+      logger.debug(
         `Singature ${
           isValid ? 'valid' : 'invalid'
         } for validator ${validatorIndex} for fork ${toHexString(fork)}`
@@ -115,7 +117,7 @@ const verifyMessages = async (messages: ExitMessage[]): Promise<void> => {
     if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
 
     if (!isValid)
-      console.error(`Invalid signature for validator ${validatorIndex}`)
+      logger.error(`Invalid signature for validator ${validatorIndex}`)
   }
 }
 
@@ -129,7 +131,7 @@ const getGenesis = async () => {
     genesis_fork_version: string
   }
   const genesis: GenesisData = res.data
-  console.debug('Fetched genesis data')
+  logger.debug('fetched genesis data')
   return genesis
 }
 
@@ -145,7 +147,7 @@ const getState = async () => {
     epoch: string
   }
   const state: StateData = res.data
-  console.debug('Fetched state data')
+  logger.debug('fetched state data')
   return state
 }
 
@@ -156,7 +158,7 @@ const getValidatorIndex = async (pubKey: string) => {
   const res = await req.json()
 
   const validatorIndex = res.data.index
-  console.debug(`Validator index for ${pubKey} is ${validatorIndex}`)
+  logger.debug(`Validator index for ${pubKey} is ${validatorIndex}`)
   return validatorIndex
 }
 
@@ -169,7 +171,7 @@ const getValidatorPubkey = async (validatorIndex: string) => {
   const res = await req.json()
 
   const pubKey: string = res.data.validator.pubkey
-  console.debug(`Validator pubkey for ${validatorIndex} is ${pubKey}`)
+  logger.debug(`Validator pubkey for ${validatorIndex} is ${pubKey}`)
   return pubKey
 }
 
@@ -179,26 +181,28 @@ const loadAndProcess = async (
 ) => {
   const end = pollingLastBlocksDurationSeconds.startTimer()
   const events = await loadEvents(eventsNumber)
-  console.debug(`Loaded ${events.length} events`)
+  logger.debug(`Loaded ${events.length} events`)
   const filteredEvents = filterEvents(events)
-  console.debug(`Filtered to ${filteredEvents.length} for us`)
+  logger.debug(`Filtered to ${filteredEvents.length} for us`)
 
   for (const event of filteredEvents) {
-    console.debug(`Handling exit for ${event.args.validatorPubkey}`)
-    await processExit(messages, event.args.validatorPubkey)
+    logger.debug(`Handling exit for ${event.args?.validatorPubkey}`)
+    await processExit(messages, event.args?.validatorPubkey)
   }
   end({ eventsNumber })
 }
 
 const loadEvents = async (blocksBehind: number) => {
-  const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
+  const filter = contract.filters['ValidatorExitfetch'](null, OPERATOR_ID)
   const startBlock = lastBlock - blocksBehind
   const logs = await contract.queryFilter(filter, startBlock, lastBlock)
   return logs
 }
 
 const filterEvents = (events: ethers.Event[]) =>
-  events.filter((event) => event.args.nodeOperatorId.toString() === OPERATOR_ID)
+  events.filter(
+    (event) => event.args?.nodeOperatorId.toString() === OPERATOR_ID
+  )
 
 const isExiting = async (pubkey: string) => {
   const req = await fetch(
@@ -208,22 +212,22 @@ const isExiting = async (pubkey: string) => {
 
   switch (res.data.status) {
     case 'active_exiting':
-      console.debug('Validator is exiting already, skipping')
+      logger.debug('Validator is exiting already, skipping')
       return true
     case 'exited_unslashed':
-      console.debug('Validator has exited already, skipping')
+      logger.debug('Validator has exited already, skipping')
       return true
     case 'exited_slashed':
-      console.debug('Validator has exited already, skipping')
+      logger.debug('Validator has exited already, skipping')
       return true
     case 'withdrawal_possible': // already exited
-      console.debug('Validator has exited already, skipping')
+      logger.debug('Validator has exited already, skipping')
       return true
     case 'withdrawal_done': // already exited
-      console.debug('Validator has exited already, skipping')
+      logger.debug('Validator has exited already, skipping')
       return true
     default:
-      console.debug('Validator is not exiting yet')
+      logger.debug('Validator is not exiting yet')
       return false
   }
 }
@@ -237,26 +241,26 @@ const processExit = async (messages: ExitMessage[], pubKey: string) => {
   )
 
   if (!message) {
-    console.error(
+    logger.error(
       'Validator needs to be exited but required message was not found / accessible!'
     )
     return
   }
 
   try {
-    await sendExitRequest(message)
-    console.log('Message sent successfully to exit', pubKey)
+    await sendExitfetch(message)
+    logger.log('Message sent successfully to exit', pubKey)
   } catch (e) {
-    console.log(
-      'Request to consensus node failed with',
+    logger.log(
+      'fetch to consensus node failed with',
       e instanceof Error ? e.message : e
     )
   }
 }
 
-const sendExitRequest = async (message: ExitMessage) => {
-  if (DRY_RUN.toLowerCase() === 'true') {
-    console.info('Not sending an exit in a dry run mode')
+const sendExitfetch = async (message: ExitMessage) => {
+  if (DRY_RUN) {
+    logger.info('Not sending an exit in a dry run mode')
     return
   }
 
@@ -276,25 +280,25 @@ const sendExitRequest = async (message: ExitMessage) => {
 }
 
 if (RUN_METRICS && METRICS_PORT) {
-    serveMetrics(parseInt(METRICS_PORT, 10))
+  serveMetrics(METRICS_PORT)
 }
-
-console.log(`Loading messages from ${MESSAGES_LOCATION}`)
+console.log('???')
+logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
 const messages = await loadMessages()
-console.log(`Loaded ${messages.length} messages`)
+logger.log(`Loaded ${messages.length} messages`)
 await verifyMessages(messages)
-console.log('Validated messages')
+logger.log('Validated messages')
 
-console.log(`Starting, searching only for requests for operator ${OPERATOR_ID}`)
+logger.log(`Starting, searching only for fetchs for operator ${OPERATOR_ID}`)
 
-console.log(`Fetching historical events for ${BLOCKS_PRELOAD} blocks`)
-await loadAndProcess(messages, parseInt(BLOCKS_PRELOAD))
-await sleep(parseInt(SLEEP))
+logger.log(`fetching historical events for ${BLOCKS_PRELOAD} blocks`)
+await loadAndProcess(messages, BLOCKS_PRELOAD)
+await sleep(SLEEP)
 
-console.log('Starting a polling loop for new data')
+logger.log('Starting a polling loop for new data')
 do {
-  console.log(`Polling ${BLOCKS_LOOP} last blocks for events`)
-  await loadAndProcess(messages, parseInt(BLOCKS_LOOP))
-  console.log(`Sleeping for ${SLEEP} seconds`)
-  await sleep(parseInt(SLEEP))
+  logger.log(`Polling ${BLOCKS_LOOP} last blocks for events`)
+  await loadAndProcess(messages, BLOCKS_LOOP)
+  logger.log(`Sleeping for ${SLEEP} seconds`)
+  await sleep(SLEEP)
 } while (true)
