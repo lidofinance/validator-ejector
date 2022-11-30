@@ -1,5 +1,12 @@
 import { HttpException } from './errors.js'
-import type { InternalConfig, Middleware, RequestConfig } from './types'
+import type {
+  InternalConfig,
+  Middleware,
+  RequestConfig,
+  RequestInfo,
+  Response,
+} from './types'
+import fetch, { FetchError } from 'node-fetch'
 
 export const getUrl = (
   baseUrl: RequestInfo | undefined,
@@ -17,16 +24,18 @@ export const isAbsoluteUrl = (url: RequestInfo): boolean => {
   return regexp.test(url.toString())
 }
 
-export const extractErrorBody = async (response: Response) => {
+export const extractErrorBody = async (
+  response: Response
+): Promise<string | Record<string, unknown>> => {
   try {
-    return await response.json()
+    return (await response.json()) as Record<string, unknown>
   } catch (error) {
     return response.statusText
   }
 }
 
 export const isNotServerError = (error: Error) =>
-  !(error instanceof HttpException)
+  !(error instanceof HttpException) && !(error instanceof FetchError)
 
 const fetchCall = ({ url, baseUrl, ...rest }: RequestConfig) =>
   fetch(getUrl(baseUrl, url), rest)

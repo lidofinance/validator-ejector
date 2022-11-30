@@ -1,7 +1,7 @@
 import { Histogram } from 'prom-client'
 import { extractErrorBody, getUrl, isNotServerError } from './index.js'
 import { makeLogger } from '../logger/index.js'
-import type { InternalConfig, Middleware } from './types'
+import type { InternalConfig, Middleware, Response} from './types'
 import { HttpException } from './errors.js'
 
 type PromReturnTypeSerializer =
