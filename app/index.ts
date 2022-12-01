@@ -15,6 +15,7 @@ export const run = async () => {
   logger.info('Application started', config)
 
   const lastBlock = await getLastBlock(provider)
+  logger.info(`Started from block ${lastBlock}`)
 
   logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
   const messages = await loadMessages()

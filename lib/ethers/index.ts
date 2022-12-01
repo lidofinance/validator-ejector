@@ -29,6 +29,7 @@ class JsonRpcProvider extends ethers.providers.JsonRpcProvider {
     this[diSymbol] = di
   }
   async send(method: string, params: Array<any>): Promise<any> {
+    const { logger, metric } = this[diSymbol]
     const classCache = this._cache as Record<
       string,
       Promise<any> | undefined | null
@@ -51,10 +52,12 @@ class JsonRpcProvider extends ethers.providers.JsonRpcProvider {
     if (cache && classCache[method]) {
       return this._cache[method]
     }
-    const { logger, metric } = this[diSymbol]
+
     let result
     let end
     try {
+      logger.debug(`JsonRPC request ${request.method}`)
+
       end = metric.startTimer()
       result = await fetchJson(
         this.connection,
