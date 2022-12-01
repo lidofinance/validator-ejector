@@ -1,4 +1,4 @@
-import client, { Histogram } from 'prom-client'
+import { Histogram } from 'prom-client'
 
 import { makeLogger } from '../logger'
 

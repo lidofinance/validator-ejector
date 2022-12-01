@@ -1,8 +1,7 @@
-import { config, logger, jobRunner } from '../lib.js'
+import { config, logger, jobRunner, contract, provider } from '../lib.js'
 
 import {
   filterEvents,
-  getETH,
   getLastBlock,
   loadEvents,
   loadMessages,
@@ -10,16 +9,11 @@ import {
   verifyMessages,
 } from './controller.js'
 
-const {
-  OPERATOR_ID,
-  BLOCKS_PRELOAD,
-  MESSAGES_LOCATION,
-} = config
+const { OPERATOR_ID, BLOCKS_PRELOAD, MESSAGES_LOCATION } = config
 
 export const run = async () => {
   logger.info('Application started', config)
 
-  const { contract, provider } = getETH()
   const lastBlock = await getLastBlock(provider)
 
   logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
