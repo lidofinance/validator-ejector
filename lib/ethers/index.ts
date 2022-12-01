@@ -1,6 +1,6 @@
 // JsonRpcProvider
 import { ethers } from 'ethers'
-import { deepCopy, fetchJson } from 'ethers/lib/utils'
+import { deepCopy, fetchJson } from 'ethers/lib/utils.js'
 import { Histogram } from 'prom-client'
 import { makeLogger } from '../logger'
 
