@@ -18,7 +18,7 @@ export const makeLogger = (options: LoggerOptions) => {
         message,
         details,
         level: logLevel,
-        timestamp: Date.now() / 1000,
+        timestamp: Math.floor(Date.now() / 1000),
       }
 
       if (details instanceof Error) {

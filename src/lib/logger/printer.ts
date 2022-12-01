@@ -10,7 +10,7 @@ const white = '\x1b[0m'
 
 const on = (l: number) => String(l).padStart(2, '0')
 
-const timestampFormat = (ts: number) => {
+export const dateFormat = (ts: number) => {
   const d = new Date(ts * 1000)
   return `${d.getFullYear()}-${on(d.getMonth() + 1)}-${on(d.getDate())} ${on(
     d.getHours()
@@ -26,7 +26,7 @@ export const printer = {
     level: string
   ) {
     const { message, ...rest } = target
-    let printing = `${white}${timestampFormat(rest.timestamp)}${
+    let printing = `${white}${dateFormat(rest.timestamp)}${
       colorTable[level]
     } ${level}${white}:${colorTable[level]} ${message}${white}`
     if (rest.details) printing += ` ${JSON.stringify(rest.details)}`

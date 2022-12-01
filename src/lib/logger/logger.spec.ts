@@ -1,4 +1,5 @@
 import { makeLogger, LOG_LEVELS } from './index.js'
+import { dateFormat } from './printer.js'
 import type { LogLevelsUnion } from './types.js'
 
 const mockConsole = () => {
@@ -26,6 +27,17 @@ describe('Logger', () => {
     expect(logger).toBeDefined()
   })
 
+  test('date format', () => {
+    const testingDate = Number(new Date('2022-01-01T13:58:22.854Z')) / 1000
+    const dateStr = dateFormat(testingDate)
+
+    expect(dateStr).toMatchInlineSnapshot(`"2022-01-01 17:58:22"`)
+  })
+
+  test.todo('json output')
+
+  test.todo('test simple output')
+
   describe('print level', () => {
     test('debug enabled: debug logs should be printing', () => {
       const { restore, log } = mockConsole()
@@ -42,7 +54,7 @@ describe('Logger', () => {
       restore()
     })
 
-    test('debug enabled: debug logs shouldn\'t be printing', () => {
+    test("debug enabled: debug logs shouldn't be printing", () => {
       const { restore, log } = mockConsole()
       const logger = makeLogger({ pretty: false, level: 'info' })
 
