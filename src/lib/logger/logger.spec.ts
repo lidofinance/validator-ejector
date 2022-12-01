@@ -27,7 +27,7 @@ describe('Logger', () => {
   })
 
   describe('print level', () => {
-    test('debug enabled', () => {
+    test('debug enabled: debug logs should be printing', () => {
       const { restore, log } = mockConsole()
       const logger = makeLogger({ pretty: false, level: 'debug' })
 
@@ -42,7 +42,7 @@ describe('Logger', () => {
       restore()
     })
 
-    test('debug disabled', () => {
+    test('debug enabled: debug logs shouldn\'t be printing', () => {
       const { restore, log } = mockConsole()
       const logger = makeLogger({ pretty: false, level: 'info' })
 
@@ -53,6 +53,22 @@ describe('Logger', () => {
       LOG_LEVELS.filter((level) => level !== 'debug').map((level) =>
         expect(log[level]).toHaveBeenCalledTimes(0)
       )
+
+      restore()
+    })
+
+    test('error enabled: all logs except the error must be hidden', () => {
+      const { restore, log } = mockConsole()
+      const logger = makeLogger({ pretty: false, level: 'error' })
+
+      logger.error('test')
+
+      expect(log.error).toHaveBeenCalledTimes(1)
+
+      LOG_LEVELS.filter((level) => level !== 'error').map((level) => {
+        logger[level]('test')
+        expect(log[level]).toHaveBeenCalledTimes(0)
+      })
 
       restore()
     })
