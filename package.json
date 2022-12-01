@@ -21,14 +21,27 @@
   "type": "module",
   "scripts": {
     "start:dev": "ts-node src/index.ts",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --verbose",
     "start": "node dist/index.js",
     "build": "tsc --build",
     "typechain": "typechain --target=ethers-v5 --out-dir ./lib/abi ValidatorExitBus.json"
   },
   "devDependencies": {
     "@typechain/ethers-v5": "^10.1.1",
+    "@types/jest": "^29.2.3",
     "@types/node": "18.11.9",
+    "jest": "^29.3.1",
     "prettier": "2.8.0",
+    "ts-jest": "^29.0.3",
+    "ts-jest-resolver": "^2.0.0",
     "typechain": "^8.1.1"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "resolver": "ts-jest-resolver",
+    "setupFiles": [
+      "dotenv/config"
+    ],
+    "testEnvironment": "node"
   }
 }

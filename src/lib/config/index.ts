@@ -68,6 +68,6 @@ export const makeConfig = () => ({
 })
 
 export const makeLoggerConfig = () => ({
-  LOGGER_LEVEL: optional_level_attr(LOGGER_LEVEL) || 'error',
+  LOGGER_LEVEL: optional_level_attr(LOGGER_LEVEL) || 'debug',
   LOGGER_PRETTY: optional_bool(LOGGER_PRETTY) || false,
 })
