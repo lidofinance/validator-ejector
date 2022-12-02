@@ -13,8 +13,8 @@
     "@lodestar/utils": "1.2.2",
     "dotenv": "16.0.3",
     "ethers": "5.7.2",
-    "node-fetch": "^3.3.0",
-    "prom-client": "^14.1.0",
+    "node-fetch": "3.3.0",
+    "prom-client": "14.1.0",
     "ts-node": "10.9.1",
     "typescript": "4.9.3"
   },
