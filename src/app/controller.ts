@@ -18,6 +18,13 @@ export const loadMessages = async () => {
   const folder = await fs.readdir(MESSAGES_LOCATION)
   const messages: ExitMessage[] = []
   for (const file of folder) {
+    if (!file.endsWith('.json')) {
+      logger.warn(
+        `File with invalid extension found in messages folder: ${file}`
+      )
+      continue
+    }
+
     const read = await fs.readFile(`${MESSAGES_LOCATION}/${file}`)
     let parsed: EthDoExitMessage | ExitMessage
     try {
