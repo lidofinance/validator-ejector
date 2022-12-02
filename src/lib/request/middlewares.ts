@@ -1,7 +1,7 @@
 import { Histogram } from 'prom-client'
 import { extractErrorBody, getUrl, isNotServerError } from './index.js'
 import { makeLogger } from '../logger/index.js'
-import type { InternalConfig, Middleware, Response} from './types'
+import type { InternalConfig, Middleware, Response } from './types'
 import { HttpException } from './errors.js'
 
 type PromReturnTypeSerializer =
@@ -16,10 +16,11 @@ const defaultSerializer = (
   error?: Error
 ): PromReturnTypeSerializer => {
   const url = getUrl(config.baseUrl, config.url)
+  const urlStr = typeof url === 'string' ? url : url.toString()
   return {
     result: error ? 'error' : 'success',
     status: error ? 'unknown' : response.status,
-    url: url.toString(),
+    domain: new URL(urlStr).hostname,
   }
 }
 
