@@ -1,7 +1,7 @@
 import { printer } from './printer.js'
 import type { LoggerOptions, Logger } from './types'
 
-export const LOG_LEVELS = ['debug', 'info', 'log', 'warn', 'error']
+export const LOG_LEVELS = ['error', 'warn', 'log', 'info', 'debug']
 
 export const makeLogger = (options: LoggerOptions) => {
   const { level, pretty }: LoggerOptions = options
@@ -18,7 +18,7 @@ export const makeLogger = (options: LoggerOptions) => {
         message,
         details,
         level: logLevel,
-        timestamp: Date.now() / 1000,
+        timestamp: Math.floor(Date.now() / 1000),
       }
 
       if (details instanceof Error) {
