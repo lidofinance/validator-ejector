@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 
-import { ethers } from 'ethers'
 import bls from '@chainsafe/bls'
 
 import { ssz } from '@lodestar/types'
@@ -9,10 +8,9 @@ import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 import { EthDoExitMessage, ExitMessage } from './types.js'
-import { config, logger, api } from '../lib.js'
-import { ValidatorExitBus } from '../lib/abi/ValidatorExitBus.js'
+import { config, logger, consensusApi, executionApi } from '../lib.js'
 
-const { OPERATOR_ID, MESSAGES_LOCATION } = config
+const { MESSAGES_LOCATION } = config
 
 export const loadMessages = async () => {
   const folder = await fs.readdir(MESSAGES_LOCATION)
@@ -29,14 +27,14 @@ export const loadMessages = async () => {
 export const verifyMessages = async (
   messages: ExitMessage[]
 ): Promise<void> => {
-  const genesis = await api.genesis()
-  const state = await api.state()
+  const genesis = await consensusApi.genesis()
+  const state = await consensusApi.state()
 
   for (const m of messages) {
     const { message, signature: rawSignature } = m
     const { validator_index: validatorIndex, epoch } = message
 
-    const pubKey = fromHex(await api.validatorPubkey(validatorIndex))
+    const pubKey = fromHex(await consensusApi.validatorPubkey(validatorIndex))
     const signature = fromHex(rawSignature)
 
     const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
@@ -82,15 +80,10 @@ export const verifyMessages = async (
   }
 }
 
-export const filterEvents = (events: ethers.Event[]) =>
-  events.filter(
-    (event) => event.args?.nodeOperatorId.toString() === OPERATOR_ID
-  )
-
 export const processExit = async (messages: ExitMessage[], pubKey: string) => {
-  if (await api.isExiting(pubKey)) return
+  if (await consensusApi.isExiting(pubKey)) return
 
-  const validatorIndex = await api.validatorIndex(pubKey)
+  const validatorIndex = await consensusApi.validatorIndex(pubKey)
   const message = messages.find(
     (msg) => msg.message.validator_index === validatorIndex
   )
@@ -103,7 +96,7 @@ export const processExit = async (messages: ExitMessage[], pubKey: string) => {
   }
 
   try {
-    await api.exitRequest(message)
+    await consensusApi.exitRequest(message)
     logger.log('Message sent successfully to exit', pubKey)
   } catch (e) {
     logger.log(
@@ -113,19 +106,7 @@ export const processExit = async (messages: ExitMessage[], pubKey: string) => {
   }
 }
 
-export const loadEvents = async (
-  contract: ValidatorExitBus,
-  lastBlock: number,
-  blocksBehind: number
-) => {
-  const filter = contract.filters['ValidatorExitRequest'](null, OPERATOR_ID)
-  const startBlock = lastBlock - blocksBehind
-  const logs = await contract.queryFilter(filter, startBlock, lastBlock)
-  return logs
-}
-
-export const getLastBlock = async (
-  provider: ethers.providers.JsonRpcProvider
-) => {
-  return (await provider.getBlock('finalized')).number
+export const loadExitEvents = async (toBlock: number, blocksBehind: number) => {
+  const fromBlock = toBlock - blocksBehind
+  return await executionApi.logs(fromBlock, toBlock)
 }
