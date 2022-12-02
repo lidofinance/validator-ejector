@@ -2,13 +2,16 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "ESNext",
-    "lib": ["esnext", "dom"],
-    "noEmit": true,
+    "lib": ["esnext"],
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "strictNullChecks": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./src",
   },
   "exclude": ["node_modules"],
   "ts-node": { "esm": true }
