@@ -24,7 +24,7 @@ export const logger = makeLogger({
   pretty: loggerConfig.LOGGER_PRETTY,
 })
 
-export const config = makeConfig()
+export const config = makeConfig({ logger })
 
 export const request = makeRequest([
   retry(3),

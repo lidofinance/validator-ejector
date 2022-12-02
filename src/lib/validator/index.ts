@@ -6,13 +6,8 @@ export const make = <T>(
   parseFn: (input: string, errorMessage?: string) => T
 ) => {
   return (str?: string, errorMessage?: string) => {
-    try {
-      if (!str) throw new ValidationError(errorMessage || 'Empty value')
-      return parseFn(str, errorMessage)
-    } catch (error) {
-      logger.error(error.message)
-      process.exit(1)
-    }
+    if (!str) throw new ValidationError(errorMessage || 'Empty value')
+    return parseFn(str, errorMessage)
   }
 }
 
