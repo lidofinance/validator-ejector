@@ -8,9 +8,13 @@ const colorTable = {
 
 const white = '\x1b[0m'
 
-const timestampFormat = (ts: number) => {
+const on = (l: number) => String(l).padStart(2, '0')
+
+export const dateFormat = (ts: number) => {
   const d = new Date(ts * 1000)
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`
+  return `${d.getFullYear()}-${on(d.getMonth() + 1)}-${on(d.getDate())} ${on(
+    d.getHours()
+  )}:${on(d.getMinutes())}:${on(d.getSeconds())}`
 }
 
 export const printer = {
@@ -22,13 +26,10 @@ export const printer = {
     level: string
   ) {
     const { message, ...rest } = target
-    console[level](
-      `${white}${timestampFormat(rest.timestamp)}${
-        colorTable[level]
-      } ${level}${white}:${colorTable[level]} ${message}${white}`
-    )
-    if (rest.details) {
-      console[level](JSON.stringify(rest.details, null, 2), white)
-    }
+    let printing = `${white}${dateFormat(rest.timestamp)}${
+      colorTable[level]
+    } ${level}${white}:${colorTable[level]} ${message}${white}`
+    if (rest.details) printing += ` ${JSON.stringify(rest.details)}`
+    console[level](printing)
   },
 }

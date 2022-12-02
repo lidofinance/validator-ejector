@@ -12,6 +12,8 @@ import { makeApi } from './lib/api/index.js'
 import { makeJobRunner } from './lib/job/index.js'
 
 import { metrics } from './lib/prom/index.js'
+import { makeJSONRPC } from './lib/ethers/index.js'
+import { ValidatorExitBus__factory } from './lib/abi/index.js'
 
 export * from './lib/prom/index.js'
 
@@ -22,7 +24,7 @@ export const logger = makeLogger({
   pretty: loggerConfig.LOGGER_PRETTY,
 })
 
-export const config = makeConfig()
+export const config = makeConfig({ logger })
 
 export const request = makeRequest([
   retry(3),
@@ -38,4 +40,15 @@ export const jobRunner = makeJobRunner(
   'validator-ejector',
   { config, logger, metric: metrics.jobDuration },
   { start: config.BLOCKS_PRELOAD, pooling: config.BLOCKS_LOOP }
+)
+
+export const provider = makeJSONRPC(config.EXECUTION_NODE, {
+  logger,
+  metric: metrics.jsonRPCDurationSeconds,
+})
+
+// TODO: rethink
+export const contract = ValidatorExitBus__factory.connect(
+  config.CONTRACT_ADDRESS,
+  provider
 )
