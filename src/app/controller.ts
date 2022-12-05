@@ -7,48 +7,8 @@ import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { EthDoExitMessage, ExitMessage } from './types.js'
-import { config, logger, consensusApi, executionApi } from '../lib.js'
-
-const { MESSAGES_LOCATION } = config
-
-import { obj, str } from 'tooling-nanolib-test'
-
-export const loadMessages = async () => {
-  const folder = await fs.readdir(MESSAGES_LOCATION)
-  const messages: ExitMessage[] = []
-  for (const file of folder) {
-    if (!file.endsWith('.json')) {
-      logger.warn(
-        `File with invalid extension found in messages folder: ${file}`
-      )
-      continue
-    }
-
-    const read = await fs.readFile(`${MESSAGES_LOCATION}/${file}`)
-    let parsed: EthDoExitMessage | ExitMessage
-    try {
-      parsed = JSON.parse(read.toString())
-    } catch {
-      logger.warn(`Unparseable JSON in file ${file}`)
-      continue
-    }
-
-    // Accounting for both ethdo and raw formats
-    const message = 'exit' in parsed ? parsed.exit : parsed
-
-    obj(message.message, `No message object inside the exit message ${file}`)
-    str(message.signature, `No signature in the exit message ${file}`)
-    str(message.message.epoch, `No epoch in the exit message ${file}`)
-    str(
-      message.message.validator_index,
-      `No validator_index in the exit message ${file}`
-    )
-
-    messages.push(message)
-  }
-  return messages as ExitMessage[]
-}
+import { ExitMessage } from './types.js'
+import { logger, consensusApi, executionApi } from '../lib.js'
 
 export const verifyMessages = async (
   messages: ExitMessage[]

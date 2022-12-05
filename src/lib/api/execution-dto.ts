@@ -4,8 +4,8 @@ export const lastBlockNumberDTO = (json: unknown) =>
   wrap(
     () =>
       obj(json, (json) => ({
-        data: obj(json.data, (data) => ({
-          number: str(data.number, 'Invalid latest block number'),
+        result: obj(json.result, (result) => ({
+          number: str(result.number, 'Invalid latest block number'),
         })),
       })),
     'Invalid validator LastBlockNumber response'

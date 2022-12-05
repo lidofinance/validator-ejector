@@ -24,9 +24,10 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
+    const json = await res.json()
     const {
-      data: { number },
-    } = lastBlockNumberDTO(await res.json())
+      result: { number },
+    } = lastBlockNumberDTO(json)
     logger.debug('fetched latest block number')
     return ethers.BigNumber.from(number).toNumber()
   }
@@ -52,8 +53,8 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
-
-    const { result } = logsDTO(await res.json())
+    const json = await res.json()
+    const { result } = logsDTO(json)
 
     return result.map((event) => event.data[0])
   }

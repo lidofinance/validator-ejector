@@ -1,6 +1,12 @@
 import dotenv from 'dotenv'
-import { bool, level_attr, makeLogger } from 'tooling-nanolib-test'
-import { num, str, optional } from 'tooling-nanolib-test'
+import {
+  bool,
+  level_attr,
+  makeLogger,
+  num,
+  str,
+  optional,
+} from 'tooling-nanolib-test'
 
 dotenv.config()
 
