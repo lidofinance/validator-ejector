@@ -1,6 +1,5 @@
-import { makeLogger } from '../logger/index.js'
-import { makeRequest } from '../request/index.js'
-import { obj, str, arr } from '../validator/index.js'
+import { makeLogger } from 'tooling-nanolib-test'
+import { makeRequest } from 'tooling-nanolib-test'
 
 import { ethers } from 'ethers'
 import { lastBlockNumberDTO, logsDTO } from './execution-dto.js'

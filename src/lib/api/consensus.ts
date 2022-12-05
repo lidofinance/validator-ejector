@@ -1,5 +1,4 @@
-import { makeLogger } from '../logger/index.js'
-import { makeRequest } from '../request/index.js'
+import { makeLogger, makeRequest } from 'tooling-nanolib-test'
 import {
   genesisDTO,
   stateDTO,

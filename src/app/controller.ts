@@ -12,7 +12,7 @@ import { config, logger, consensusApi, executionApi } from '../lib.js'
 
 const { MESSAGES_LOCATION } = config
 
-import { obj, str } from '../lib/validator/index.js'
+import { obj, str } from 'tooling-nanolib-test'
 
 export const loadMessages = async () => {
   const folder = await fs.readdir(MESSAGES_LOCATION)
