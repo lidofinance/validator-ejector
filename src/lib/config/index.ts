@@ -1,12 +1,6 @@
 import dotenv from 'dotenv'
-import { makeLogger } from '../logger/index.js'
-import {
-  num,
-  optional_bool,
-  optional_level_attr,
-  optional_num,
-  str,
-} from '../validator/index.js'
+import { bool, level_attr, makeLogger } from 'tooling-nanolib-test'
+import { num, str, optional } from 'tooling-nanolib-test'
 
 dotenv.config()
 
@@ -63,18 +57,12 @@ export const makeConfig = ({
         'Please, setup MESSAGES_LOCATION. Example: messages'
       ),
 
-      RUN_METRICS: optional_bool(
-        RUN_METRICS,
-        'Please, setup RUN_METRICS. Example: false'
-      ),
-      METRICS_PORT: optional_num(
-        METRICS_PORT,
-        'Please, setup METRICS_PORT. Example: 8080'
-      ),
+      RUN_METRICS: optional(() => bool(RUN_METRICS)),
+      METRICS_PORT: optional(() => num(METRICS_PORT)),
 
-      DRY_RUN: optional_bool(DRY_RUN) || false,
+      DRY_RUN: optional(() => bool(DRY_RUN)) || false,
 
-      JOB_INTERVAL: optional_num(JOB_INTERVAL) || 10_000,
+      JOB_INTERVAL: optional(() => num(JOB_INTERVAL)) || 10_000,
     }
   } catch (error) {
     logger.error(error.message)
@@ -83,6 +71,6 @@ export const makeConfig = ({
 }
 
 export const makeLoggerConfig = () => ({
-  LOGGER_LEVEL: optional_level_attr(LOGGER_LEVEL) || 'debug',
-  LOGGER_PRETTY: optional_bool(LOGGER_PRETTY) || false,
+  LOGGER_LEVEL: optional(() => level_attr(LOGGER_LEVEL)) || 'debug',
+  LOGGER_PRETTY: optional(() => bool(LOGGER_PRETTY)) || false,
 })

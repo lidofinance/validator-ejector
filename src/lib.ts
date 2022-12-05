@@ -1,16 +1,16 @@
-import { makeLogger } from './lib/logger/index.js'
-import { makeRequest } from './lib/request/index.js'
+import { makeLogger } from 'tooling-nanolib-test'
+import { makeRequest } from 'tooling-nanolib-test'
 import {
   logger as loggerMiddleware,
   notOkError,
   retry,
   abort,
   prom,
-} from './lib/request/middlewares.js'
+} from 'tooling-nanolib-test'
+import { makeJobRunner } from 'tooling-nanolib-test'
+
 import { makeConfig, makeLoggerConfig } from './lib/config/index.js'
 import { makeConsensusApi, makeExecutionApi } from './lib/api/index.js'
-import { makeJobRunner } from './lib/job/index.js'
-
 import { metrics } from './lib/prom/index.js'
 
 export * from './lib/prom/index.js'

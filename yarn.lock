@@ -3521,6 +3521,11 @@ to-regex-range@^5.0.1:
   dependencies:
     is-number "^7.0.0"
 
+tooling-nanolib-test@^1.0.0:
+  version "1.1.0"
+  resolved "https://registry.npmjs.org/tooling-nanolib-test/-/tooling-nanolib-test-1.1.0.tgz#b5a4eb494ddd473f17afbe7ca7b103a0d6e334f0"
+  integrity sha512-z4UdDSbFieKqFjPw5+QHKDfkAysEhBToyYilnxiv1mFqUbPo6aJuspGH4ZjBDoVI0HQVdL+S9PYg7k4oqH9Eug==
+
 tr46@~0.0.3:
   version "0.0.3"
   resolved "https://registry.npmjs.org/tr46/-/tr46-0.0.3.tgz#8184fd347dac9cdc185992f3a6622e14b9d9ab6a"
