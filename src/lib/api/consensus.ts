@@ -7,6 +7,8 @@ import {
   validatorStatusDTO,
 } from './consensus-dto.js'
 
+export type ConsensusApi = ReturnType<typeof makeConsensusApi>
+
 export const makeConsensusApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
