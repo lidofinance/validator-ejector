@@ -2,6 +2,7 @@ import { obj, str, wrap } from 'tooling-nanolib-test'
 
 export const genesisDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         data: obj(json.data, (data) => ({
@@ -21,6 +22,7 @@ export const genesisDTO = (json: unknown) =>
 
 export const stateDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         data: obj(json.data, (data) => ({
@@ -40,6 +42,7 @@ export const stateDTO = (json: unknown) =>
 
 export const validatorIndexDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         data: obj(json.data, (data) => ({
@@ -51,6 +54,7 @@ export const validatorIndexDTO = (json: unknown) =>
 
 export const validatorPubKeyDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         data: obj(json.data, (data) => ({
@@ -64,6 +68,7 @@ export const validatorPubKeyDTO = (json: unknown) =>
 
 export const validatorStatusDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         data: obj(json.data, (data) => ({
@@ -72,4 +77,3 @@ export const validatorStatusDTO = (json: unknown) =>
       })),
     'Invalid validator Status response'
   )
-

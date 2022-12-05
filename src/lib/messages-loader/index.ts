@@ -41,8 +41,8 @@ export const makeMessagesLoader = ({
       try {
         const json = JSON.parse(read.toString())
         parsed = exitOrEthDoExitDTO(json)
-      } catch {
-        logger.warn(`Unparseable JSON in file ${file}`)
+      } catch (error) {
+        logger.warn(`Unparseable JSON in file ${file}`, error)
         continue
       }
       const message = 'exit' in parsed ? parsed.exit : parsed

@@ -1,4 +1,4 @@
-import { obj, str, or } from 'tooling-nanolib-test'
+import { obj, str, or, wrap } from 'tooling-nanolib-test'
 
 export const exitMessageDTO = (input: unknown) =>
   obj(input, (json) => ({
@@ -16,7 +16,9 @@ export const ethDoExitMessageDTO = (input: unknown) =>
   }))
 
 export const exitOrEthDoExitDTO = (input: unknown) =>
-  or(
-    () => exitMessageDTO(input),
-    () => ethDoExitMessageDTO(input)
+  wrap(input, () =>
+    or(
+      () => exitMessageDTO(input),
+      () => ethDoExitMessageDTO(input)
+    )
   )

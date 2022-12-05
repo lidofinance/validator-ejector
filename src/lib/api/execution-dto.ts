@@ -2,6 +2,7 @@ import { arr, obj, str, wrap } from 'tooling-nanolib-test'
 
 export const lastBlockNumberDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         result: obj(json.result, (result) => ({
@@ -13,6 +14,7 @@ export const lastBlockNumberDTO = (json: unknown) =>
 
 export const logsDTO = (json: unknown) =>
   wrap(
+    json,
     () =>
       obj(json, (json) => ({
         result: arr(json.result, (result) =>
