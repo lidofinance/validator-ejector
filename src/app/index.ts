@@ -1,11 +1,6 @@
-import { config, logger, jobRunner, executionApi } from '../lib.js'
+import { config, logger, jobRunner, executionApi, messagesLoader } from '../lib.js'
 
-import {
-  loadExitEvents,
-  loadMessages,
-  processExit,
-  verifyMessages,
-} from './controller.js'
+import { loadExitEvents, processExit, verifyMessages } from './controller.js'
 
 const { OPERATOR_ID, BLOCKS_PRELOAD, MESSAGES_LOCATION } = config
 
@@ -16,7 +11,7 @@ export const run = async () => {
   logger.info(`Started from block ${lastBlock}`)
 
   logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
-  const messages = await loadMessages()
+  const messages = await messagesLoader.load()
   logger.log(`Loaded ${messages.length} messages`)
 
   await verifyMessages(messages)

@@ -1,8 +1,8 @@
-import { makeLogger } from '../logger/index.js'
-import { makeRequest } from '../request/index.js'
-import { obj, str, arr } from '../validator/index.js'
+import { makeLogger } from 'tooling-nanolib-test'
+import { makeRequest } from 'tooling-nanolib-test'
 
 import { ethers } from 'ethers'
+import { lastBlockNumberDTO, logsDTO } from './execution-dto.js'
 
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,
@@ -24,19 +24,12 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
-
-    const json = obj(
-      await res.json(),
-      'Empty response from execution node for latest block number'
-    )
-    const data = obj(
-      json.result,
-      'Empty data object from execution node for latest block number'
-    )
-
-    const result = str(data.number, 'Invalid latest block number')
+    const json = await res.json()
+    const {
+      result: { number },
+    } = lastBlockNumberDTO(json)
     logger.debug('fetched latest block number')
-    return ethers.BigNumber.from(result).toNumber()
+    return ethers.BigNumber.from(number).toNumber()
   }
   const logs = async (fromBlock: number, toBlock: number) => {
     const address = CONTRACT_ADDRESS
@@ -67,17 +60,10 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
+    const json = await res.json()
+    const { result } = logsDTO(json)
 
-    const json = obj(
-      await res.json(),
-      'Empty response from execution node for events'
-    )
-    const data = arr(
-      json.result,
-      'Empty data object from execution node for events'
-    ) as { data: string[]; topics: string[] }[]
-
-    return data.map((event) => event.data[0])
+    return result.map((event) => event.data[0])
   }
   return {
     latestBlockNumber,
