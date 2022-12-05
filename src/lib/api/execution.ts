@@ -56,7 +56,14 @@ export const makeExecutionApi = (
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getLogs',
-        params: [{ fromBlock, toBlock, address, topics }],
+        params: [
+          {
+            fromBlock: ethers.utils.hexlify(fromBlock),
+            toBlock: ethers.utils.hexlify(toBlock),
+            address,
+            topics,
+          },
+        ],
         id: 1,
       }),
     })
