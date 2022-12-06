@@ -11,7 +11,7 @@ export const exitMessageDTO = (input: unknown) =>
 
 export const ethDoExitMessageDTO = (input: unknown) =>
   obj(input, (json) => ({
-    exit: exitMessageDTO(json),
+    exit: exitMessageDTO(json.exit),
     fork_version: str(json.fork_version),
   }))
 
