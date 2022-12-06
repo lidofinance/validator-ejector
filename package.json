@@ -42,8 +42,20 @@
     "ts-node": "10.9.1"
   },
   "jest": {
-    "preset": "ts-jest",
-    "resolver": "ts-jest-resolver",
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
+    "transform": {
+      "^.+\\.ts?$": [
+        "ts-jest",
+        {
+          "useESM": true
+        }
+      ]
+    },
     "setupFiles": [
       "dotenv/config"
     ],
