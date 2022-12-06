@@ -50,9 +50,9 @@ export const makeConsensusApi = (
     const result = validatorPubKeyDTO(await res.json())
 
     logger.debug(
-      `Validator pubkey for ${validatorIndex} is ${result.data.validator.pubKey}`
+      `Validator pubkey for ${validatorIndex} is ${result.data.validator.pubkey}`
     )
-    return result.data.validator.pubKey
+    return result.data.validator.pubkey
   }
 
   const isExiting = async (pubkey: string) => {

@@ -3522,9 +3522,9 @@ to-regex-range@^5.0.1:
     is-number "^7.0.0"
 
 tooling-nanolib-test@^1.0.0:
-  version "1.2.2"
-  resolved "https://registry.npmjs.org/tooling-nanolib-test/-/tooling-nanolib-test-1.2.2.tgz#37a1e87cd2fab4320709fc5f3303474e276ae1e5"
-  integrity sha512-07dzYuZFpasLp1rtpEtI7e6l8XcTfpshcHRiRgBXGxWIljjeguN7jgSp0OUCSgxH+23WLQV1aIm8d0PYusg1mw==
+  version "1.2.3"
+  resolved "https://registry.npmjs.org/tooling-nanolib-test/-/tooling-nanolib-test-1.2.3.tgz#288bb408c0f38a716efda49d1820fa7a8f0c5259"
+  integrity sha512-9WEYF9lLajXDy4zl7DBwUDVEKcwGNzHooyBCTBH41pwlsRffu4un+cDW4utPvBgJ9IjRqbJZsfI9S1jt1jdJjQ==
 
 tr46@~0.0.3:
   version "0.0.3"

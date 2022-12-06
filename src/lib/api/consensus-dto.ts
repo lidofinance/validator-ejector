@@ -54,8 +54,8 @@ export const validatorPubKeyDTO = (json: unknown) =>
     json,
     (json) => ({
       data: obj(json.data, (data) => ({
-        validator: obj(data, (validator) => ({
-          pubKey: str(validator.pubKey),
+        validator: obj(data.validator, (validator) => ({
+          pubkey: str(validator.pubkey, 'invalid pubkey'),
         })),
       })),
     }),
