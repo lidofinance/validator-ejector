@@ -37,5 +37,5 @@ export const metrics = {
   pollingLastBlocksDurationSeconds,
   requestDurationSeconds,
   jobDuration,
-  jsonRPCDurationSeconds
+  jsonRPCDurationSeconds,
 }
