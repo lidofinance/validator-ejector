@@ -5,11 +5,12 @@ import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { makeLogger } from 'tooling-nanolib-test'
 import { exitOrEthDoExitDTO } from './dto.js'
 
+import type { LoggerService } from 'tooling-nanolib-test'
 import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
+import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
@@ -32,11 +33,13 @@ export const makeMessagesProcessor = ({
   config,
   reader,
   consensusApi,
+  executionApi,
 }: {
-  logger: ReturnType<typeof makeLogger>
+  logger: LoggerService
   config: ConfigService
   reader: ReaderService
   consensusApi: ConsensusApiService
+  executionApi: ExecutionApiService
 }) => {
   const load = async () => {
     const folder = await reader.dir(config.MESSAGES_LOCATION)
@@ -145,5 +148,23 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  return { load, verify, exit }
+  const proceed = async ({
+    lastBlock,
+    eventsNumber,
+    messages,
+  }: {
+    eventsNumber: number
+    lastBlock: number
+    messages: ExitMessage[]
+  }) => {
+    const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
+    logger.debug(`Loaded ${pubKeys.length} events`)
+
+    for (const pubKey of pubKeys) {
+      logger.debug(`Handling exit for ${pubKey}`)
+      await exit(messages, pubKey)
+    }
+  }
+
+  return { load, verify, exit, proceed }
 }

@@ -58,12 +58,6 @@ export const bootstrap = async () => {
       config
     )
 
-    const jobRunner = makeJobRunner(
-      'validator-ejector',
-      { config, logger, metric: metrics.jobDuration },
-      { start: config.BLOCKS_PRELOAD, pooling: config.BLOCKS_LOOP }
-    )
-
     const reader = makeReader()
 
     const messagesProcessor = makeMessagesProcessor({
@@ -71,13 +65,21 @@ export const bootstrap = async () => {
       config,
       reader,
       consensusApi,
+      executionApi,
+    })
+
+    const job = makeJobRunner('validator-ejector', {
+      config,
+      logger,
+      metric: metrics.jobDuration,
+      handler: messagesProcessor.proceed,
     })
 
     const app = makeApp({
       config,
       logger,
       executionApi,
-      jobRunner,
+      job,
       messagesProcessor,
     })
 
