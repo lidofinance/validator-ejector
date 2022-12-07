@@ -15,7 +15,7 @@ import { makeConfig, makeLoggerConfig } from '../services/config/index.js'
 import { makeConsensusApi, makeExecutionApi } from '../services/api/index.js'
 import { makeMetrics } from '../services/prom/index.js'
 import { makeReader } from '../services/reader/index.js'
-import { makeMessagesProcessor } from '../services/messages-loader/index.js'
+import { makeMessagesProcessor } from '../services/messages-loader/service.js'
 import { makeApp } from './service.js'
 
 dotenv.config()

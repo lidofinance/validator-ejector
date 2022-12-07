@@ -8,7 +8,7 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 import { makeConfig } from '../config/index.js'
 import type { Reader } from '../reader/index.js'
 import { makeLogger } from 'tooling-nanolib-test'
-import { exitOrEthDoExitDTO } from './messages-loader-dto.js'
+import { exitOrEthDoExitDTO } from './dto.js'
 import type { ConsensusApi } from '../api/consensus.js'
 
 type ExitMessage = {
@@ -23,6 +23,8 @@ type EthDoExitMessage = {
   exit: ExitMessage
   fork_version: string
 }
+
+export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
 
 export const makeMessagesProcessor = ({
   logger,
