@@ -2,7 +2,9 @@ import { makeLogger } from 'tooling-nanolib-test'
 import { makeRequest } from 'tooling-nanolib-test'
 
 import { ethers } from 'ethers'
-import { lastBlockNumberDTO, logsDTO } from './execution-dto.js'
+import { lastBlockNumberDTO, logsDTO } from './dto.js'
+
+export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,

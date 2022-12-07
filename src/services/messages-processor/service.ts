@@ -9,7 +9,7 @@ import { makeLogger } from 'tooling-nanolib-test'
 import { exitOrEthDoExitDTO } from './dto.js'
 
 import type { ReaderService } from '../reader/service.js'
-import type { ConsensusApi } from '../api/consensus.js'
+import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
@@ -36,7 +36,7 @@ export const makeMessagesProcessor = ({
   logger: ReturnType<typeof makeLogger>
   config: ConfigService
   reader: ReaderService
-  consensusApi: ConsensusApi
+  consensusApi: ConsensusApiService
 }) => {
   const load = async () => {
     const folder = await reader.dir(config.MESSAGES_LOCATION)
