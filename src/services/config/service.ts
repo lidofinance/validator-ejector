@@ -31,28 +31,25 @@ export const makeConfig = ({
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'
   ),
-  BLOCKS_PRELOAD: num(
-    env.BLOCKS_PRELOAD,
-    'Please, setup BLOCKS_PRELOAD. Example: 10000'
-  ),
-  BLOCKS_LOOP: num(env.BLOCKS_LOOP, 'Please, setup BLOCKS_LOOP. Example: 100'),
   MESSAGES_LOCATION: str(
     env.MESSAGES_LOCATION,
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
 
+  BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) || 10_000,
+  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) || 100,
+  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) || 20_000,
+
   RUN_METRICS: optional(() => bool(env.RUN_METRICS)),
   METRICS_PORT: optional(() => num(env.METRICS_PORT)),
 
+  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'info',
+  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || true,
+
   DRY_RUN: optional(() => bool(env.DRY_RUN)) || false,
-
-  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) || 10_000,
-
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'debug',
-  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || false,
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'debug',
-  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || false,
+  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'info',
+  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || true,
 })
