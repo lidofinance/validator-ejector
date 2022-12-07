@@ -19,13 +19,15 @@ export const makeApp = ({
     const messages = await messagesProcessor.load()
     logger.log(`Loaded ${messages.length} messages`)
 
+    logger.log('Validating messages')
     await messagesProcessor.verify(messages)
-
     logger.log('Validated messages')
+
     logger.log(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
-    logger.log(`requesting historical events for ${BLOCKS_PRELOAD} blocks`)
+
+    logger.log(`Requesting historical events for ${BLOCKS_PRELOAD} blocks`)
 
     await jobRunner(async (eventsNumber: number) => {
       const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
