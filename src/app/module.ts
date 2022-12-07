@@ -11,11 +11,11 @@ import { makeJobRunner } from 'tooling-nanolib-test'
 
 import dotenv from 'dotenv'
 
-import { makeConfig, makeLoggerConfig } from '../lib/config/index.js'
-import { makeConsensusApi, makeExecutionApi } from '../lib/api/index.js'
-import { makeMetrics } from '../lib/prom/index.js'
-import { makeReader } from '../lib/reader/index.js'
-import { makeMessagesProcessor } from '../lib/messages-loader/index.js'
+import { makeConfig, makeLoggerConfig } from '../services/config/index.js'
+import { makeConsensusApi, makeExecutionApi } from '../services/api/index.js'
+import { makeMetrics } from '../services/prom/index.js'
+import { makeReader } from '../services/reader/index.js'
+import { makeMessagesProcessor } from '../services/messages-loader/index.js'
 import { makeApp } from './service.js'
 
 dotenv.config()
