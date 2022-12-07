@@ -6,9 +6,10 @@ import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 import { makeConfig } from '../config/index.js'
-import type { Reader } from '../reader/index.js'
 import { makeLogger } from 'tooling-nanolib-test'
 import { exitOrEthDoExitDTO } from './dto.js'
+
+import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApi } from '../api/consensus.js'
 
 type ExitMessage = {
@@ -34,7 +35,7 @@ export const makeMessagesProcessor = ({
 }: {
   logger: ReturnType<typeof makeLogger>
   config: ReturnType<typeof makeConfig>
-  reader: Reader
+  reader: ReaderService
   consensusApi: ConsensusApi
 }) => {
   const load = async () => {
