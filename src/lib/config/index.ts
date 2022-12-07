@@ -1,4 +1,3 @@
-import dotenv from 'dotenv'
 import {
   bool,
   level_attr,
@@ -8,75 +7,50 @@ import {
   optional,
 } from 'tooling-nanolib-test'
 
-dotenv.config()
-
-const {
-  EXECUTION_NODE,
-  CONSENSUS_NODE,
-  CONTRACT_ADDRESS,
-  OPERATOR_ID,
-  BLOCKS_PRELOAD,
-  BLOCKS_LOOP,
-  MESSAGES_LOCATION,
-
-  RUN_METRICS,
-  METRICS_PORT,
-
-  LOGGER_LEVEL,
-  LOGGER_PRETTY,
-
-  DRY_RUN,
-
-  JOB_INTERVAL,
-} = process.env
-
 export const makeConfig = ({
-  logger,
+  env,
 }: {
   logger: ReturnType<typeof makeLogger>
-}) => {
-  try {
-    return {
-      EXECUTION_NODE: str(
-        EXECUTION_NODE,
-        'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
-      ),
-      CONSENSUS_NODE: str(
-        CONSENSUS_NODE,
-        'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
-      ),
-      CONTRACT_ADDRESS: str(
-        CONTRACT_ADDRESS,
-        'Please, setup CONTRACT_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-      ),
-      OPERATOR_ID: str(
-        OPERATOR_ID,
-        'Please, setup OPERATOR_ID id. Example: 123'
-      ),
-      BLOCKS_PRELOAD: num(
-        BLOCKS_PRELOAD,
-        'Please, setup BLOCKS_PRELOAD. Example: 10000'
-      ),
-      BLOCKS_LOOP: num(BLOCKS_LOOP, 'Please, setup BLOCKS_LOOP. Example: 100'),
-      MESSAGES_LOCATION: str(
-        MESSAGES_LOCATION,
-        'Please, setup MESSAGES_LOCATION. Example: messages'
-      ),
+  env: NodeJS.ProcessEnv
+}) => ({
+  EXECUTION_NODE: str(
+    env.EXECUTION_NODE,
+    'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
+  ),
+  CONSENSUS_NODE: str(
+    env.CONSENSUS_NODE,
+    'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+  ),
+  CONTRACT_ADDRESS: str(
+    env.CONTRACT_ADDRESS,
+    'Please, setup CONTRACT_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  ),
+  OPERATOR_ID: str(
+    env.OPERATOR_ID,
+    'Please, setup OPERATOR_ID id. Example: 123'
+  ),
+  BLOCKS_PRELOAD: num(
+    env.BLOCKS_PRELOAD,
+    'Please, setup BLOCKS_PRELOAD. Example: 10000'
+  ),
+  BLOCKS_LOOP: num(env.BLOCKS_LOOP, 'Please, setup BLOCKS_LOOP. Example: 100'),
+  MESSAGES_LOCATION: str(
+    env.MESSAGES_LOCATION,
+    'Please, setup MESSAGES_LOCATION. Example: messages'
+  ),
 
-      RUN_METRICS: optional(() => bool(RUN_METRICS)),
-      METRICS_PORT: optional(() => num(METRICS_PORT)),
+  RUN_METRICS: optional(() => bool(env.RUN_METRICS)),
+  METRICS_PORT: optional(() => num(env.METRICS_PORT)),
 
-      DRY_RUN: optional(() => bool(DRY_RUN)) || false,
+  DRY_RUN: optional(() => bool(env.DRY_RUN)) || false,
 
-      JOB_INTERVAL: optional(() => num(JOB_INTERVAL)) || 10_000,
-    }
-  } catch (error) {
-    logger.error(error.message)
-    process.exit(1)
-  }
-}
+  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) || 10_000,
 
-export const makeLoggerConfig = () => ({
-  LOGGER_LEVEL: optional(() => level_attr(LOGGER_LEVEL)) || 'debug',
-  LOGGER_PRETTY: optional(() => bool(LOGGER_PRETTY)) || false,
+  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'debug',
+  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || false,
+})
+
+export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
+  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'debug',
+  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || false,
 })

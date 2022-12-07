@@ -1,17 +1,17 @@
-import { serveMetrics, config, logger } from './lib.js'
-import { run } from './app/index.js'
+// import { serveMetrics, config, logger } from './lib.js'
+import { bootstrap } from './app/module.js'
 
-const { RUN_METRICS, METRICS_PORT } = config
+// const { RUN_METRICS, METRICS_PORT } = config
 
 process.on('SIGINT', () => {
-  logger.info('Shutting down')
+  // logger.info('Shutting down')
   process.exit(0)
 })
 
-if (RUN_METRICS && METRICS_PORT) {
-  serveMetrics(METRICS_PORT)
-}
+// if (RUN_METRICS && METRICS_PORT) {
+//   serveMetrics(METRICS_PORT)
+// }
 
-run().catch((error) => {
-  logger.error('Startup error', error)
+bootstrap().catch((error) => {
+  console.error('Startup error', error)
 })
