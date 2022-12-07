@@ -17,6 +17,7 @@ import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
+
 import { makeApp } from './service.js'
 
 dotenv.config()
@@ -34,16 +35,28 @@ export const bootstrap = async () => {
 
     const metrics = makeMetrics(config)
 
-    const request = makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      prom(metrics.requestDurationSeconds),
-      notOkError(),
-      abort(5000),
-    ])
+    const consensusApi = makeConsensusApi(
+      makeRequest([
+        retry(3),
+        loggerMiddleware(logger),
+        prom(metrics.requestDurationSeconds),
+        abort(5000),
+      ]),
+      logger,
+      config
+    )
 
-    const consensusApi = makeConsensusApi(request, logger, config)
-    const executionApi = makeExecutionApi(request, logger, config)
+    const executionApi = makeExecutionApi(
+      makeRequest([
+        retry(3),
+        loggerMiddleware(logger),
+        prom(metrics.requestDurationSeconds),
+        notOkError(),
+        abort(5000),
+      ]),
+      logger,
+      config
+    )
 
     const jobRunner = makeJobRunner(
       'validator-ejector',

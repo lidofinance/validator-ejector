@@ -1,4 +1,4 @@
-import { makeLogger, makeRequest } from 'tooling-nanolib-test'
+import { makeLogger, makeRequest, notOkError } from 'tooling-nanolib-test'
 import {
   genesisDTO,
   stateDTO,
@@ -15,7 +15,9 @@ export const makeConsensusApi = (
   { CONSENSUS_NODE, DRY_RUN }: { CONSENSUS_NODE: string; DRY_RUN: boolean }
 ) => {
   const genesis = async () => {
-    const res = await request(`${CONSENSUS_NODE}/eth/v1/beacon/genesis`)
+    const res = await request(`${CONSENSUS_NODE}/eth/v1/beacon/genesis`, {
+      middlewares: [notOkError()],
+    })
     const { data } = genesisDTO(await res.json())
     logger.debug('fetched genesis data')
     return data
@@ -23,7 +25,10 @@ export const makeConsensusApi = (
 
   const state = async () => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/fork`
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/fork`,
+      {
+        middlewares: [notOkError()],
+      }
     )
     const { data } = stateDTO(await res.json())
     logger.debug('fetched state data')
@@ -32,7 +37,10 @@ export const makeConsensusApi = (
 
   const validatorIndex = async (pubKey: string) => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubKey}`
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubKey}`,
+      {
+        middlewares: [notOkError()],
+      }
     )
 
     const {
@@ -45,7 +53,10 @@ export const makeConsensusApi = (
 
   const validatorPubkey = async (validatorIndex: string) => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${validatorIndex}`
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${validatorIndex}`,
+      {
+        middlewares: [notOkError()],
+      }
     )
     const result = validatorPubKeyDTO(await res.json())
 
@@ -57,7 +68,10 @@ export const makeConsensusApi = (
 
   const isExiting = async (pubkey: string) => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubkey}`
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubkey}`,
+      {
+        middlewares: [notOkError()],
+      }
     )
     const result = validatorStatusDTO(await res.json())
     switch (result.data.status) {
@@ -93,7 +107,7 @@ export const makeConsensusApi = (
         body: JSON.stringify(message),
       }
     )
-    // TODO: может сработать ретрай
+    // TODO: better error handling
     if (!req.ok) {
       const { message } = (await req.json()) as { message: string }
       throw new Error(message)
