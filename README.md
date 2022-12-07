@@ -1,3 +1,5 @@
+<img src="https://user-images.githubusercontent.com/4752441/206219523-2f815649-12dc-45af-8393-e27a96dcc19a.png" width="50%" height="50%">
+
 # Lido Validator Ejector
 
 Daemon service which loads LidoOracle events for validator exits and sends out exit messages when necessary.
