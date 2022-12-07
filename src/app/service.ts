@@ -3,11 +3,11 @@ import type { Dependencies } from './interface.js'
 export const makeApp = ({
   config,
   logger,
-  jobRunner,
+  job,
   executionApi,
   messagesProcessor,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, MESSAGES_LOCATION } = config
+  const { OPERATOR_ID, BLOCKS_PRELOAD, MESSAGES_LOCATION, BLOCKS_LOOP } = config
 
   const run = async () => {
     logger.info('Application started', config)
@@ -28,16 +28,9 @@ export const makeApp = ({
     )
 
     logger.log(`Requesting historical events for ${BLOCKS_PRELOAD} blocks`)
+    await job.once({ eventsNumber: BLOCKS_PRELOAD, lastBlock, messages })
 
-    await jobRunner(async (eventsNumber: number) => {
-      const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
-      logger.debug(`Loaded ${pubKeys.length} events`)
-
-      for (const pubKey of pubKeys) {
-        logger.debug(`Handling exit for ${pubKey}`)
-        await messagesProcessor.exit(messages, pubKey)
-      }
-    })
+    job.pooling({ eventsNumber: BLOCKS_LOOP, lastBlock, messages })
   }
 
   return { run }

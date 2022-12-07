@@ -1,4 +1,4 @@
-import { LoggerModule, LOG_LEVELS } from 'tooling-nanolib-test'
+import { LoggerService, LOG_LEVELS } from 'tooling-nanolib-test'
 import { makeConfig } from './service.js'
 import { jest } from '@jest/globals'
 
@@ -21,7 +21,7 @@ const testingLogger = () =>
   LOG_LEVELS.reduce((acc, level) => {
     acc[level] = jest.fn()
     return acc
-  }, {}) as LoggerModule
+  }, {}) as LoggerService
 
 let logger = testingLogger()
 

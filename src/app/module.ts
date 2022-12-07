@@ -58,11 +58,31 @@ export const bootstrap = async () => {
       config
     )
 
-    const jobRunner = makeJobRunner(
-      'validator-ejector',
-      { config, logger, metric: metrics.jobDuration },
-      { start: config.BLOCKS_PRELOAD, pooling: config.BLOCKS_LOOP }
-    )
+    const job = makeJobRunner('validator-ejector', {
+      config,
+      logger,
+      metric: metrics.jobDuration,
+      handler: async ({
+        lastBlock,
+        eventsNumber,
+        messages,
+      }: {
+        eventsNumber: number
+        lastBlock: number
+        messages: any
+      }) => {
+        const pubKeys = await executionApi.loadExitEvents(
+          lastBlock,
+          eventsNumber
+        )
+        logger.debug(`Loaded ${pubKeys.length} events`)
+
+        for (const pubKey of pubKeys) {
+          logger.debug(`Handling exit for ${pubKey}`)
+          await messagesProcessor.exit(messages, pubKey)
+        }
+      },
+    })
 
     const reader = makeReader()
 
@@ -77,7 +97,7 @@ export const bootstrap = async () => {
       config,
       logger,
       executionApi,
-      jobRunner,
+      job,
       messagesProcessor,
     })
 
