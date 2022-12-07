@@ -7,7 +7,13 @@ export const makeApp = ({
   executionApi,
   messagesProcessor,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, MESSAGES_LOCATION, BLOCKS_LOOP } = config
+  const {
+    OPERATOR_ID,
+    BLOCKS_PRELOAD,
+    MESSAGES_LOCATION,
+    BLOCKS_LOOP,
+    JOB_INTERVAL,
+  } = config
 
   const run = async () => {
     logger.info('Application started', config)
@@ -15,21 +21,25 @@ export const makeApp = ({
     const lastBlock = await executionApi.latestBlockNumber()
     logger.info(`Started from block ${lastBlock}`)
 
-    logger.log(`Loading messages from ${MESSAGES_LOCATION}`)
+    logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
     const messages = await messagesProcessor.load()
-    logger.log(`Loaded ${messages.length} messages`)
+    logger.info(`Loaded ${messages.length} messages`)
 
-    logger.log('Validating messages')
+    logger.info('Validating messages')
     await messagesProcessor.verify(messages)
-    logger.log('Validated messages')
 
-    logger.log(
+    logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
 
-    logger.log(`Requesting historical events for ${BLOCKS_PRELOAD} blocks`)
+    logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
     await job.once({ eventsNumber: BLOCKS_PRELOAD, lastBlock, messages })
 
+    logger.info(
+      `Starting ${
+        JOB_INTERVAL / 1000
+      } seconds polling for ${BLOCKS_LOOP} last blocks`
+    )
     job.pooling({ eventsNumber: BLOCKS_LOOP, lastBlock, messages })
   }
 

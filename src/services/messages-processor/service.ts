@@ -139,9 +139,9 @@ export const makeMessagesProcessor = ({
 
     try {
       await consensusApi.exitRequest(message)
-      logger.log('Message sent successfully to exit', pubKey)
+      logger.info('Message sent successfully to exit', pubKey)
     } catch (e) {
-      logger.log(
+      logger.info(
         'fetch to consensus node failed with',
         e instanceof Error ? e.message : e
       )
@@ -157,6 +157,7 @@ export const makeMessagesProcessor = ({
     lastBlock: number
     messages: ExitMessage[]
   }) => {
+    logger.info('Job started')
     const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
     logger.debug(`Loaded ${pubKeys.length} events`)
 
@@ -164,6 +165,7 @@ export const makeMessagesProcessor = ({
       logger.debug(`Handling exit for ${pubKey}`)
       await exit(messages, pubKey)
     }
+    logger.info('Job finished')
   }
 
   return { load, verify, exit, proceed }
