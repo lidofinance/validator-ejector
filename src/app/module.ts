@@ -11,11 +11,13 @@ import { makeJobRunner } from 'tooling-nanolib-test'
 
 import dotenv from 'dotenv'
 
-import { makeConfig, makeLoggerConfig } from '../lib/config/index.js'
-import { makeConsensusApi, makeExecutionApi } from '../lib/api/index.js'
-import { metrics } from '../lib/prom/index.js'
-import { makeReader } from '../lib/reader/index.js'
-import { makeMessagesProcessor } from '../lib/messages-loader/index.js'
+import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
+import { makeConsensusApi } from '../services/consensus-api/service.js'
+import { makeExecutionApi } from '../services/execution-api/service.js'
+import { makeMetrics } from '../services/prom/service.js'
+import { makeReader } from '../services/reader/service.js'
+import { makeMessagesProcessor } from '../services/messages-processor/service.js'
+
 import { makeApp } from './service.js'
 
 dotenv.config()
@@ -31,16 +33,30 @@ export const bootstrap = async () => {
   try {
     const config = makeConfig({ logger, env: process.env })
 
-    const request = makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      prom(metrics.requestDurationSeconds),
-      notOkError(),
-      abort(5000),
-    ])
+    const metrics = makeMetrics(config)
 
-    const consensusApi = makeConsensusApi(request, logger, config)
-    const executionApi = makeExecutionApi(request, logger, config)
+    const consensusApi = makeConsensusApi(
+      makeRequest([
+        retry(3),
+        loggerMiddleware(logger),
+        prom(metrics.requestDurationSeconds),
+        abort(5000),
+      ]),
+      logger,
+      config
+    )
+
+    const executionApi = makeExecutionApi(
+      makeRequest([
+        retry(3),
+        loggerMiddleware(logger),
+        prom(metrics.requestDurationSeconds),
+        notOkError(),
+        abort(5000),
+      ]),
+      logger,
+      config
+    )
 
     const jobRunner = makeJobRunner(
       'validator-ejector',

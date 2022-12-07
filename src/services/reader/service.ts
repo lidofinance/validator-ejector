@@ -1,6 +1,6 @@
 import { readFile, readdir } from 'fs/promises'
 
-export type Reader = ReturnType<typeof makeReader>
+export type ReaderService = ReturnType<typeof makeReader>
 
 export const makeReader = () => ({
   async dir(path: string) {

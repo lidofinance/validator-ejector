@@ -5,11 +5,12 @@ import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { makeConfig } from '../config/index.js'
-import type { Reader } from '../reader/index.js'
 import { makeLogger } from 'tooling-nanolib-test'
-import { exitOrEthDoExitDTO } from './messages-loader-dto.js'
-import type { ConsensusApi } from '../api/consensus.js'
+import { exitOrEthDoExitDTO } from './dto.js'
+
+import type { ReaderService } from '../reader/service.js'
+import type { ConsensusApiService } from '../consensus-api/service.js'
+import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
   message: {
@@ -24,6 +25,8 @@ type EthDoExitMessage = {
   fork_version: string
 }
 
+export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
+
 export const makeMessagesProcessor = ({
   logger,
   config,
@@ -31,9 +34,9 @@ export const makeMessagesProcessor = ({
   consensusApi,
 }: {
   logger: ReturnType<typeof makeLogger>
-  config: ReturnType<typeof makeConfig>
-  reader: Reader
-  consensusApi: ConsensusApi
+  config: ConfigService
+  reader: ReaderService
+  consensusApi: ConsensusApiService
 }) => {
   const load = async () => {
     const folder = await reader.dir(config.MESSAGES_LOCATION)
