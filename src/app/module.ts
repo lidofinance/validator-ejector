@@ -13,7 +13,7 @@ import dotenv from 'dotenv'
 
 import { makeConfig, makeLoggerConfig } from '../services/config/index.js'
 import { makeConsensusApi, makeExecutionApi } from '../services/api/index.js'
-import { makeMetrics } from '../services/prom/index.js'
+import { makeMetrics } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/index.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeApp } from './service.js'
