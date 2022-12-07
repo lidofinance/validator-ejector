@@ -1,5 +1,5 @@
 import client from 'prom-client'
-import { register } from './prom.js'
+import { register, serveMetrics } from './prom.js'
 
 const pollingLastBlocksDurationSeconds = new client.Histogram({
   name: 'polling_last_blocks_duration_seconds',
@@ -33,9 +33,21 @@ const jobDuration = new client.Histogram({
 })
 register.registerMetric(jobDuration)
 
-export const metrics = {
-  pollingLastBlocksDurationSeconds,
-  requestDurationSeconds,
-  jobDuration,
-  jsonRPCDurationSeconds,
+export const makeMetrics = ({
+  RUN_METRICS,
+  METRICS_PORT,
+}: {
+  RUN_METRICS?: boolean
+  METRICS_PORT?: number
+}) => {
+  if (RUN_METRICS && METRICS_PORT) {
+    serveMetrics(METRICS_PORT)
+  }
+
+  return {
+    pollingLastBlocksDurationSeconds,
+    requestDurationSeconds,
+    jobDuration,
+    jsonRPCDurationSeconds,
+  }
 }

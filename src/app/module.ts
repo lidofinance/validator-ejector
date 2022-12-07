@@ -13,7 +13,7 @@ import dotenv from 'dotenv'
 
 import { makeConfig, makeLoggerConfig } from '../lib/config/index.js'
 import { makeConsensusApi, makeExecutionApi } from '../lib/api/index.js'
-import { metrics } from '../lib/prom/index.js'
+import { makeMetrics } from '../lib/prom/index.js'
 import { makeReader } from '../lib/reader/index.js'
 import { makeMessagesProcessor } from '../lib/messages-loader/index.js'
 import { makeApp } from './service.js'
@@ -30,6 +30,8 @@ export const bootstrap = async () => {
 
   try {
     const config = makeConfig({ logger, env: process.env })
+
+    const metrics = makeMetrics(config)
 
     const request = makeRequest([
       retry(3),
