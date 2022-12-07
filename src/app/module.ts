@@ -58,32 +58,6 @@ export const bootstrap = async () => {
       config
     )
 
-    const job = makeJobRunner('validator-ejector', {
-      config,
-      logger,
-      metric: metrics.jobDuration,
-      handler: async ({
-        lastBlock,
-        eventsNumber,
-        messages,
-      }: {
-        eventsNumber: number
-        lastBlock: number
-        messages: any
-      }) => {
-        const pubKeys = await executionApi.loadExitEvents(
-          lastBlock,
-          eventsNumber
-        )
-        logger.debug(`Loaded ${pubKeys.length} events`)
-
-        for (const pubKey of pubKeys) {
-          logger.debug(`Handling exit for ${pubKey}`)
-          await messagesProcessor.exit(messages, pubKey)
-        }
-      },
-    })
-
     const reader = makeReader()
 
     const messagesProcessor = makeMessagesProcessor({
@@ -91,6 +65,14 @@ export const bootstrap = async () => {
       config,
       reader,
       consensusApi,
+      executionApi,
+    })
+
+    const job = makeJobRunner('validator-ejector', {
+      config,
+      logger,
+      metric: metrics.jobDuration,
+      handler: messagesProcessor.proceed,
     })
 
     const app = makeApp({
