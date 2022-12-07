@@ -1,5 +1,5 @@
 import { LoggerModule, LOG_LEVELS } from 'tooling-nanolib-test'
-import { makeConfig } from './index.js'
+import { makeConfig } from './service.js'
 import { jest } from '@jest/globals'
 
 const validConfig = {

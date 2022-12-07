@@ -11,7 +11,7 @@ import { makeJobRunner } from 'tooling-nanolib-test'
 
 import dotenv from 'dotenv'
 
-import { makeConfig, makeLoggerConfig } from '../services/config/index.js'
+import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
 import { makeConsensusApi, makeExecutionApi } from '../services/api/index.js'
 import { makeMetrics } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'

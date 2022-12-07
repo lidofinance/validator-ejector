@@ -5,12 +5,12 @@ import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { makeConfig } from '../config/index.js'
 import { makeLogger } from 'tooling-nanolib-test'
 import { exitOrEthDoExitDTO } from './dto.js'
 
 import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApi } from '../api/consensus.js'
+import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
   message: {
@@ -34,7 +34,7 @@ export const makeMessagesProcessor = ({
   consensusApi,
 }: {
   logger: ReturnType<typeof makeLogger>
-  config: ReturnType<typeof makeConfig>
+  config: ConfigService
   reader: ReaderService
   consensusApi: ConsensusApi
 }) => {

@@ -7,6 +7,8 @@ import {
   optional,
 } from 'tooling-nanolib-test'
 
+export type ConfigService = ReturnType<typeof makeConfig>
+
 export const makeConfig = ({
   env,
 }: {
