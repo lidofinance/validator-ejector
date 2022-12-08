@@ -142,11 +142,7 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const exit = async (
-    messages: ExitMessage[],
-    pubKey: string,
-    metrics: MetricsService
-  ) => {
+  const exit = async (messages: ExitMessage[], pubKey: string) => {
     if ((await consensusApi.validatorInfo(pubKey)).isExiting) {
       logger.debug(
         `Exit was initiated, but ${pubKey} is already exiting(ed), skipping`
@@ -184,12 +180,10 @@ export const makeMessagesProcessor = ({
     lastBlock,
     eventsNumber,
     messages,
-    metrics,
   }: {
     eventsNumber: number
     lastBlock: number
     messages: ExitMessage[]
-    metrics: MetricsService
   }) => {
     logger.info('Job started')
     const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
@@ -197,7 +191,7 @@ export const makeMessagesProcessor = ({
 
     for (const pubKey of pubKeys) {
       logger.debug(`Handling exit for ${pubKey}`)
-      await exit(messages, pubKey, metrics)
+      await exit(messages, pubKey)
     }
     logger.info('Job finished')
   }
