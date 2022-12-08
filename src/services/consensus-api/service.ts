@@ -1,4 +1,4 @@
-import { makeLogger, makeRequest, notOkError } from 'tooling-nanolib-test'
+import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
 import { genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
 
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>

@@ -1,4 +1,4 @@
-import { LoggerService, LOG_LEVELS } from 'tooling-nanolib-test'
+import { LoggerService, LOG_LEVELS } from 'lido-nanolib'
 import { makeConfig } from './service.js'
 import { jest } from '@jest/globals'
 

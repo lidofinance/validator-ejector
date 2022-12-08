@@ -1,4 +1,4 @@
-import { obj, str } from 'tooling-nanolib-test'
+import { obj, str } from 'lido-nanolib'
 
 export const genesisDTO = (json: unknown) =>
   obj(

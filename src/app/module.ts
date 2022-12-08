@@ -1,13 +1,13 @@
-import { makeLogger } from 'tooling-nanolib-test'
-import { makeRequest } from 'tooling-nanolib-test'
+import { makeLogger } from 'lido-nanolib'
+import { makeRequest } from 'lido-nanolib'
 import {
   logger as loggerMiddleware,
   notOkError,
   retry,
   abort,
   prom,
-} from 'tooling-nanolib-test'
-import { makeJobRunner } from 'tooling-nanolib-test'
+} from 'lido-nanolib'
+import { makeJobRunner } from 'lido-nanolib'
 
 import dotenv from 'dotenv'
 

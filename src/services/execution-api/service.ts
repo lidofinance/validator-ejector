@@ -1,5 +1,5 @@
-import { makeLogger } from 'tooling-nanolib-test'
-import { makeRequest } from 'tooling-nanolib-test'
+import { makeLogger } from 'lido-nanolib'
+import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
 import { lastBlockNumberDTO, logsDTO } from './dto.js'

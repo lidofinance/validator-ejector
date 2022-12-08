@@ -1,4 +1,4 @@
-import { arr, obj, str } from 'tooling-nanolib-test'
+import { arr, obj, str } from 'lido-nanolib'
 
 export const lastBlockNumberDTO = (json: unknown) =>
   obj(
