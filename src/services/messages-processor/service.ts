@@ -76,7 +76,14 @@ export const makeMessagesProcessor = ({
       const { message, signature: rawSignature } = m
       const { validator_index: validatorIndex, epoch } = message
 
-      const pubKey = fromHex(await consensusApi.validatorPubkey(validatorIndex))
+      const validatorInfo = await consensusApi.validatorInfo(validatorIndex)
+
+      if (validatorInfo.isExiting) {
+        logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
+        return
+      }
+
+      const pubKey = fromHex(validatorInfo.pubKey)
       const signature = fromHex(rawSignature)
 
       const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
@@ -123,9 +130,9 @@ export const makeMessagesProcessor = ({
   }
 
   const exit = async (messages: ExitMessage[], pubKey: string) => {
-    if (await consensusApi.isExiting(pubKey)) return
+    if ((await consensusApi.validatorInfo(pubKey)).isExiting) return
 
-    const validatorIndex = await consensusApi.validatorIndex(pubKey)
+    const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
     const message = messages.find(
       (msg) => msg.message.validator_index === validatorIndex
     )

@@ -38,37 +38,17 @@ export const stateDTO = (json: unknown) =>
     'Invalid validator State response'
   )
 
-export const validatorIndexDTO = (json: unknown) =>
+export const validatorInfoDTO = (json: unknown) =>
   obj(
     json,
     (json) => ({
       data: obj(json.data, (data) => ({
         index: str(data.index, 'Invalid validator index'),
-      })),
-    }),
-    'Invalid validator Index response'
-  )
-
-export const validatorPubKeyDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      data: obj(json.data, (data) => ({
+        status: str(data.status, 'Invalid status'),
         validator: obj(data.validator, (validator) => ({
-          pubkey: str(validator.pubkey, 'invalid pubkey'),
+          pubkey: str(validator.pubkey, 'Invalid pubkey'),
         })),
       })),
     }),
-    'Invalid validator pubKey response'
-  )
-
-export const validatorStatusDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      data: obj(json.data, (data) => ({
-        status: str(data.status),
-      })),
-    }),
-    'Invalid validator Status response'
+    'Invalid validator info response'
   )
