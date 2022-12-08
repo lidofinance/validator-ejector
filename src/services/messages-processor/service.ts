@@ -35,14 +35,16 @@ export const makeMessagesProcessor = ({
   reader,
   consensusApi,
   executionApi,
+  metrics,
 }: {
   logger: LoggerService
   config: ConfigService
   reader: ReaderService
   consensusApi: ConsensusApiService
   executionApi: ExecutionApiService
+  metrics: MetricsService
 }) => {
-  const load = async (metrics: MetricsService) => {
+  const load = async () => {
     const folder = await reader.dir(config.MESSAGES_LOCATION)
     const messages: ExitMessage[] = []
 
@@ -75,10 +77,7 @@ export const makeMessagesProcessor = ({
     return messages
   }
 
-  const verify = async (
-    messages: ExitMessage[],
-    metrics: MetricsService
-  ): Promise<void> => {
+  const verify = async (messages: ExitMessage[]): Promise<void> => {
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 

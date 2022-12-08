@@ -66,6 +66,7 @@ export const bootstrap = async () => {
       reader,
       consensusApi,
       executionApi,
+      metrics,
     })
 
     const job = makeJobRunner('validator-ejector', {
