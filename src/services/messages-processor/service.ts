@@ -7,7 +7,7 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 import { exitOrEthDoExitDTO } from './dto.js'
 
-import type { LoggerService } from 'tooling-nanolib-test'
+import type { LoggerService } from 'lido-nanolib'
 import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ExecutionApiService } from '../execution-api/service.js'

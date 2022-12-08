@@ -1,4 +1,4 @@
-import { obj, str, or, wrap } from 'tooling-nanolib-test'
+import { obj, str, or, wrap } from 'lido-nanolib'
 
 export const exitMessageDTO = (input: unknown) =>
   obj(input, (json) => ({
