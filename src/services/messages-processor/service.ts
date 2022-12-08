@@ -12,6 +12,7 @@ import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
+import type { MetricsService } from '../prom/service.js'
 
 type ExitMessage = {
   message: {
@@ -41,7 +42,7 @@ export const makeMessagesProcessor = ({
   consensusApi: ConsensusApiService
   executionApi: ExecutionApiService
 }) => {
-  const load = async () => {
+  const load = async (metrics: MetricsService) => {
     const folder = await reader.dir(config.MESSAGES_LOCATION)
     const messages: ExitMessage[] = []
 
@@ -50,6 +51,9 @@ export const makeMessagesProcessor = ({
         logger.warn(
           `File with invalid extension found in messages folder: ${file}`
         )
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
         continue
       }
       const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
@@ -59,6 +63,9 @@ export const makeMessagesProcessor = ({
         parsed = exitOrEthDoExitDTO(json)
       } catch (error) {
         logger.warn(`Unparseable JSON in file ${file}`, error)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
         continue
       }
       const message = 'exit' in parsed ? parsed.exit : parsed
@@ -68,7 +75,10 @@ export const makeMessagesProcessor = ({
     return messages
   }
 
-  const verify = async (messages: ExitMessage[]): Promise<void> => {
+  const verify = async (
+    messages: ExitMessage[],
+    metrics: MetricsService
+  ): Promise<void> => {
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
@@ -126,11 +136,24 @@ export const makeMessagesProcessor = ({
 
       if (!isValid)
         logger.error(`Invalid signature for validator ${validatorIndex}`)
+
+      metrics.exitMessages.inc({
+        valid: isValid.toString(),
+      })
     }
   }
 
-  const exit = async (messages: ExitMessage[], pubKey: string) => {
-    if ((await consensusApi.validatorInfo(pubKey)).isExiting) return
+  const exit = async (
+    messages: ExitMessage[],
+    pubKey: string,
+    metrics: MetricsService
+  ) => {
+    if ((await consensusApi.validatorInfo(pubKey)).isExiting) {
+      logger.debug(
+        `Exit was initiated, but ${pubKey} is already exiting(ed), skipping`
+      )
+      return
+    }
 
     const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
     const message = messages.find(
@@ -141,17 +164,20 @@ export const makeMessagesProcessor = ({
       logger.error(
         'Validator needs to be exited but required message was not found / accessible!'
       )
+      metrics.exitActions.inc({ result: 'error' })
       return
     }
 
     try {
       await consensusApi.exitRequest(message)
       logger.info('Message sent successfully to exit', pubKey)
+      metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
-      logger.info(
-        'fetch to consensus node failed with',
+      logger.error(
+        'Failed to send out exit message',
         e instanceof Error ? e.message : e
       )
+      metrics.exitActions.inc({ result: 'error' })
     }
   }
 
@@ -159,10 +185,12 @@ export const makeMessagesProcessor = ({
     lastBlock,
     eventsNumber,
     messages,
+    metrics,
   }: {
     eventsNumber: number
     lastBlock: number
     messages: ExitMessage[]
+    metrics: MetricsService
   }) => {
     logger.info('Job started')
     const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
@@ -170,7 +198,7 @@ export const makeMessagesProcessor = ({
 
     for (const pubKey of pubKeys) {
       logger.debug(`Handling exit for ${pubKey}`)
-      await exit(messages, pubKey)
+      await exit(messages, pubKey, metrics)
     }
     logger.info('Job finished')
   }

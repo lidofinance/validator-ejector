@@ -6,6 +6,7 @@ export const makeApp = ({
   job,
   executionApi,
   messagesProcessor,
+  metrics,
 }: Dependencies) => {
   const {
     OPERATOR_ID,
@@ -22,11 +23,11 @@ export const makeApp = ({
     logger.info(`Started from block ${lastBlock}`)
 
     logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
-    const messages = await messagesProcessor.load()
+    const messages = await messagesProcessor.load(metrics)
     logger.info(`Loaded ${messages.length} messages`)
 
     logger.info('Validating messages')
-    await messagesProcessor.verify(messages)
+    await messagesProcessor.verify(messages, metrics)
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`

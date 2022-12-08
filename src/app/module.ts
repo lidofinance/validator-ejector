@@ -35,23 +35,23 @@ export const bootstrap = async () => {
 
     const metrics = makeMetrics(config)
 
-    const consensusApi = makeConsensusApi(
+    const executionApi = makeExecutionApi(
       makeRequest([
         retry(3),
         loggerMiddleware(logger),
-        prom(metrics.requestDurationSeconds),
+        prom(metrics.executionRequestDurationSeconds),
+        notOkError(),
         abort(5000),
       ]),
       logger,
       config
     )
 
-    const executionApi = makeExecutionApi(
+    const consensusApi = makeConsensusApi(
       makeRequest([
         retry(3),
         loggerMiddleware(logger),
-        prom(metrics.requestDurationSeconds),
-        notOkError(),
+        prom(metrics.consensusRequestDurationSeconds),
         abort(5000),
       ]),
       logger,
@@ -81,6 +81,7 @@ export const bootstrap = async () => {
       executionApi,
       job,
       messagesProcessor,
+      metrics,
     })
 
     await app.run()
