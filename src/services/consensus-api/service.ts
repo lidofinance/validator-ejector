@@ -1,11 +1,5 @@
 import { makeLogger, makeRequest, notOkError } from 'tooling-nanolib-test'
-import {
-  genesisDTO,
-  stateDTO,
-  validatorIndexDTO,
-  validatorPubKeyDTO,
-  validatorStatusDTO,
-} from './dto.js'
+import { genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
 
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
@@ -35,58 +29,40 @@ export const makeConsensusApi = (
     return data
   }
 
-  const validatorIndex = async (pubKey: string) => {
+  const validatorInfo = async (id: string) => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubKey}`,
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${id}`,
       {
         middlewares: [notOkError()],
       }
     )
 
-    const {
-      data: { index },
-    } = validatorIndexDTO(await res.json())
+    const result = validatorInfoDTO(await res.json())
 
-    logger.debug(`Validator index for ${pubKey} is ${index}`)
-    return index
-  }
+    const index = result.data.index
+    const pubKey = result.data.validator.pubkey
+    const status = result.data.status
 
-  const validatorPubkey = async (validatorIndex: string) => {
-    const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${validatorIndex}`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
-    const result = validatorPubKeyDTO(await res.json())
-
-    logger.debug(
-      `Validator pubkey for ${validatorIndex} is ${result.data.validator.pubkey}`
-    )
-    return result.data.validator.pubkey
-  }
-
-  const isExiting = async (pubkey: string) => {
-    const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${pubkey}`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
-    const result = validatorStatusDTO(await res.json())
-    switch (result.data.status) {
+    let isExiting: boolean
+    switch (status) {
       case 'active_exiting':
       case 'exited_unslashed':
       case 'exited_slashed':
       case 'withdrawal_possible': // already exited
       case 'withdrawal_done': // already exited
-        logger.debug('Validator has exited already, skipping')
-        return true
+        isExiting = true
       default:
-        logger.debug('Validator is not exiting yet')
-        return false
+        isExiting = false
     }
+
+    logger.debug(`Validator index for ${id} is ${index}`)
+    logger.debug(`Validator pubKey for ${id} is ${pubKey}`)
+    logger.debug(`Validator status for ${id} is ${status}`)
+    logger.debug(`Validator exiting for ${id} is ${isExiting}`)
+
+    return { index, pubKey, status, isExiting }
   }
+
   const exitRequest = async (message: {
     message: {
       epoch: string
@@ -116,9 +92,7 @@ export const makeConsensusApi = (
   return {
     genesis,
     state,
-    validatorIndex,
-    validatorPubkey,
-    isExiting,
+    validatorInfo,
     exitRequest,
   }
 }
