@@ -14,9 +14,10 @@ import dotenv from 'dotenv'
 import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
-import { makeMetrics } from '../services/prom/service.js'
+import { makeMetrics, register } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
+import { makeHttpHandler } from '../services/http-handler/service.js'
 
 import { makeApp } from './service.js'
 
@@ -33,7 +34,7 @@ export const bootstrap = async () => {
   try {
     const config = makeConfig({ logger, env: process.env })
 
-    const metrics = makeMetrics(config)
+    const metrics = makeMetrics()
 
     const executionApi = makeExecutionApi(
       makeRequest([
@@ -76,6 +77,8 @@ export const bootstrap = async () => {
       handler: messagesProcessor.proceed,
     })
 
+    const httpHandler = makeHttpHandler({ register, config })
+
     const app = makeApp({
       config,
       logger,
@@ -83,6 +86,7 @@ export const bootstrap = async () => {
       job,
       messagesProcessor,
       metrics,
+      httpHandler,
     })
 
     await app.run()

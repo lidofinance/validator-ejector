@@ -6,6 +6,7 @@ export const makeApp = ({
   job,
   executionApi,
   messagesProcessor,
+  httpHandler,
 }: Dependencies) => {
   const {
     OPERATOR_ID,
@@ -17,6 +18,8 @@ export const makeApp = ({
 
   const run = async () => {
     logger.info('Application started', config)
+
+    await httpHandler.run()
 
     const lastBlock = await executionApi.latestBlockNumber()
     logger.info(`Started from block ${lastBlock}`)

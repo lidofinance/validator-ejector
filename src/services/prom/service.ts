@@ -1,34 +1,10 @@
-import http from 'http'
-import url from 'url'
 import client from 'prom-client'
 
 export const register = new client.Registry()
-export const serveMetrics = (port: number) => {
-  http
-    .createServer(async (req, res) => {
-      const path = req.url || '/'
-      const route = url.parse(path).pathname
-      if (route === '/metrics') {
-        res.setHeader('Content-Type', register.contentType)
-        res.end(await register.metrics())
-      }
-    })
-    .listen(port)
-}
 
 export type MetricsService = ReturnType<typeof makeMetrics>
 
-export const makeMetrics = ({
-  RUN_METRICS,
-  METRICS_PORT,
-}: {
-  RUN_METRICS?: boolean
-  METRICS_PORT?: number
-}) => {
-  if (RUN_METRICS && METRICS_PORT) {
-    serveMetrics(METRICS_PORT)
-  }
-
+export const makeMetrics = () => {
   register.setDefaultLabels({
     app: 'validator-ejector',
   })
