@@ -41,10 +41,9 @@ export const makeConfig = ({
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 100,
   JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 20_000,
 
+  HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? false,
   RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
   RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
-
-  HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? false,
 
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 })
