@@ -33,7 +33,8 @@ Optional:
 - JOB_INTERVAL=20000 - Time interval to run checks
 
 - RUN_METRICS=false - Enable metrics endpoint
-- METRICS_PORT - Port to serve metrics on
+- RUN_HEALTH_CHECK - Enable health check endpoint
+- HTTP_PORT - Port to serve metrics and health check
 
 - LOGGER_LEVEL=info - Severity level from which to start showing errors eg info will hide debug messages
 - LOGGER_PRETTY=true - Inline formatting log messages instead of JSON log output

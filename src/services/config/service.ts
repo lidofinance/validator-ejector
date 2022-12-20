@@ -1,4 +1,12 @@
-import { bool, level_attr, makeLogger, num, str, optional } from 'lido-nanolib'
+import {
+  bool,
+  level_attr,
+  makeLogger,
+  num,
+  str,
+  optional,
+  log_format,
+} from 'lido-nanolib'
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -29,20 +37,19 @@ export const makeConfig = ({
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
 
-  BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) || 10_000,
-  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) || 100,
-  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) || 20_000,
+  BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 10_000,
+  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 100,
+  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 20_000,
 
-  RUN_METRICS: optional(() => bool(env.RUN_METRICS)),
-  METRICS_PORT: optional(() => num(env.METRICS_PORT)),
+  RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
+  RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
 
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'info',
-  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || true,
+  HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? false,
 
-  DRY_RUN: optional(() => bool(env.DRY_RUN)) || false,
+  DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) || 'info',
-  LOGGER_PRETTY: optional(() => bool(env.LOGGER_PRETTY)) || true,
+  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
+  LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
 })
