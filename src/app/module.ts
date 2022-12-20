@@ -27,7 +27,7 @@ export const bootstrap = async () => {
 
   const logger = makeLogger({
     level: loggerConfig.LOGGER_LEVEL,
-    pretty: loggerConfig.LOGGER_PRETTY,
+    format: loggerConfig.LOGGER_FORMAT,
   })
 
   try {
