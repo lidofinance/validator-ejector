@@ -29,6 +29,8 @@ export const makeHttpHandler = ({
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({ status: 'ok' }))
           }
+          res.statusCode = 404
+          res.end()
         })
         .listen(HTTP_PORT)
     },
