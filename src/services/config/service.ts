@@ -6,6 +6,7 @@ import {
   str,
   optional,
   log_format,
+  json_arr,
 } from 'lido-nanolib'
 
 export type ConfigService = ReturnType<typeof makeConfig>
@@ -51,4 +52,8 @@ export const makeConfig = ({
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
   LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
   LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+  LOGGER_SECRETS:
+    optional(() =>
+      json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+    ) ?? [],
 })
