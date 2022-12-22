@@ -38,6 +38,7 @@ Optional:
 
 - LOGGER_LEVEL=info - Severity level from which to start showing errors eg info will hide debug messages
 - LOGGER_FORMAT=simple - Simple or JSON log output: simple/json
+- LOGGER_SECRETS=[] - String array of exact secrets to sanitize in logs
 
 - DRY_RUN=false - Run the service without actually sending out exit messages
 
