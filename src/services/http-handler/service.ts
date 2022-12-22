@@ -23,11 +23,11 @@ export const makeHttpHandler = ({
           const route = url.parse(path).pathname
           if (RUN_METRICS && route === '/metrics') {
             res.setHeader('Content-Type', register.contentType)
-            res.end(await register.metrics())
+            return res.end(await register.metrics())
           }
           if (RUN_HEALTH_CHECK && route === '/health') {
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ status: 'ok' }))
+            return res.end(JSON.stringify({ status: 'ok' }))
           }
           res.statusCode = 404
           res.end()
