@@ -29,6 +29,10 @@ export const bootstrap = async () => {
   const logger = makeLogger({
     level: loggerConfig.LOGGER_LEVEL,
     format: loggerConfig.LOGGER_FORMAT,
+    sanitizer: {
+      secrets: loggerConfig.LOGGER_SECRETS,
+      replacer: '<secret>',
+    },
   })
 
   try {

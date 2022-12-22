@@ -3244,9 +3244,9 @@ levn@^0.4.1:
     type-check "~0.4.0"
 
 lido-nanolib@^1.0.0:
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/lido-nanolib/-/lido-nanolib-1.0.1.tgz#b63b14297023a4b416c4d6a59ffc6e460b4844b0"
-  integrity sha512-wyl6tOVCA64DSNu5O2K+4RGxbgSUX7HAY5tQ2TWRYbk0gXAfMKb0ji7iEZ1HsKebgRtEhfnz9B2NQDPxDKKUcA==
+  version "1.2.0"
+  resolved "https://registry.npmjs.org/lido-nanolib/-/lido-nanolib-1.2.0.tgz#b6711d3f39e7b0176e1e849257b0bfe3588aaaff"
+  integrity sha512-vL3NjJycFIXt3DBzQfCHcTUTmn1B7sscsIzE83FnrzLz0s/y3RR6WTpAofcDP6fSK5U7OiNM6L/lxojDq2cRhg==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
