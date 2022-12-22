@@ -67,7 +67,12 @@ Metrics will be available on `$HOST:$METRICS_PORT/metrics`.
 
 Available metrics:
 
-- TODO
+- exit_messages: ['valid'] - Exit messages and their validity: JSON parseability, structure and signature. Already exiting(ed) validator exit messages are not counted
+- exit_actions: ['result'] - Statuses of initiated validator exits
+- polling_last_blocks_duration_seconds: ['eventsNumber'] - Duration of pooling last blocks in microseconds
+- execution_request_duration_seconds: ['result', 'status', 'domain'] - Execution node request duration in microseconds
+- consensus_request_duration_seconds: ['result', 'status', 'domain'] - Consensus node request duration in microseconds
+- job_duration_seconds: ['name', 'interval', 'result'] - Duration of cron jobs
 
 ## Safety Features
 
