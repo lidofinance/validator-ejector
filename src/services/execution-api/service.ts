@@ -22,7 +22,7 @@ export const makeExecutionApi = (
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getBlockByNumber',
-        params: ['latest', false],
+        params: ['latest', false], // TODO: finalized
         id: 1,
       }),
     })

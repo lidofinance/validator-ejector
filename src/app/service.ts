@@ -4,7 +4,6 @@ export const makeApp = ({
   config,
   logger,
   job,
-  executionApi,
   messagesProcessor,
   httpHandler,
 }: Dependencies) => {
@@ -21,9 +20,6 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    const lastBlock = await executionApi.latestBlockNumber()
-    logger.info(`Started from block ${lastBlock}`)
-
     logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
     const messages = await messagesProcessor.load()
     logger.info(`Loaded ${messages.length} messages`)
@@ -36,14 +32,15 @@ export const makeApp = ({
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
-    await job.once({ eventsNumber: BLOCKS_PRELOAD, lastBlock, messages })
+    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages })
 
     logger.info(
       `Starting ${
         JOB_INTERVAL / 1000
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
-    job.pooling({ eventsNumber: BLOCKS_LOOP, lastBlock, messages })
+
+    job.pooling({ eventsNumber: BLOCKS_LOOP, messages })
   }
 
   return { run }

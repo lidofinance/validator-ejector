@@ -177,15 +177,17 @@ export const makeMessagesProcessor = ({
   }
 
   const proceed = async ({
-    lastBlock,
     eventsNumber,
     messages,
   }: {
     eventsNumber: number
-    lastBlock: number
     messages: ExitMessage[]
   }) => {
     logger.info('Job started')
+
+    const lastBlock = await executionApi.latestBlockNumber()
+
+    logger.info(`Started from block ${lastBlock}`)
     const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
     logger.debug(`Loaded ${pubKeys.length} events`)
 

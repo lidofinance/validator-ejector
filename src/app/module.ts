@@ -86,7 +86,6 @@ export const bootstrap = async () => {
     const app = makeApp({
       config,
       logger,
-      executionApi,
       job,
       messagesProcessor,
       metrics,
