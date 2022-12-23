@@ -1,4 +1,4 @@
-<img src="https://user-images.githubusercontent.com/4752441/206219523-2f815649-12dc-45af-8393-e27a96dcc19a.png" width="50%" height="50%">
+<img src="https://user-images.githubusercontent.com/4752441/209329469-aee5d699-af5e-467b-9213-4d09b1a22012.png" width="50%" height="50%">
 
 # Lido Validator Ejector
 
