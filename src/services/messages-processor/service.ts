@@ -185,10 +185,14 @@ export const makeMessagesProcessor = ({
   }) => {
     logger.info('Job started')
 
-    const lastBlock = await executionApi.latestBlockNumber()
+    const toBlock = await executionApi.latestBlockNumber()
+    const fromBlock = toBlock - eventsNumber
 
-    logger.info(`Started from block ${lastBlock}`)
-    const pubKeys = await executionApi.loadExitEvents(lastBlock, eventsNumber)
+    logger.info(
+      `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
+    )
+
+    const pubKeys = await executionApi.logs(fromBlock, toBlock)
     logger.debug(`Loaded ${pubKeys.length} events`)
 
     for (const pubKey of pubKeys) {

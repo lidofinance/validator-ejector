@@ -69,14 +69,8 @@ export const makeExecutionApi = (
     return result.map((event) => event.data[0])
   }
 
-  const loadExitEvents = async (toBlock: number, blocksBehind: number) => {
-    const fromBlock = toBlock - blocksBehind
-    return await logs(fromBlock, toBlock)
-  }
-
   return {
     latestBlockNumber,
     logs,
-    loadExitEvents,
   }
 }
