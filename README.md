@@ -28,11 +28,11 @@ Required:
 
 Optional:
 
-- BLOCKS_PRELOAD=10000 - Amount of blocks to load events from on start. Increase if daemon was not running for some time
-- BLOCKS_LOOP=100 - Amount of blocks to load events from on every poll
-- JOB_INTERVAL=20000 - Time interval to run checks
+- BLOCKS_PRELOAD=7200 - Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks
+- BLOCKS_LOOP=32 - Amount of blocks to load events from on every poll. Defaults to 1 epoch
+- JOB_INTERVAL=384000 - Time interval in milliseconds to run checks. Defaults to time of 1 epoch
 
-- HTTP_PORT - Port to serve metrics and health check on
+- HTTP_PORT=8989 - Port to serve metrics and health check on
 - RUN_METRICS=false - Enable metrics endpoint
 - RUN_HEALTH_CHECK - Enable health check endpoint
 
