@@ -12,8 +12,14 @@ export const makeExecutionApi = (
   {
     EXECUTION_NODE,
     CONTRACT_ADDRESS,
+    STAKING_MODULE_ID,
     OPERATOR_ID,
-  }: { EXECUTION_NODE: string; CONTRACT_ADDRESS: string; OPERATOR_ID: string }
+  }: {
+    EXECUTION_NODE: string
+    CONTRACT_ADDRESS: string
+    STAKING_MODULE_ID: string
+    OPERATOR_ID: string
+  }
 ) => {
   const latestBlockNumber = async () => {
     const res = await request(EXECUTION_NODE, {
@@ -40,7 +46,10 @@ export const makeExecutionApi = (
     const eventTopic = ethers.utils.id(exitEvent)
     const topics = [
       eventTopic,
-      null,
+      ethers.utils.hexZeroPad(
+        ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
+        32
+      ),
       ethers.utils.hexZeroPad(
         ethers.BigNumber.from(OPERATOR_ID).toHexString(),
         32

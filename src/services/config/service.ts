@@ -29,6 +29,10 @@ export const makeConfig = ({
     env.CONTRACT_ADDRESS,
     'Please, setup CONTRACT_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
   ),
+  STAKING_MODULE_ID: str(
+    env.STAKING_MODULE_ID,
+    'Please, setup STAKING_MODULE_ID id. Example: 123'
+  ),
   OPERATOR_ID: str(
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'

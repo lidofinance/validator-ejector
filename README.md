@@ -23,6 +23,7 @@ Required:
 - EXECUTION_NODE=http://1.2.3.4:8545
 - CONSENSUS_NODE=http://1.2.3.4:5051
 - CONTRACT_ADDRESS=0x596BBA96Fa92e0A3EAf2ca0B157b06193858ba5E - Address of the ValidatorExitBus contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)
+- STAKING_MODULE_ID=123 - Staking Module ID for which operator ID is set
 - OPERATOR_ID=123 - Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)
 - MESSAGES_LOCATION=messages - Folder to load json exit message files from
 
