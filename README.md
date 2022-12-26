@@ -33,9 +33,9 @@ Optional:
 - BLOCKS_LOOP=32 - Amount of blocks to load events from on every poll. Defaults to 1 epoch
 - JOB_INTERVAL=384000 - Time interval in milliseconds to run checks. Defaults to time of 1 epoch
 
-- HTTP_PORT=8989 - Port to serve metrics and health check on
+- HTTP_PORT=false - Port to serve metrics and health check on
 - RUN_METRICS=false - Enable metrics endpoint
-- RUN_HEALTH_CHECK - Enable health check endpoint
+- RUN_HEALTH_CHECK=false - Enable health check endpoint
 
 - LOGGER_LEVEL=info - Severity level from which to start showing errors eg info will hide debug messages
 - LOGGER_FORMAT=simple - Simple or JSON log output: simple/json
