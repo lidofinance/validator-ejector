@@ -30,14 +30,16 @@ export const makeConsensusApi = (
   }
 
   const validatorInfo = async (id: string) => {
-    const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${id}`,
-      {
-        middlewares: [notOkError()],
-      }
+    const req = await request(
+      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${id}`
     )
 
-    const result = validatorInfoDTO(await res.json())
+    if (!req.ok) {
+      const { message } = (await req.json()) as { message: string }
+      throw new Error(message)
+    }
+
+    const result = validatorInfoDTO(await req.json())
 
     const index = result.data.index
     const pubKey = result.data.validator.pubkey
@@ -83,7 +85,7 @@ export const makeConsensusApi = (
         body: JSON.stringify(message),
       }
     )
-    // TODO: better error handling
+
     if (!req.ok) {
       const { message } = (await req.json()) as { message: string }
       throw new Error(message)
