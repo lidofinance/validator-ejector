@@ -197,7 +197,14 @@ export const makeMessagesProcessor = ({
 
     for (const pubKey of pubKeys) {
       logger.debug(`Handling exit for ${pubKey}`)
-      await exit(messages, pubKey)
+      try {
+        await exit(messages, pubKey)
+      } catch (e: unknown) {
+        logger.error(
+          `Unable to process exit for ${pubKey}`,
+          e instanceof Error && e.message ? e.message : undefined
+        )
+      }
     }
     logger.info('Job finished')
   }
