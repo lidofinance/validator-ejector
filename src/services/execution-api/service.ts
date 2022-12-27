@@ -79,6 +79,8 @@ export const makeExecutionApi = (
 
     const { result } = logsDTO(json)
 
+    logger.info(`Loaded ${result.length} events`)
+
     const pubKeys = result.map((log) => iface.parseLog(log).args['pubkey'])
 
     return pubKeys
