@@ -41,20 +41,12 @@ export const makeExecutionApi = (
   }
 
   const logs = async (fromBlock: number, toBlock: number) => {
-    const address = CONTRACT_ADDRESS
-    const exitEvent = 'ValidatorExitRequest(uint256,uint256,bytes)'
-    const eventTopic = ethers.utils.id(exitEvent)
-    const topics = [
-      eventTopic,
-      ethers.utils.hexZeroPad(
-        ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
-        32
-      ),
-      ethers.utils.hexZeroPad(
-        ethers.BigNumber.from(OPERATOR_ID).toHexString(),
-        32
-      ),
-    ]
+    const event = ethers.utils.Fragment.from(
+      'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, bytes validatorPubkey)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
     const res = await request(EXECUTION_NODE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,17 +57,31 @@ export const makeExecutionApi = (
           {
             fromBlock: ethers.utils.hexlify(fromBlock),
             toBlock: ethers.utils.hexlify(toBlock),
-            address,
-            topics,
+            CONTRACT_ADDRESS,
+            topics: [
+              eventTopic,
+              ethers.utils.hexZeroPad(
+                ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
+                32
+              ),
+              ethers.utils.hexZeroPad(
+                ethers.BigNumber.from(OPERATOR_ID).toHexString(),
+                32
+              ),
+            ],
           },
         ],
         id: 1,
       }),
     })
+
     const json = await res.json()
+
     const { result } = logsDTO(json)
 
-    return result.map((event) => event.data[0])
+    const pubKeys = result.map((log) => iface.parseLog(log).args['pubkey'])
+
+    return pubKeys
   }
 
   return {
