@@ -1,5 +1,5 @@
 import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
-import { genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
+import { syncingDTO, genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
 
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
@@ -8,6 +8,21 @@ export const makeConsensusApi = (
   logger: ReturnType<typeof makeLogger>,
   { CONSENSUS_NODE, DRY_RUN }: { CONSENSUS_NODE: string; DRY_RUN: boolean }
 ) => {
+  const syncing = async () => {
+    const res = await request(`${CONSENSUS_NODE}/eth/v1/node/syncing`, {
+      middlewares: [notOkError()],
+    })
+    const { data } = syncingDTO(await res.json())
+    logger.debug('fetched syncing status')
+    return data.is_syncing
+  }
+
+  const checkSync = async () => {
+    if (await syncing()) {
+      logger.warn('Consensus node is still syncing! Proceed with caution.')
+    }
+  }
+
   const genesis = async () => {
     const res = await request(`${CONSENSUS_NODE}/eth/v1/beacon/genesis`, {
       middlewares: [notOkError()],
@@ -92,6 +107,8 @@ export const makeConsensusApi = (
     }
   }
   return {
+    syncing,
+    checkSync,
     genesis,
     state,
     validatorInfo,

@@ -2,7 +2,7 @@ import { makeLogger } from 'lido-nanolib'
 import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
-import { lastBlockNumberDTO, logsDTO } from './dto.js'
+import { syncingDTO, lastBlockNumberDTO, logsDTO } from './dto.js'
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
@@ -21,6 +21,29 @@ export const makeExecutionApi = (
     OPERATOR_ID: string
   }
 ) => {
+  const syncing = async () => {
+    const res = await request(EXECUTION_NODE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_syncing',
+        params: [],
+        id: 1,
+      }),
+    })
+    const json = await res.json()
+    const { result } = syncingDTO(json)
+    logger.debug('fetched syncing status')
+    return result
+  }
+
+  const checkSync = async () => {
+    if (await syncing()) {
+      logger.warn('Execution node is still syncing! Proceed with caution.')
+    }
+  }
+
   const latestBlockNumber = async () => {
     const res = await request(EXECUTION_NODE, {
       method: 'POST',
@@ -87,6 +110,8 @@ export const makeExecutionApi = (
   }
 
   return {
+    syncing,
+    checkSync,
     latestBlockNumber,
     logs,
   }

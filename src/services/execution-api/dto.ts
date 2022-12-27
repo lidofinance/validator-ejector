@@ -1,4 +1,13 @@
-import { arr, obj, str } from 'lido-nanolib'
+import { arr, obj, str, bool } from 'lido-nanolib'
+
+export const syncingDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      result: bool(json.result),
+    }),
+    'Invalid syncing response'
+  )
 
 export const lastBlockNumberDTO = (json: unknown) =>
   obj(
@@ -8,7 +17,7 @@ export const lastBlockNumberDTO = (json: unknown) =>
         number: str(result.number, 'Invalid latest block number'),
       })),
     }),
-    'Invalid validator LastBlockNumber response'
+    'Invalid LastBlockNumber response'
   )
 
 export const logsDTO = (json: unknown) =>
@@ -24,5 +33,5 @@ export const logsDTO = (json: unknown) =>
         )
       ),
     }),
-    'Empty or invalid data object from execution node for events'
+    'Empty or invalid data for events'
   )

@@ -1,4 +1,18 @@
-import { obj, str } from 'lido-nanolib'
+import { obj, str, bool } from 'lido-nanolib'
+
+export const syncingDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      data: obj(json.data, (data) => ({
+        head_slot: str(data.head_slot),
+        sync_distance: str(data.sync_distance),
+        is_syncing: bool(data.is_syncing),
+        is_optimistic: bool(data.is_optimistic),
+      })),
+    }),
+    'Invalid syncing response'
+  )
 
 export const genesisDTO = (json: unknown) =>
   obj(
@@ -16,7 +30,7 @@ export const genesisDTO = (json: unknown) =>
         ),
       })),
     }),
-    'Invalid validator Genesis response'
+    'Invalid genesis response'
   )
 
 export const stateDTO = (json: unknown) =>
@@ -35,7 +49,7 @@ export const stateDTO = (json: unknown) =>
         epoch: str(data.epoch, 'Invalid epoch input'),
       })),
     }),
-    'Invalid validator State response'
+    'Invalid state response'
   )
 
 export const validatorInfoDTO = (json: unknown) =>

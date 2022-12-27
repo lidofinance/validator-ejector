@@ -90,6 +90,8 @@ export const bootstrap = async () => {
       messagesProcessor,
       metrics,
       httpHandler,
+      executionApi,
+      consensusApi,
     })
 
     await app.run()

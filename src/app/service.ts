@@ -6,6 +6,8 @@ export const makeApp = ({
   job,
   messagesProcessor,
   httpHandler,
+  executionApi,
+  consensusApi,
 }: Dependencies) => {
   const {
     OPERATOR_ID,
@@ -17,6 +19,9 @@ export const makeApp = ({
 
   const run = async () => {
     logger.info('Application started', config)
+
+    await executionApi.checkSync()
+    await consensusApi.checkSync()
 
     await httpHandler.run()
 
