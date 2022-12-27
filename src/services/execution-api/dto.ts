@@ -18,11 +18,11 @@ export const logsDTO = (json: unknown) =>
       result: arr(json.result, (result) =>
         result.map((event) =>
           obj(event, (event) => ({
-            data: arr(event.data, (data) => data.map(str)),
+            data: str(event.data),
             topics: arr(event.topics, (topics) => topics.map(str)),
           }))
         )
       ),
     }),
-    'Empty data object from execution node for events'
+    'Empty or invalid data object from execution node for events'
   )
