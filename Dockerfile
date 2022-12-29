@@ -1,4 +1,4 @@
-FROM node:lts-alpine as building
+FROM node:16-alpine as building
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN yarn install --frozen-lockfile --non-interactive && yarn cache clean
 COPY ./src ./src
 RUN yarn build
 
-FROM node:lts-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 
