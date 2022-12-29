@@ -1,0 +1,26 @@
+name: Tests and checks
+on: pull_request
+jobs:
+  test:
+    name: App tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2.4.0
+      - name: Set up node
+        uses: actions/setup-node@v3.5.0
+        with:
+          node-version: 'lts/*'
+          cache: 'yarn'
+      - name: Install dependencies
+        run: yarn install --immutable
+      - name: Run lint
+        run: yarn lint
+      - name: Run tests
+        run: yarn test
+
+  security:
+    uses: lidofinance/linters/.github/workflows/security.yml@master
+  
+  docker:
+    uses: lidofinance/linters/.github/workflows/docker.yml@master
