@@ -45,6 +45,11 @@ export const makeMessagesProcessor = ({
   metrics: MetricsService
 }) => {
   const load = async () => {
+    if (!(await reader.dirExists(config.MESSAGES_LOCATION))) {
+      logger.error('Messages directory is not accessible, exiting...')
+      process.exit()
+    }
+
     const folder = await reader.dir(config.MESSAGES_LOCATION)
     const messages: ExitMessage[] = []
 
