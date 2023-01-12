@@ -21,8 +21,12 @@ export const makeExecutionApi = (
     OPERATOR_ID: string
   }
 ) => {
+  const normalizedUrl = EXECUTION_NODE.endsWith('/')
+    ? EXECUTION_NODE.slice(0, -1)
+    : EXECUTION_NODE
+
   const syncing = async () => {
-    const res = await request(EXECUTION_NODE, {
+    const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -45,7 +49,7 @@ export const makeExecutionApi = (
   }
 
   const latestBlockNumber = async () => {
-    const res = await request(EXECUTION_NODE, {
+    const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -70,7 +74,7 @@ export const makeExecutionApi = (
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
 
-    const res = await request(EXECUTION_NODE, {
+    const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -8,8 +8,12 @@ export const makeConsensusApi = (
   logger: ReturnType<typeof makeLogger>,
   { CONSENSUS_NODE, DRY_RUN }: { CONSENSUS_NODE: string; DRY_RUN: boolean }
 ) => {
+  const normalizedUrl = CONSENSUS_NODE.endsWith('/')
+    ? CONSENSUS_NODE.slice(0, -1)
+    : CONSENSUS_NODE
+
   const syncing = async () => {
-    const res = await request(`${CONSENSUS_NODE}/eth/v1/node/syncing`, {
+    const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
       middlewares: [notOkError()],
     })
     const { data } = syncingDTO(await res.json())
@@ -24,7 +28,7 @@ export const makeConsensusApi = (
   }
 
   const genesis = async () => {
-    const res = await request(`${CONSENSUS_NODE}/eth/v1/beacon/genesis`, {
+    const res = await request(`${normalizedUrl}/eth/v1/beacon/genesis`, {
       middlewares: [notOkError()],
     })
     const { data } = genesisDTO(await res.json())
@@ -34,7 +38,7 @@ export const makeConsensusApi = (
 
   const state = async () => {
     const res = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/fork`,
+      `${normalizedUrl}/eth/v1/beacon/states/finalized/fork`,
       {
         middlewares: [notOkError()],
       }
@@ -46,7 +50,7 @@ export const makeConsensusApi = (
 
   const validatorInfo = async (id: string) => {
     const req = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/states/finalized/validators/${id}`
+      `${normalizedUrl}/eth/v1/beacon/states/finalized/validators/${id}`
     )
 
     if (!req.ok) {
@@ -93,7 +97,7 @@ export const makeConsensusApi = (
     }
 
     const req = await request(
-      `${CONSENSUS_NODE}/eth/v1/beacon/pool/voluntary_exits`,
+      `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
