@@ -84,7 +84,7 @@ export const makeExecutionApi = (
           {
             fromBlock: ethers.utils.hexlify(fromBlock),
             toBlock: ethers.utils.hexlify(toBlock),
-            CONTRACT_ADDRESS,
+            address: CONTRACT_ADDRESS,
             topics: [
               eventTopic,
               ethers.utils.hexZeroPad(
@@ -108,7 +108,9 @@ export const makeExecutionApi = (
 
     logger.info(`Loaded ${result.length} events`)
 
-    const pubKeys = result.map((log) => iface.parseLog(log).args['pubkey'])
+    const pubKeys = result.map(
+      (log) => iface.parseLog(log).args['validatorPubkey']
+    )
 
     return pubKeys
   }
