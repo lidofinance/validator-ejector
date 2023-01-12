@@ -32,15 +32,12 @@ Optional:
 - BLOCKS_PRELOAD=7200 - Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks
 - BLOCKS_LOOP=32 - Amount of blocks to load events from on every poll. Defaults to 1 epoch
 - JOB_INTERVAL=384000 - Time interval in milliseconds to run checks. Defaults to time of 1 epoch
-
 - HTTP_PORT=false - Port to serve metrics and health check on
 - RUN_METRICS=false - Enable metrics endpoint
 - RUN_HEALTH_CHECK=false - Enable health check endpoint
-
 - LOGGER_LEVEL=info - Severity level from which to start showing errors eg info will hide debug messages
 - LOGGER_FORMAT=simple - Simple or JSON log output: simple/json
 - LOGGER_SECRETS=[] - String array of exact secrets to sanitize in logs
-
 - DRY_RUN=false - Run the service without actually sending out exit messages
 
 ## Running
