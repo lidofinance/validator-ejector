@@ -29,6 +29,7 @@ Required:
 
 Optional:
 
+- MESSAGES_PASSWORD - Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory.
 - BLOCKS_PRELOAD=7200 - Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks
 - BLOCKS_LOOP=32 - Amount of blocks to load events from on every poll. Defaults to 1 epoch
 - JOB_INTERVAL=384000 - Time interval in milliseconds to run checks. Defaults to time of 1 epoch

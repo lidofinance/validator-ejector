@@ -1,11 +1,12 @@
 import bls from '@chainsafe/bls'
+import { decrypt } from '@chainsafe/bls-keystore'
 
 import { ssz } from '@lodestar/types'
 import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { exitOrEthDoExitDTO } from './dto.js'
+import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
 import type { LoggerService } from 'lido-nanolib'
 import type { ReaderService } from '../reader/service.js'
@@ -64,10 +65,10 @@ export const makeMessagesProcessor = ({
         continue
       }
       const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
-      let parsed: EthDoExitMessage | ExitMessage
+
+      let json: Record<string, unknown>
       try {
-        const json = JSON.parse(read.toString())
-        parsed = exitOrEthDoExitDTO(json)
+        json = JSON.parse(read.toString())
       } catch (error) {
         logger.warn(`Unparseable JSON in file ${file}`, error)
         metrics.exitMessages.inc({
@@ -75,11 +76,47 @@ export const makeMessagesProcessor = ({
         })
         continue
       }
-      const message = 'exit' in parsed ? parsed.exit : parsed
+
+      if ('crypto' in json) {
+        try {
+          json = await decryptMessage(json)
+        } catch (e) {
+          logger.warn(`Unable to decrypt encrypted file: ${file}`)
+          metrics.exitMessages.inc({
+            valid: 'false',
+          })
+          continue
+        }
+      }
+
+      const validated: ExitMessage | EthDoExitMessage = exitOrEthDoExitDTO(json)
+
+      const message = 'exit' in validated ? validated.exit : validated
       messages.push(message)
     }
 
     return messages
+  }
+
+  const decryptMessage = async (input: Record<string, unknown>) => {
+    if (!config.MESSAGES_PASSWORD) {
+      throw new Error('Password was not supplied')
+    }
+
+    const checked = encryptedMessageDTO(input)
+
+    const content = await decrypt(checked, config.MESSAGES_PASSWORD)
+
+    const stringed = new TextDecoder().decode(content)
+
+    let json: Record<string, unknown>
+    try {
+      json = JSON.parse(stringed)
+    } catch {
+      throw new Error('Unparseable JSON after decryption')
+    }
+
+    return json
   }
 
   const verify = async (messages: ExitMessage[]): Promise<void> => {

@@ -42,6 +42,8 @@ export const makeConfig = ({
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
 
+  MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
+
   BLOCKS_PRELOAD:
     optional(() => num(env.BLOCKS_PRELOAD)) ?? (24 * 60 * 60) / 12, // 1 day of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 32, // 1 epoch
