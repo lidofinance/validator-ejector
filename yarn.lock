@@ -318,6 +318,14 @@
     "@noble/hashes" "^1.0.0"
     "@scure/bip39" "^1.0.0"
 
+"@chainsafe/bls-keystore@3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@chainsafe/bls-keystore/-/bls-keystore-3.0.0.tgz#e28c979f7664417e4917fa0d4d32fa2b9416e9c6"
+  integrity sha512-vlRIIXnn555wq2emhqnSR7btno17M0sCcfdQ+Dhgr7IH6n0CMoTGw9qcrpnNYwM+9OPm3matSYeZc9mNlXf7fQ==
+  dependencies:
+    ethereum-cryptography "^1.0.0"
+    uuid "8.3.2"
+
 "@chainsafe/bls@7.1.1":
   version "7.1.1"
   resolved "https://registry.npmjs.org/@chainsafe/bls/-/bls-7.1.1.tgz#57db4b565a1a1a544c4091bb5f172d683fc65750"
@@ -1077,10 +1085,20 @@
     js-yaml "^3.13.1"
     winston "^3.3.3"
 
+"@noble/hashes@1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.1.2.tgz#e9e035b9b166ca0af657a7848eb2718f0f22f183"
+  integrity sha512-KYRCASVTv6aeUi1tsF8/vpyR7zpfs3FUzy2Jqm+MU+LmUKhQ0y2FpfwqkCcxSg2ua4GALJd8k2R76WxwZGbQpA==
+
 "@noble/hashes@^1.0.0", "@noble/hashes@~1.1.1":
   version "1.1.3"
   resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-1.1.3.tgz#360afc77610e0a61f3417e497dcf36862e4f8111"
   integrity sha512-CE0FCR57H2acVI5UOzIGSSIYxZ6v/HOhDR0Ro9VLyhnzLwx0o8W1mmgaqlEUx4049qJDlIBRztv5k+MM8vbO3A==
+
+"@noble/secp256k1@1.6.3", "@noble/secp256k1@~1.6.0":
+  version "1.6.3"
+  resolved "https://registry.yarnpkg.com/@noble/secp256k1/-/secp256k1-1.6.3.tgz#7eed12d9f4404b416999d0c87686836c4c5c9b94"
+  integrity sha512-T04e4iTurVy7I8Sw4+c5OSN9/RkPlo1uKxAomtxQNLq8j1uPAqnsqG1bqvY3Jv7c13gyr6dui0zmh/I3+f/JaQ==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -1124,7 +1142,16 @@
   resolved "https://registry.npmjs.org/@scure/base/-/base-1.1.1.tgz#ebb651ee52ff84f420097055f4bf46cfba403938"
   integrity sha512-ZxOhsSyxYwLJj3pLZCefNitxsj093tb2vq90mp2txoYeBqbcjDjqFhyM8eUjq/uFm6zJ+mUuqxlS2FkuSY1MTA==
 
-"@scure/bip39@^1.0.0":
+"@scure/bip32@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@scure/bip32/-/bip32-1.1.0.tgz#dea45875e7fbc720c2b4560325f1cf5d2246d95b"
+  integrity sha512-ftTW3kKX54YXLCxH6BB7oEEoJfoE2pIgw7MINKAs5PsS6nqKPuKk1haTF/EuHmYqG330t5GSrdmtRuHaY1a62Q==
+  dependencies:
+    "@noble/hashes" "~1.1.1"
+    "@noble/secp256k1" "~1.6.0"
+    "@scure/base" "~1.1.0"
+
+"@scure/bip39@1.1.0", "@scure/bip39@^1.0.0":
   version "1.1.0"
   resolved "https://registry.npmjs.org/@scure/bip39/-/bip39-1.1.0.tgz#92f11d095bae025f166bef3defcc5bf4945d419a"
   integrity sha512-pwrPOS16VeTKg98dYXQyIjJEcWfz7/1YJIwxUEPFfQPtc86Ym/1sVgQ2RLoD43AazMk2l/unK4ITySSpW2+82w==
@@ -2165,6 +2192,16 @@ esutils@^2.0.2:
   version "2.0.3"
   resolved "https://registry.npmjs.org/esutils/-/esutils-2.0.3.tgz#74d2eb4de0b8da1293711910d50775b9b710ef64"
   integrity sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==
+
+ethereum-cryptography@^1.0.0:
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/ethereum-cryptography/-/ethereum-cryptography-1.1.2.tgz#74f2ac0f0f5fe79f012c889b3b8446a9a6264e6d"
+  integrity sha512-XDSJlg4BD+hq9N2FjvotwUET9Tfxpxc3kWGE2AqUG5vcbeunnbImVk3cj6e/xT3phdW21mE8R5IugU4fspQDcQ==
+  dependencies:
+    "@noble/hashes" "1.1.2"
+    "@noble/secp256k1" "1.6.3"
+    "@scure/bip32" "1.1.0"
+    "@scure/bip39" "1.1.0"
 
 ethers@5.7.2:
   version "5.7.2"
@@ -3243,10 +3280,10 @@ levn@^0.4.1:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
 
-lido-nanolib@^1.0.0:
-  version "1.2.0"
-  resolved "https://registry.npmjs.org/lido-nanolib/-/lido-nanolib-1.2.0.tgz#b6711d3f39e7b0176e1e849257b0bfe3588aaaff"
-  integrity sha512-vL3NjJycFIXt3DBzQfCHcTUTmn1B7sscsIzE83FnrzLz0s/y3RR6WTpAofcDP6fSK5U7OiNM6L/lxojDq2cRhg==
+lido-nanolib@1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/lido-nanolib/-/lido-nanolib-1.3.0.tgz#0874a5b121f55bb20f79d81d9ffef660c57efbcd"
+  integrity sha512-8049VPWDzxMp/FgF0r9QVBEiayJFE83qaHqSaGhhNI1KdbxZzmqTZZ2GkAFZCpD4dVl94iya4hrrySQmZBAiGQ==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
@@ -4185,7 +4222,7 @@ type-fest@^0.21.3:
 
 typescript@4.9.3:
   version "4.9.3"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-4.9.3.tgz#3aea307c1746b8c384435d8ac36b8a2e580d85db"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.9.3.tgz#3aea307c1746b8c384435d8ac36b8a2e580d85db"
   integrity sha512-CIfGzTelbKNEnLpLdGFgdyKhG23CKdKgQPOBc+OUNrkJ2vr+KSzsSV5kq5iWhEQbok+quxgGzrAtGWCyU7tHnA==
 
 unique-filename@^1.1.1:
@@ -4221,6 +4258,11 @@ util-deprecate@^1.0.1:
   version "1.0.2"
   resolved "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==
+
+uuid@8.3.2:
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/uuid/-/uuid-8.3.2.tgz#80d5b5ced271bb9af6c445f21a1a04c606cefbe2"
+  integrity sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==
 
 v8-compile-cache-lib@^3.0.1:
   version "3.0.1"

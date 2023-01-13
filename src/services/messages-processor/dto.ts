@@ -1,4 +1,35 @@
-import { obj, str, or, wrap } from 'lido-nanolib'
+import { obj, str, or, wrap, num, optional, literal } from 'lido-nanolib'
+
+export const encryptedMessageDTO = (input: unknown) =>
+  obj(input, (json) => ({
+    version: num(json.version),
+    uuid: str(json.uuid),
+    description: optional(() => str(json.description)),
+    path: str(json.path),
+    pubkey: str(json.pubkey),
+    crypto: obj(json.crypto, (crypto) => ({
+      kdf: obj(crypto.kdf, (kdf) => ({
+        function: literal('pbkdf2' as const, kdf.function),
+        params: obj(kdf.params, (params) => ({
+          dklen: num(params.dklen),
+          c: num(params.c),
+          prf: literal('hmac-sha256' as const, params.prf),
+          salt: str(params.salt),
+        })),
+        message: literal('' as const, kdf.message),
+      })),
+      checksum: obj(crypto.checksum, (checksum) => ({
+        function: literal('sha256' as const, checksum.function),
+        params: obj(checksum.params, () => ({})),
+        message: str(checksum.message),
+      })),
+      cipher: obj(crypto.cipher, (cipher) => ({
+        function: literal('aes-128-ctr' as const, cipher.function),
+        params: obj(cipher.params, (params) => ({ iv: str(params.iv) })),
+        message: str(cipher.message),
+      })),
+    })),
+  }))
 
 export const exitMessageDTO = (input: unknown) =>
   obj(input, (json) => ({
