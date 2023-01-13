@@ -24,18 +24,22 @@ import { makeApp } from './service.js'
 dotenv.config()
 
 export const bootstrap = async () => {
-  const loggerConfig = makeLoggerConfig({ env: process.env })
-
-  const logger = makeLogger({
-    level: loggerConfig.LOGGER_LEVEL,
-    format: loggerConfig.LOGGER_FORMAT,
-    sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    },
+  const defaultLogger = makeLogger({
+    level: 'debug',
+    format: 'simple',
   })
 
   try {
+    const loggerConfig = makeLoggerConfig({ env: process.env })
+
+    const logger = makeLogger({
+      level: loggerConfig.LOGGER_LEVEL,
+      format: loggerConfig.LOGGER_FORMAT,
+      sanitizer: {
+        secrets: loggerConfig.LOGGER_SECRETS,
+        replacer: '<secret>',
+      },
+    })
     const config = makeConfig({ logger, env: process.env })
 
     const metrics = makeMetrics()
@@ -96,7 +100,7 @@ export const bootstrap = async () => {
 
     await app.run()
   } catch (error) {
-    logger.error('Startup error', error)
+    defaultLogger.error('Startup error', error)
     process.exit(1)
   }
 }
