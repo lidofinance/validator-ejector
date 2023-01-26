@@ -18,28 +18,25 @@ This service has to be run in a single instance as it expects to fulfil every re
 
 Options are configured via environment variables.
 
-Required:
-
-- EXECUTION_NODE=http://1.2.3.4:8545
-- CONSENSUS_NODE=http://1.2.3.4:5051
-- CONTRACT_ADDRESS=0x596BBA96Fa92e0A3EAf2ca0B157b06193858ba5E - Address of the ValidatorExitBus contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)
-- STAKING_MODULE_ID=123 - Staking Module ID for which operator ID is set
-- OPERATOR_ID=123 - Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)
-- MESSAGES_LOCATION=messages - Folder to load json exit message files from
-
-Optional:
-
-- MESSAGES_PASSWORD - Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory.
-- BLOCKS_PRELOAD=7200 - Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks
-- BLOCKS_LOOP=32 - Amount of blocks to load events from on every poll. Defaults to 1 epoch
-- JOB_INTERVAL=384000 - Time interval in milliseconds to run checks. Defaults to time of 1 epoch
-- HTTP_PORT=false - Port to serve metrics and health check on
-- RUN_METRICS=false - Enable metrics endpoint
-- RUN_HEALTH_CHECK=false - Enable health check endpoint
-- LOGGER_LEVEL=info - Severity level from which to start showing errors eg info will hide debug messages
-- LOGGER_FORMAT=simple - Simple or JSON log output: simple/json
-- LOGGER_SECRETS=[] - String array of exact secrets to sanitize in logs
-- DRY_RUN=false - Run the service without actually sending out exit messages
+| Variable          | Required | Default/Example                            | Description                                                                                                                  |
+| ----------------- | -------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| EXECUTION_NODE    | Yes      | http://1.2.3.4:8545                        | Ethereum Execution Node endpoint                                                                                             |
+| CONSENSUS_NODE    | Yes      | http://1.2.3.4:5051                        | Ethereum Consensus Node endpoint                                                                                             |
+| CONTRACT_ADDRESS  | Yes      | 0x596BBA96Fa92e0A3EAf2ca0B157b06193858ba5E | Address of the ValidatorExitBus contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)       |
+| STAKING_MODULE_ID | Yes      | 123                                        | Staking Module ID for which operator ID is set                                                                               |
+| OPERATOR_ID       | Yes      | 123                                        | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
+| MESSAGES_LOCATION | Yes      | messages                                   | Folder to load json exit message files from                                                                                  |
+| MESSAGES_PASSWORD | No       | password                                   | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
+| BLOCKS_PRELOAD    | No       | 7200                                       | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks |
+| BLOCKS_LOOP       | No       | 32                                         | Amount of blocks to load events from on every poll. Defaults to 1 epoch                                                      |
+| JOB_INTERVAL      | No       | 384000                                     | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                     |
+| HTTP_PORT         | No       | false                                      | Port to serve metrics and health check on                                                                                    |
+| RUN_METRICS       | No       | false                                      | Enable metrics endpoint                                                                                                      |
+| RUN_HEALTH_CHECK  | No       | false                                      | Enable health check endpoint                                                                                                 |
+| LOGGER_LEVEL      | No       | info                                       | Severity level from which to start showing errors eg info will hide debug messages                                           |
+| LOGGER_FORMAT     | No       | simple                                     | Simple or JSON log output: simple/json                                                                                       |
+| LOGGER_SECRETS    | No       | ["secret","secret"]                        | String array of exact secrets to sanitize in logs                                                                            |
+| DRY_RUN           | No       | false                                      | Run the service without actually sending out exit messages                                                                   |
 
 ## Running
 
