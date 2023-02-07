@@ -89,7 +89,17 @@ export const makeMessagesProcessor = ({
         }
       }
 
-      const validated: ExitMessage | EthDoExitMessage = exitOrEthDoExitDTO(json)
+      let validated: ExitMessage | EthDoExitMessage
+
+      try {
+        validated = exitOrEthDoExitDTO(json)
+      } catch (e) {
+        logger.error(`${file} failed validation:`, e)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
 
       const message = 'exit' in validated ? validated.exit : validated
       messages.push(message)
