@@ -8,7 +8,7 @@ On start, it will load events from a configurable amount of blocks behind and th
 
 ## Requirements
 
-- Folder of pre-signed exit messages as individual json files in either spec format or [ethdo output format](https://github.com/wealdtech/ethdo/blob/master/docs/usage.md#exit)
+- Folder of pre-signed exit messages as individual JSON files in either spec format or [ethdo output format](https://github.com/wealdtech/ethdo/blob/master/docs/usage.md#exit)
 - Execution node
 - Consensus node
 
@@ -38,11 +38,19 @@ Options are configured via environment variables.
 | LOGGER_SECRETS    | No       | ["secret","secret"]                        | String array of exact secrets to sanitize in logs                                                                            |
 | DRY_RUN           | No       | false                                      | Run the service without actually sending out exit messages                                                                   |
 
+## Preparing Exit Messages
+
+Once you generate and sign exit messages, you can encrypt them for storage safety.
+
+Exit messages are encrypted and decrypted following [EIP-2335](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2335.md) spec.
+
+You can check a simple example in TS in `encrypt.ts`.
+
 ## Running
 
 Either:
 
-- Use Docker image from Docker Hub: TODO
+- Use a Docker image from [Docker Hub](https://hub.docker.com/r/lidofinance/validator-ejector)
 - Clone repo, install dependencies, build and start the service:
 
 ```bash
@@ -72,6 +80,7 @@ Available metrics:
 
 ## Safety Features
 
+- Encrypted messages allow for secure file storage
 - Invalid files in messages folder are noticed
 - Exit JSON structure is checked
 - Exit signature is fully validated
