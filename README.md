@@ -44,7 +44,15 @@ Once you generate and sign exit messages, you can encrypt them for storage safet
 
 Exit messages are encrypted and decrypted following [EIP-2335](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2335.md) spec.
 
-You can check a simple example in TS in `encrypt.ts`.
+You can check a simple example in JS in `encryptor` folder:
+
+Simply copy JSON exit message files to `encryptor/input`, set encryption password as `MESSAGES_PASSWORD` in `.env` and run:
+
+```bash
+yarn encrypt
+```
+
+Done, your encrypted files will be in `encryptor/output`.
 
 ## Running
 
