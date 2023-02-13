@@ -14,6 +14,10 @@ const toBytes = (secret) =>
   Uint8Array.from(Array.from(secret).map((letter) => letter.charCodeAt(0)))
 
 for (const file of await readdir(`${FOLDER}/input`)) {
+  if (file === '.gitignore') {
+    continue
+  }
+
   const original = (await readFile(`${FOLDER}/input/${file}`)).toString()
 
   const message = toBytes(original)
@@ -22,5 +26,5 @@ for (const file of await readdir(`${FOLDER}/input`)) {
 
   const store = await create(PASSWORD, message, pubkey, path)
 
-  await writeFile(`${FOLDER}/output/${file}.json`, JSON.stringify(store))
+  await writeFile(`${FOLDER}/output/${file}`, JSON.stringify(store))
 }
