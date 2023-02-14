@@ -82,7 +82,7 @@ export const bootstrap = async () => {
       config,
       logger,
       metric: metrics.jobDuration,
-      handler: messagesProcessor.proceed,
+      handler: messagesProcessor.runJob,
     })
 
     const httpHandler = makeHttpHandler({ register, config })

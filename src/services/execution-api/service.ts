@@ -69,7 +69,7 @@ export const makeExecutionApi = (
 
   const logs = async (fromBlock: number, toBlock: number) => {
     const event = ethers.utils.Fragment.from(
-      'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, bytes validatorPubkey)'
+      'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
@@ -82,8 +82,12 @@ export const makeExecutionApi = (
         method: 'eth_getLogs',
         params: [
           {
-            fromBlock: ethers.utils.hexlify(fromBlock),
-            toBlock: ethers.utils.hexlify(toBlock),
+            fromBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(fromBlock).toHexString()
+            ),
+            toBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(toBlock).toHexString()
+            ),
             address: CONTRACT_ADDRESS,
             topics: [
               eventTopic,
@@ -108,11 +112,15 @@ export const makeExecutionApi = (
 
     logger.info(`Loaded ${result.length} events`)
 
-    const pubKeys = result.map(
-      (log) => iface.parseLog(log).args['validatorPubkey']
-    )
+    const valsToEject = result.map((log) => {
+      const parsed = iface.parseLog(log)
+      return {
+        validatorIndex: parsed.args['validatorIndex'] as string,
+        validatorPubkey: parsed.args['validatorPubkey'] as string,
+      }
+    })
 
-    return pubKeys
+    return valsToEject
   }
 
   return {

@@ -228,7 +228,7 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const proceed = async ({
+  const runJob = async ({
     eventsNumber,
     messages,
   }: {
@@ -239,21 +239,22 @@ export const makeMessagesProcessor = ({
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
+    logger.info(`Latest block is ${toBlock}`)
 
     logger.info(
       `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
     )
 
-    const pubKeys = await executionApi.logs(fromBlock, toBlock)
-    logger.debug(`Loaded ${pubKeys.length} events`)
+    const valsToEject = await executionApi.logs(fromBlock, toBlock)
+    logger.debug(`Loaded ${valsToEject.length} events`)
 
-    for (const pubKey of pubKeys) {
-      logger.debug(`Handling exit for ${pubKey}`)
+    for (const val of valsToEject) {
+      logger.debug(`Handling exit for ${val.validatorPubkey}`)
       try {
-        await exit(messages, pubKey)
+        await exit(messages, val.validatorPubkey)
       } catch (e: unknown) {
         logger.error(
-          `Unable to process exit for ${pubKey}`,
+          `Unable to process exit for ${val.validatorPubkey}`,
           e instanceof Error && e.message ? e.message : undefined
         )
       }
@@ -261,5 +262,5 @@ export const makeMessagesProcessor = ({
     logger.info('Job finished')
   }
 
-  return { load, verify, exit, proceed }
+  return { load, verify, exit, runJob }
 }
