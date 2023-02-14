@@ -69,7 +69,7 @@ export const makeExecutionApi = (
 
   const logs = async (fromBlock: number, toBlock: number) => {
     const event = ethers.utils.Fragment.from(
-      'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, bytes validatorPubkey)'
+      'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
