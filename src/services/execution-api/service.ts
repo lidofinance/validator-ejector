@@ -112,11 +112,15 @@ export const makeExecutionApi = (
 
     logger.info(`Loaded ${result.length} events`)
 
-    const pubKeys = result.map(
-      (log) => iface.parseLog(log).args['validatorPubkey']
-    )
+    const valsToEject = result.map((log) => {
+      const parsed = iface.parseLog(log)
+      return {
+        validatorIndex: parsed.args['validatorIndex'] as string,
+        validatorPubkey: parsed.args['validatorPubkey'] as string,
+      }
+    })
 
-    return pubKeys
+    return valsToEject
   }
 
   return {

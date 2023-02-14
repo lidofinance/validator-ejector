@@ -244,16 +244,16 @@ export const makeMessagesProcessor = ({
       `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
     )
 
-    const pubKeys = await executionApi.logs(fromBlock, toBlock)
-    logger.debug(`Loaded ${pubKeys.length} events`)
+    const valsToEject = await executionApi.logs(fromBlock, toBlock)
+    logger.debug(`Loaded ${valsToEject.length} events`)
 
-    for (const pubKey of pubKeys) {
-      logger.debug(`Handling exit for ${pubKey}`)
+    for (const val of valsToEject) {
+      logger.debug(`Handling exit for ${val.validatorPubkey}`)
       try {
-        await exit(messages, pubKey)
+        await exit(messages, val.validatorPubkey)
       } catch (e: unknown) {
         logger.error(
-          `Unable to process exit for ${pubKey}`,
+          `Unable to process exit for ${val.validatorPubkey}`,
           e instanceof Error && e.message ? e.message : undefined
         )
       }
