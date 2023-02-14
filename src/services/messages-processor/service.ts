@@ -228,7 +228,7 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const proceed = async ({
+  const runJob = async ({
     eventsNumber,
     messages,
   }: {
@@ -261,5 +261,5 @@ export const makeMessagesProcessor = ({
     logger.info('Job finished')
   }
 
-  return { load, verify, exit, proceed }
+  return { load, verify, exit, runJob }
 }
