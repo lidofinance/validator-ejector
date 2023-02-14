@@ -82,8 +82,12 @@ export const makeExecutionApi = (
         method: 'eth_getLogs',
         params: [
           {
-            fromBlock: ethers.utils.hexlify(fromBlock),
-            toBlock: ethers.utils.hexlify(toBlock),
+            fromBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(fromBlock).toHexString()
+            ),
+            toBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(toBlock).toHexString()
+            ),
             address: CONTRACT_ADDRESS,
             topics: [
               eventTopic,
