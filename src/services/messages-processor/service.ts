@@ -239,6 +239,7 @@ export const makeMessagesProcessor = ({
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
+    logger.info(`Latest block is ${toBlock}`)
 
     logger.info(
       `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
