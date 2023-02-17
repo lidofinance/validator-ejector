@@ -28,7 +28,7 @@ export const makeMetrics = () => {
 
   const pollingLastBlocksDurationSeconds = new client.Histogram({
     name: PREFIX + 'polling_last_blocks_duration_seconds',
-    help: 'Duration of pooling last blocks in microseconds',
+    help: 'Duration of polling last blocks in seconds',
     labelNames: ['eventsNumber'] as const,
     buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
   })
@@ -36,7 +36,7 @@ export const makeMetrics = () => {
 
   const executionRequestDurationSeconds = new client.Histogram({
     name: PREFIX + 'execution_request_duration_seconds',
-    help: 'Execution node request duration in microseconds',
+    help: 'Execution node request duration in seconds',
     labelNames: ['result', 'status', 'domain'] as const,
     buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
   })
@@ -44,7 +44,7 @@ export const makeMetrics = () => {
 
   const consensusRequestDurationSeconds = new client.Histogram({
     name: PREFIX + 'consensus_request_duration_seconds',
-    help: 'Consensus node request duration in microseconds',
+    help: 'Consensus node request duration in seconds',
     labelNames: ['result', 'status', 'domain'] as const,
     buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
   })
