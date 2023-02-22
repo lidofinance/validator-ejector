@@ -1,7 +1,5 @@
 import type { Dependencies } from './interface.js'
 
-import appInfo from '../../package.json' assert { type: 'json' }
-
 export const makeApp = ({
   config,
   logger,
@@ -10,6 +8,7 @@ export const makeApp = ({
   httpHandler,
   executionApi,
   consensusApi,
+  appInfoReader,
 }: Dependencies) => {
   const {
     OPERATOR_ID,
@@ -20,7 +19,8 @@ export const makeApp = ({
   } = config
 
   const run = async () => {
-    logger.info(`Application started, version ${appInfo.version}`, config)
+    const version = await appInfoReader.getVersion()
+    logger.info(`Application started, version ${version}`, config)
 
     await executionApi.checkSync()
     await consensusApi.checkSync()
