@@ -18,6 +18,7 @@ import { makeMetrics, register } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
+import { makeAppInfoReader } from '../services/appInfoReader/service.js'
 
 import { makeApp } from './service.js'
 
@@ -87,6 +88,8 @@ export const bootstrap = async () => {
 
     const httpHandler = makeHttpHandler({ register, config })
 
+    const appInfoReader = makeAppInfoReader({ reader })
+
     const app = makeApp({
       config,
       logger,
@@ -96,6 +99,7 @@ export const bootstrap = async () => {
       httpHandler,
       executionApi,
       consensusApi,
+      appInfoReader,
     })
 
     await app.run()

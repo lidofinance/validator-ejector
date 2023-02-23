@@ -8,6 +8,7 @@ export const makeApp = ({
   httpHandler,
   executionApi,
   consensusApi,
+  appInfoReader,
 }: Dependencies) => {
   const {
     OPERATOR_ID,
@@ -18,7 +19,8 @@ export const makeApp = ({
   } = config
 
   const run = async () => {
-    logger.info('Application started', config)
+    const version = await appInfoReader.getVersion()
+    logger.info(`Application started, version ${version}`, config)
 
     await executionApi.checkSync()
     await consensusApi.checkSync()
