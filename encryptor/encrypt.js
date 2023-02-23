@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import { create } from '@chainsafe/bls-keystore'
+import ethers from 'ethers'
 
 const FOLDER = 'encryptor' // change if you move the script or run it directly
 const PASSWORD = process.env.MESSAGES_PASSWORD
@@ -10,17 +11,14 @@ if (!PASSWORD) {
   process.exit()
 }
 
-const toBytes = (secret) =>
-  Uint8Array.from(Array.from(secret).map((letter) => letter.charCodeAt(0)))
-
 for (const file of await readdir(`${FOLDER}/input`)) {
-  if (file === '.gitignore') {
+  if (!file.endsWith('.json')) {
     continue
   }
 
   const original = (await readFile(`${FOLDER}/input/${file}`)).toString()
 
-  const message = toBytes(original)
+  const message = ethers.utils.toUtf8Bytes(original)
   const pubkey = new Uint8Array()
   const path = ''
 
