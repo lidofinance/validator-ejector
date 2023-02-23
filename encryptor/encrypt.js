@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { readdir, readFile, writeFile } from 'fs/promises'
 import { create } from '@chainsafe/bls-keystore'
-import ethers from 'ethers'
+import { utils } from 'ethers'
 
 const FOLDER = 'encryptor' // change if you move the script or run it directly
 const PASSWORD = process.env.MESSAGES_PASSWORD
@@ -18,7 +18,7 @@ for (const file of await readdir(`${FOLDER}/input`)) {
 
   const original = (await readFile(`${FOLDER}/input/${file}`)).toString()
 
-  const message = ethers.utils.toUtf8Bytes(original)
+  const message = utils.toUtf8Bytes(original)
   const pubkey = new Uint8Array()
   const path = ''
 
