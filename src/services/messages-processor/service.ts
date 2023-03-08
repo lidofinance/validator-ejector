@@ -217,7 +217,10 @@ export const makeMessagesProcessor = ({
 
     try {
       await consensusApi.exitRequest(message)
-      logger.info('Message sent successfully to exit', pubKey)
+      logger.info('Message sent successfully to exit', {
+        pubKey,
+      })
+      logger.info('Last validator index sent to consensus', { validatorIndex })
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
       logger.error(
@@ -235,30 +238,33 @@ export const makeMessagesProcessor = ({
     eventsNumber: number
     messages: ExitMessage[]
   }) => {
-    logger.info('Job started')
+    logger.info('Job started', { OPERATOR_ID: config.OPERATOR_ID })
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
-    logger.info(`Latest block is ${toBlock}`)
 
+    logger.info(`Latest block is ${toBlock}`)
     logger.info(
       `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
     )
 
-    const valsToEject = await executionApi.logs(fromBlock, toBlock)
-    logger.debug(`Loaded ${valsToEject.length} events`)
+    const eventsForEject = await executionApi.logs(fromBlock, toBlock)
 
-    for (const val of valsToEject) {
-      logger.debug(`Handling exit for ${val.validatorPubkey}`)
+    logger.info('Loaded events', { count: eventsForEject.length })
+    logger.info('Loaded messages', { count: messages.length })
+
+    for (const event of eventsForEject) {
+      logger.info('Handling exit', event)
       try {
-        await exit(messages, val.validatorPubkey)
+        await exit(messages, event.validatorPubkey)
       } catch (e: unknown) {
         logger.error(
-          `Unable to process exit for ${val.validatorPubkey}`,
+          `Unable to process exit for ${event.validatorPubkey}`,
           e instanceof Error && e.message ? e.message : undefined
         )
       }
     }
+
     logger.info('Job finished')
   }
 
