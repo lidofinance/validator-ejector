@@ -48,6 +48,7 @@ export const makeExecutionApi = (
     }
   }
 
+  // TODO: describe params
   const latestBlockNumber = async () => {
     const res = await request(normalizedUrl, {
       method: 'POST',
@@ -64,16 +65,20 @@ export const makeExecutionApi = (
       result: { number },
     } = lastBlockNumberDTO(json)
     logger.debug('fetched latest block number')
+    // TODO: simplify if possible
     return ethers.BigNumber.from(number).toNumber()
   }
 
   const logs = async (fromBlock: number, toBlock: number) => {
+    // TODO: move event to const
+    // TODO: check abi relevance
     const event = ethers.utils.Fragment.from(
       'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
 
+    // TODO: use ethers encoding func?
     const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

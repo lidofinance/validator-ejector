@@ -201,7 +201,7 @@ export const makeMessagesProcessor = ({
       )
       return
     }
-
+    // TODO: extra request, add index as func arg
     const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
     const message = messages.find(
       (msg) => msg.message.validator_index === validatorIndex
@@ -216,6 +216,7 @@ export const makeMessagesProcessor = ({
     }
 
     try {
+      // TODO: could 1 key be sent twice ?
       await consensusApi.exitRequest(message)
       logger.info('Message sent successfully to exit', pubKey)
       metrics.exitActions.inc({ result: 'success' })

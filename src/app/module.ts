@@ -45,6 +45,7 @@ export const bootstrap = async () => {
 
     const metrics = makeMetrics()
 
+    // TODO: 5 sec is not enough. set 0.5 - 1 min
     const executionApi = makeExecutionApi(
       makeRequest([
         retry(3),
@@ -57,6 +58,7 @@ export const bootstrap = async () => {
       config
     )
 
+    // TODO: 5 sec is not enough. 0.5 - 1 min
     const consensusApi = makeConsensusApi(
       makeRequest([
         retry(3),

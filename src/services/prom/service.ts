@@ -4,6 +4,10 @@ export const register = new client.Registry()
 
 export type MetricsService = ReturnType<typeof makeMetrics>
 
+// TODO: prefix false for general metrics
+// TODO: add metrics for last block (timestamp) for EL CL
+// TODO: default metrics operator_id, version app etc
+// TODO: alerts for rem exit messages number ?
 const PREFIX = 'validator_ejector_'
 
 export const makeMetrics = () => {
