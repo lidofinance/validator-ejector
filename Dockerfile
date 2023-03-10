@@ -8,6 +8,7 @@ COPY ts*.json ./
 RUN yarn install --frozen-lockfile --non-interactive && yarn cache clean
 
 COPY ./src ./src
+COPY ./encryptor ./encryptor
 RUN yarn build
 
 FROM node:16-alpine
