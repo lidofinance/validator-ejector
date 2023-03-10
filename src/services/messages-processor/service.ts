@@ -226,7 +226,10 @@ export const makeMessagesProcessor = ({
 
     try {
       await consensusApi.exitRequest(message)
-      logger.info('Message sent successfully to exit', pubKey)
+      logger.info(
+        'Voluntary exit message sent successfully to Consensus Layer',
+        { pubKey, validatorIndex }
+      )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
       logger.error(
@@ -244,30 +247,35 @@ export const makeMessagesProcessor = ({
     eventsNumber: number
     messages: ExitMessage[]
   }) => {
-    logger.info('Job started')
+    logger.info('Job started', {
+      operatorId: config.OPERATOR_ID,
+      stakingModuleId: config.STAKING_MODULE_ID,
+      loadedMessages: messages.length,
+    })
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
-    logger.info(`Latest block is ${toBlock}`)
+    logger.info('Fetched the latest block from EL', { latestBlock: toBlock })
 
-    logger.info(
-      `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
-    )
+    logger.info('Fetching request events from the Exit Bus', {
+      eventsNumber,
+      fromBlock,
+      toBlock,
+    })
 
-    const valsToEject = await executionApi.logs(fromBlock, toBlock)
-    logger.debug(`Loaded ${valsToEject.length} events`)
+    const eventsForEject = await executionApi.logs(fromBlock, toBlock)
 
-    for (const val of valsToEject) {
-      logger.debug(`Handling exit for ${val.validatorPubkey}`)
+    logger.info('Loaded events', { amount: eventsForEject.length })
+
+    for (const event of eventsForEject) {
+      logger.info('Handling exit', event)
       try {
-        await exit(messages, val.validatorPubkey)
-      } catch (e: unknown) {
-        logger.error(
-          `Unable to process exit for ${val.validatorPubkey}`,
-          e instanceof Error && e.message ? e.message : undefined
-        )
+        await exit(messages, event.validatorPubkey)
+      } catch (e) {
+        logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
       }
     }
+
     logger.info('Job finished')
   }
 
