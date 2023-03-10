@@ -137,7 +137,16 @@ export const makeMessagesProcessor = ({
       const { message, signature: rawSignature } = m
       const { validator_index: validatorIndex, epoch } = message
 
-      const validatorInfo = await consensusApi.validatorInfo(validatorIndex)
+      let validatorInfo: { pubKey: string; isExiting: boolean }
+      try {
+        validatorInfo = await consensusApi.validatorInfo(validatorIndex)
+      } catch (e) {
+        logger.error(
+          `Failed to get validator info for index ${validatorIndex}`,
+          e
+        )
+        continue
+      }
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
