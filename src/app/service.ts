@@ -25,6 +25,8 @@ export const makeApp = ({
     await executionApi.checkSync()
     await consensusApi.checkSync()
 
+    await executionApi.resolveExitBusAddress()
+
     await httpHandler.run()
 
     logger.info(`Loading messages from ${MESSAGES_LOCATION}`)

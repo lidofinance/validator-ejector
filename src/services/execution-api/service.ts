@@ -2,7 +2,7 @@ import { makeLogger } from 'lido-nanolib'
 import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
-import { syncingDTO, lastBlockNumberDTO, logsDTO } from './dto.js'
+import { syncingDTO, lastBlockNumberDTO, logsDTO, funcDTO } from './dto.js'
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
@@ -11,12 +11,12 @@ export const makeExecutionApi = (
   logger: ReturnType<typeof makeLogger>,
   {
     EXECUTION_NODE,
-    CONTRACT_ADDRESS,
+    LOCATOR_ADDRESS,
     STAKING_MODULE_ID,
     OPERATOR_ID,
   }: {
     EXECUTION_NODE: string
-    CONTRACT_ADDRESS: string
+    LOCATOR_ADDRESS: string
     STAKING_MODULE_ID: string
     OPERATOR_ID: string
   }
@@ -24,6 +24,8 @@ export const makeExecutionApi = (
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
     ? EXECUTION_NODE.slice(0, -1)
     : EXECUTION_NODE
+
+  let exitBusAddress: string
 
   const syncing = async () => {
     const res = await request(normalizedUrl, {
@@ -88,7 +90,7 @@ export const makeExecutionApi = (
             toBlock: ethers.utils.hexStripZeros(
               ethers.BigNumber.from(toBlock).toHexString()
             ),
-            address: CONTRACT_ADDRESS,
+            address: exitBusAddress,
             topics: [
               eventTopic,
               ethers.utils.hexZeroPad(
@@ -123,10 +125,59 @@ export const makeExecutionApi = (
     return valsToEject
   }
 
+  const resolveExitBusAddress = async () => {
+    const func = ethers.utils.Fragment.from(
+      'function validatorsExitBusOracle() view returns (address)'
+    )
+    const iface = new ethers.utils.Interface([func])
+    const sig = iface.encodeFunctionData('validatorsExitBusOracle')
+
+    try {
+      const res = await request(normalizedUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              from: null,
+              to: LOCATOR_ADDRESS,
+              data: sig,
+            },
+            'finalized',
+          ],
+          id: 1,
+        }),
+      })
+
+      const json = await res.json()
+
+      const { result } = funcDTO(json)
+
+      const decoded = iface.decodeFunctionResult(
+        'validatorsExitBusOracle',
+        result
+      )[0]
+
+      exitBusAddress = decoded
+
+      logger.info('Resolved Exit Bus contract address using the Locator', {
+        exitBusAddress,
+      })
+    } catch (e) {
+      logger.error('Unable to resolve Exit Bus contract', e)
+      throw new Error(
+        'Unable to resolve Exit Bus contract address using the Locator. Please make sure LOCATOR_ADDRESS is correct.'
+      )
+    }
+  }
+
   return {
     syncing,
     checkSync,
     latestBlockNumber,
     logs,
+    resolveExitBusAddress,
   }
 }
