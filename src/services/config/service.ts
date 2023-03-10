@@ -25,9 +25,9 @@ export const makeConfig = ({
     env.CONSENSUS_NODE,
     'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
   ),
-  CONTRACT_ADDRESS: str(
-    env.CONTRACT_ADDRESS,
-    'Please, setup CONTRACT_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  LOCATOR_ADDRESS: str(
+    env.LOCATOR_ADDRESS,
+    'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
   ),
   STAKING_MODULE_ID: str(
     env.STAKING_MODULE_ID,

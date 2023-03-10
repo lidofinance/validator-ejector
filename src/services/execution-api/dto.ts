@@ -35,3 +35,12 @@ export const logsDTO = (json: unknown) =>
     }),
     'Empty or invalid data for events'
   )
+
+export const funcDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      result: str(json.result),
+    }),
+    'Invalid function call response'
+  )
