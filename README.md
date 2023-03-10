@@ -22,7 +22,7 @@ Options are configured via environment variables.
 | ----------------- | -------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | EXECUTION_NODE    | Yes      | http://1.2.3.4:8545                        | Ethereum Execution Node endpoint                                                                                             |
 | CONSENSUS_NODE    | Yes      | http://1.2.3.4:5051                        | Ethereum Consensus Node endpoint                                                                                             |
-| CONTRACT_ADDRESS  | Yes      | 0x596BBA96Fa92e0A3EAf2ca0B157b06193858ba5E | Address of the ValidatorExitBus contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)       |
+| LOCATOR_ADDRESS   | Yes      | 0x12cd349E19Ab2ADBE478Fc538A66C059Cf40CFeC | Address of the Locator contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)                |
 | STAKING_MODULE_ID | Yes      | 123                                        | Staking Module ID for which operator ID is set                                                                               |
 | OPERATOR_ID       | Yes      | 123                                        | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
 | MESSAGES_LOCATION | Yes      | messages                                   | Folder to load json exit message files from                                                                                  |
