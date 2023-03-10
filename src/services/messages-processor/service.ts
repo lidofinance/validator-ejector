@@ -217,10 +217,10 @@ export const makeMessagesProcessor = ({
 
     try {
       await consensusApi.exitRequest(message)
-      logger.info('Message sent successfully to exit', {
-        pubKey,
-      })
-      logger.info('Last validator index sent to consensus', { validatorIndex })
+      logger.info(
+        'Voluntary exit message sent successfully to Consensus Layer',
+        { pubKey, validatorIndex }
+      )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
       logger.error(
@@ -238,30 +238,32 @@ export const makeMessagesProcessor = ({
     eventsNumber: number
     messages: ExitMessage[]
   }) => {
-    logger.info('Job started', { OPERATOR_ID: config.OPERATOR_ID })
+    logger.info('Job started', {
+      operatorId: config.OPERATOR_ID,
+      stakingModuleId: config.STAKING_MODULE_ID,
+      loadedMessages: messages.length,
+    })
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
+    logger.info('Fetched the latest block from EL', { latestBlock: toBlock })
 
-    logger.info(`Latest block is ${toBlock}`)
-    logger.info(
-      `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
-    )
+    logger.info('Fetching request events from the Exit Bus', {
+      eventsNumber,
+      fromBlock,
+      toBlock,
+    })
 
     const eventsForEject = await executionApi.logs(fromBlock, toBlock)
 
-    logger.info('Loaded events', { count: eventsForEject.length })
-    logger.info('Loaded messages', { count: messages.length })
+    logger.info('Loaded events', { amount: eventsForEject.length })
 
     for (const event of eventsForEject) {
       logger.info('Handling exit', event)
       try {
         await exit(messages, event.validatorPubkey)
-      } catch (e: unknown) {
-        logger.error(
-          `Unable to process exit for ${event.validatorPubkey}`,
-          e instanceof Error && e.message ? e.message : undefined
-        )
+      } catch (e) {
+        logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
       }
     }
 
