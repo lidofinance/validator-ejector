@@ -25,8 +25,6 @@ export const makeExecutionApi = (
     ? EXECUTION_NODE.slice(0, -1)
     : EXECUTION_NODE
 
-  let exitBusAddress: string
-
   const syncing = async () => {
     const res = await request(normalizedUrl, {
       method: 'POST',
@@ -70,6 +68,8 @@ export const makeExecutionApi = (
   }
 
   const logs = async (fromBlock: number, toBlock: number) => {
+    const exitBusAddress = await resolveExitBusAddress()
+
     const event = ethers.utils.Fragment.from(
       'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
@@ -155,16 +155,16 @@ export const makeExecutionApi = (
 
       const { result } = funcDTO(json)
 
-      const decoded = iface.decodeFunctionResult(
+      const exitBusAddress = iface.decodeFunctionResult(
         'validatorsExitBusOracle',
         result
-      )[0]
-
-      exitBusAddress = decoded
+      )[0] as string
 
       logger.info('Resolved Exit Bus contract address using the Locator', {
         exitBusAddress,
       })
+
+      return exitBusAddress
     } catch (e) {
       logger.error('Unable to resolve Exit Bus contract', e)
       throw new Error(
