@@ -267,7 +267,9 @@ export const makeMessagesProcessor = ({
 
     const eventsForEject = await executionApi.logs(fromBlock, toBlock)
 
-    logger.info('Loaded events', { amount: eventsForEject.length })
+    logger.info('Handling ejection requests', {
+      amount: eventsForEject.length,
+    })
 
     for (const event of eventsForEject) {
       logger.info('Handling exit', event)
