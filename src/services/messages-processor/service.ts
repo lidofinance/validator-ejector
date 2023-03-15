@@ -253,6 +253,8 @@ export const makeMessagesProcessor = ({
       loadedMessages: messages.length,
     })
 
+    await executionApi.resolveExitBusAddress()
+
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
     logger.info('Fetched the latest block from EL', { latestBlock: toBlock })

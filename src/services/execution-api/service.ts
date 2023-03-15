@@ -25,6 +25,8 @@ export const makeExecutionApi = (
     ? EXECUTION_NODE.slice(0, -1)
     : EXECUTION_NODE
 
+  let exitBusAddress: string
+
   const syncing = async () => {
     const res = await request(normalizedUrl, {
       method: 'POST',
