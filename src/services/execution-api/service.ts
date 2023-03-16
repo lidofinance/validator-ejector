@@ -219,7 +219,7 @@ export const makeExecutionApi = (
         await verifyEvent(
           validatorPubkey,
           log.transactionHash,
-          parseInt(log.blockNumber, 10)
+          parseInt(log.blockNumber)
         )
         logger.debug('Event security check passed', { validatorPubkey })
       } catch (e) {
