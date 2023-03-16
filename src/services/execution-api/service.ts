@@ -324,11 +324,9 @@ export const makeExecutionApi = (
       type: parseInt(originTx.type),
       chainId: parseInt(originTx.chainId),
     }
-    const resolvedTx = await ethers.utils.resolveProperties(txData)
-    const encodedTx = ethers.utils.serializeTransaction(resolvedTx) // RLP encoded tx
+    const encodedTx = ethers.utils.serializeTransaction(txData) // RLP encoded tx
     const hash = ethers.utils.keccak256(encodedTx)
-    const hashBytes = ethers.utils.arrayify(hash)
-    const recoveredAddress = ethers.utils.recoverAddress(hashBytes, sig)
+    const recoveredAddress = ethers.utils.recoverAddress(hash, sig)
 
     // Address can be passed as checksummed or not, account for that
     const allowlist = ORACLE_ADDRESSES_ALLOWLIST.map((address) =>
