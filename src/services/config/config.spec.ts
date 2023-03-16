@@ -44,6 +44,6 @@ describe('config module', () => {
     const makeConf = () =>
       makeConfig({ logger, env: validConfig as unknown as NodeJS.ProcessEnv })
 
-    expect(makeConf).toBeDefined()
+    expect(makeConf).not.toThrow()
   })
 })
