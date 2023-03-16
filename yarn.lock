@@ -3280,10 +3280,10 @@ levn@^0.4.1:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
 
-lido-nanolib@1.3.2:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/lido-nanolib/-/lido-nanolib-1.3.2.tgz#d1b82d97645e7dde37bd3c2287bc163064548e79"
-  integrity sha512-dIp2qr9j4jXJhxK5UdsV6zhMl1fKc/pE4vxbRGobUDPTubmSonfSa3wD8eTyDtj0GV0ILHxoMFUKvdL9lCbMUg==
+lido-nanolib@1.3.4:
+  version "1.3.4"
+  resolved "https://registry.yarnpkg.com/lido-nanolib/-/lido-nanolib-1.3.4.tgz#d6277a56cdf99bd809f5c272fa95e26e6c173a82"
+  integrity sha512-NrSsagK28kNkLYCxOCQ/FB46uqWPlJ7F8vqGhC3ue4C7GCTKrSGcHiIBicam1NADKVSxWOmUferPpKFJccQ3/w==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
