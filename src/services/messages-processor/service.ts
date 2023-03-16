@@ -253,6 +253,10 @@ export const makeMessagesProcessor = ({
       loadedMessages: messages.length,
     })
 
+    // Resolving contract addresses on each job to automatically pick up changes without requiring a restart
+    await executionApi.resolveExitBusAddress()
+    await executionApi.resolveConsensusAddress()
+
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
     logger.info('Fetched the latest block from EL', { latestBlock: toBlock })
@@ -265,7 +269,9 @@ export const makeMessagesProcessor = ({
 
     const eventsForEject = await executionApi.logs(fromBlock, toBlock)
 
-    logger.info('Loaded events', { amount: eventsForEject.length })
+    logger.info('Handling ejection requests', {
+      amount: eventsForEject.length,
+    })
 
     for (const event of eventsForEject) {
       logger.info('Handling exit', event)

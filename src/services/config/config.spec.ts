@@ -11,6 +11,7 @@ const validConfig = {
   BLOCKS_PRELOAD: 10000,
   BLOCKS_LOOP: 100,
   MESSAGES_LOCATION: 'messages',
+  ORACLE_ADDRESSES_ALLOWLIST: '["0x123","0x12345"]',
   HTTP_PORT: 8080,
   RUN_METRICS: true,
   RUN_HEALTH_CHECK: true,
@@ -44,6 +45,6 @@ describe('config module', () => {
     const makeConf = () =>
       makeConfig({ logger, env: validConfig as unknown as NodeJS.ProcessEnv })
 
-    expect(makeConf).toBeDefined()
+    expect(makeConf).not.toThrow()
   })
 })

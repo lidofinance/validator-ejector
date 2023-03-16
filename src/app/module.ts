@@ -51,7 +51,7 @@ export const bootstrap = async () => {
         loggerMiddleware(logger),
         prom(metrics.executionRequestDurationSeconds),
         notOkError(),
-        abort(5000),
+        abort(30_000),
       ]),
       logger,
       config
@@ -62,7 +62,7 @@ export const bootstrap = async () => {
         retry(3),
         loggerMiddleware(logger),
         prom(metrics.consensusRequestDurationSeconds),
-        abort(5000),
+        abort(30_000),
       ]),
       logger,
       config
