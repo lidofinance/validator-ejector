@@ -8,7 +8,10 @@ import {
   logsDTO,
   funcDTO,
   txDTO,
+  genericArrayOfStringsDTO,
 } from './dto.js'
+
+const ORACLE_FRAME_BLOCKS = 7200
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
@@ -97,9 +100,7 @@ export const makeExecutionApi = (
     return result
   }
 
-  // TODO: Decide for how long time to look back for the events
   const consensusReachedTransactionHash = async (
-    fromBlock: number,
     toBlock: number,
     refSlot: string,
     hash: string
@@ -119,7 +120,7 @@ export const makeExecutionApi = (
         params: [
           {
             fromBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(fromBlock).toHexString()
+              ethers.BigNumber.from(toBlock - ORACLE_FRAME_BLOCKS).toHexString()
             ),
             toBlock: ethers.utils.hexStripZeros(
               ethers.BigNumber.from(toBlock).toHexString()
@@ -149,7 +150,6 @@ export const makeExecutionApi = (
       ...iface.parseLog(event),
     }))
 
-    // TODO: DTO
     const found = decoded.find((event) => event.args.report === hash)
 
     if (!found) throw new Error('Failed to find transaction by report hash')
@@ -209,7 +209,7 @@ export const makeExecutionApi = (
 
     for (const log of result) {
       const parsedLog = iface.parseLog(log)
-      // TODO: DTO
+
       const { validatorIndex, validatorPubkey } = parsedLog.args as unknown as {
         validatorIndex: ethers.BigNumber
         validatorPubkey: string
@@ -219,8 +219,7 @@ export const makeExecutionApi = (
         await verifyEvent(
           validatorPubkey,
           log.transactionHash,
-          fromBlock,
-          toBlock
+          parseInt(log.blockNumber, 10)
         )
         logger.debug('Event security check passed', { validatorPubkey })
       } catch (e) {
@@ -240,7 +239,6 @@ export const makeExecutionApi = (
   const verifyEvent = async (
     validatorPubkey: string,
     transactionHash: string,
-    fromBlock: number,
     toBlock: number
   ) => {
     // Final tx in which report data has been finalized
@@ -257,7 +255,6 @@ export const makeExecutionApi = (
       finalizationTx.input
     )
 
-    // TODO: DTO
     const { data, refSlot, consensusVersion, requestsCount, dataFormat } =
       finalizationDecoded.data as {
         data: string
@@ -281,7 +278,6 @@ export const makeExecutionApi = (
     const dataHash = ethers.utils.keccak256(encodedData)
 
     const originTxHash = await consensusReachedTransactionHash(
-      fromBlock,
       toBlock,
       refSlot.toString(),
       dataHash
@@ -376,13 +372,11 @@ export const makeExecutionApi = (
 
       const { result } = funcDTO(json)
 
-      // TODO: DTO
-      const decoded = iface.decodeFunctionResult(
-        'validatorsExitBusOracle',
-        result
-      )[0] as string
+      const decoded = iface.decodeFunctionResult(func.name, result)
 
-      exitBusAddress = decoded
+      const validated = genericArrayOfStringsDTO(decoded)
+
+      exitBusAddress = validated[0] // only returns one value
 
       logger.info('Resolved Exit Bus contract address using the Locator', {
         exitBusAddress,
@@ -425,10 +419,11 @@ export const makeExecutionApi = (
 
       const { result } = funcDTO(json)
 
-      // TODO: DTO
-      const decoded = iface.decodeFunctionResult(func.name, result)[0] as string
+      const decoded = iface.decodeFunctionResult(func.name, result)
 
-      consensusAddress = decoded
+      const validated = genericArrayOfStringsDTO(decoded)
+
+      consensusAddress = validated[0] // only returns one value
 
       logger.info('Resolved Consensus contract address', {
         consensusAddress,

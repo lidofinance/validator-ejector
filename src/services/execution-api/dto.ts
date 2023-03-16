@@ -29,6 +29,7 @@ export const logsDTO = (json: unknown) =>
           obj(event, (event) => ({
             topics: arr(event.topics, (topics) => topics.map(str)),
             data: str(event.data),
+            blockNumber: str(event.blockNumber),
             transactionHash: str(event.transactionHash),
           }))
         )
@@ -69,4 +70,11 @@ export const txDTO = (json: unknown) =>
       })),
     }),
     'Invalid return for a transaction data call'
+  )
+
+export const genericArrayOfStringsDTO = (json: unknown) =>
+  arr(
+    json,
+    (json) => json.map((address) => str(address)),
+    'Decoded generic function return format is not an array of strings'
   )
