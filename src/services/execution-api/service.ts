@@ -143,7 +143,7 @@ export const makeExecutionApi = (
 
     const { result } = logsDTO(json)
 
-    logger.debug(`Loaded ${result.length} ConsensusReached events`)
+    logger.debug('Loaded ConsensusReached events', { amount: result.length })
 
     const decoded = result.map((event) => ({
       transactionHash: event.transactionHash,
@@ -200,7 +200,7 @@ export const makeExecutionApi = (
 
     const { result } = logsDTO(json)
 
-    logger.info(`Loaded ${result.length} ValidatorExitRequest events`)
+    logger.info('Loaded ValidatorExitRequest events', { amount: result.length })
 
     const validatorsToEject: {
       validatorIndex: string
