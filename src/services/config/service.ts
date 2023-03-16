@@ -49,10 +49,9 @@ export const makeConfig = ({
 
   MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
 
-  BLOCKS_PRELOAD:
-    optional(() => num(env.BLOCKS_PRELOAD)) ?? (24 * 60 * 60) / 12, // 1 day of blocks
-  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 32, // 1 epoch
-  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 32 * 12 * 1000, // 1 epoch
+  BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
+  JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
   HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? false,
   RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
