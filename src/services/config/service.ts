@@ -41,6 +41,11 @@ export const makeConfig = ({
     env.MESSAGES_LOCATION,
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
+  ORACLE_ADDRESSES_ALLOWLIST: json_arr(
+    env.ORACLE_ADDRESSES_ALLOWLIST,
+    (oracles) => oracles.map(str),
+    'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
+  ),
 
   MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
 

@@ -253,7 +253,9 @@ export const makeMessagesProcessor = ({
       loadedMessages: messages.length,
     })
 
+    // Resolving contract addresses on each job to automatically pick up changes without requiring a restart
     await executionApi.resolveExitBusAddress()
+    await executionApi.resolveConsensusAddress()
 
     const toBlock = await executionApi.latestBlockNumber()
     const fromBlock = toBlock - eventsNumber
