@@ -99,3 +99,9 @@ Available metrics:
 - Node requests are repeated on error or timeouts
 - Amount of messages left to send out can be checked using metrics
 - Dry run mode to test setup
+
+## TODO
+
+1. check sync blocksLoop and JOB_INTERVAL
+2. check message validation in real time as fork could be changed during app working time
+3. remove typechain

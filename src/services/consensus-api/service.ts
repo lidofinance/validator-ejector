@@ -8,6 +8,8 @@ export const makeConsensusApi = (
   logger: ReturnType<typeof makeLogger>,
   { CONSENSUS_NODE, DRY_RUN }: { CONSENSUS_NODE: string; DRY_RUN: boolean }
 ) => {
+  // TODO: check url node normalization
+  // https://nodejs.org/dist/latest-v19.x/docs/api/url.html
   const normalizedUrl = CONSENSUS_NODE.endsWith('/')
     ? CONSENSUS_NODE.slice(0, -1)
     : CONSENSUS_NODE
@@ -52,7 +54,7 @@ export const makeConsensusApi = (
     const req = await request(
       `${normalizedUrl}/eth/v1/beacon/states/finalized/validators/${id}`
     )
-
+    // TODO: refactoring
     if (!req.ok) {
       const { message } = (await req.json()) as { message: string }
       throw new Error(message)
@@ -65,6 +67,7 @@ export const makeConsensusApi = (
     const status = result.data.status
 
     let isExiting: boolean
+    // TODO: use exit_epoch != far_future_epoch check instead
     switch (status) {
       case 'active_exiting':
       case 'exited_unslashed':
