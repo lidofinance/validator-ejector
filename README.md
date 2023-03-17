@@ -74,9 +74,9 @@ Don't forget env variables in the last command.
 
 ## Metrics
 
-Enable metrics endpoint via RUN_METRICS=true and METRICS_PORT=1234 environment variables.
+Enable metrics endpoint by setting `HTTP_PORT=1234` and `RUN_METRICS=true` environment variables.
 
-Metrics will be available on `$HOST:$METRICS_PORT/metrics`.
+Metrics will be available on `$HOST:$HTTP_PORT/metrics`.
 
 Available metrics:
 
@@ -93,8 +93,9 @@ Available metrics:
 - Invalid files in messages folder are noticed
 - Exit JSON structure is checked
 - Exit signature is fully validated
-- Exit event report hashes are checked to be originat
-- Exit events original consensus transactions are checked to be signed by whitelisted Oracles
+- Exit event pubkeys are checked to exist in transaction data
+- Exit event report data hashes are checked to match hashes in original submitReport() Oracle transactions
+- Exit events original consensus transactions are checked to be signed by allowlisted Oracles
 - Node requests are repeated on error or timeouts
 - Amount of messages left to send out can be checked using metrics
 - Dry run mode to test setup
