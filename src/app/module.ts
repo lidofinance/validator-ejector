@@ -19,6 +19,7 @@ import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
 import { makeAppInfoReader } from '../services/appInfoReader/service.js'
+import { makeJobProcessor } from '../services/job-processor/service.js'
 
 import { makeApp } from './service.js'
 
@@ -75,15 +76,21 @@ export const bootstrap = async () => {
       config,
       reader,
       consensusApi,
-      executionApi,
       metrics,
+    })
+
+    const jobProcessor = makeJobProcessor({
+      logger,
+      config,
+      executionApi,
+      messagesProcessor,
     })
 
     const job = makeJobRunner('validator-ejector', {
       config,
       logger,
       metric: metrics.jobDuration,
-      handler: messagesProcessor.runJob,
+      handler: jobProcessor.handleJob,
     })
 
     const httpHandler = makeHttpHandler({ register, config })
