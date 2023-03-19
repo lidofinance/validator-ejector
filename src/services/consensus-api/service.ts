@@ -48,6 +48,12 @@ export const makeConsensusApi = (
     return data
   }
 
+  const isExiting = async (validatorPubkey: string) => {
+    return await (
+      await validatorInfo(validatorPubkey)
+    ).isExiting
+  }
+
   const validatorInfo = async (id: string) => {
     const req = await request(
       `${normalizedUrl}/eth/v1/beacon/states/finalized/validators/${id}`
@@ -117,5 +123,6 @@ export const makeConsensusApi = (
     state,
     validatorInfo,
     exitRequest,
+    isExiting,
   }
 }

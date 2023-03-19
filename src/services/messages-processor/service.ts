@@ -215,13 +215,6 @@ export const makeMessagesProcessor = ({
   }
 
   const exit = async (messages: ExitMessage[], pubKey: string) => {
-    if ((await consensusApi.validatorInfo(pubKey)).isExiting) {
-      logger.debug(
-        `Exit was initiated, but ${pubKey} is already exiting(ed), skipping`
-      )
-      return
-    }
-
     const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
     const message = messages.find(
       (msg) => msg.message.validator_index === validatorIndex

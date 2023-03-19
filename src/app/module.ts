@@ -20,6 +20,7 @@ import { makeMessagesProcessor } from '../services/messages-processor/service.js
 import { makeHttpHandler } from '../services/http-handler/service.js'
 import { makeAppInfoReader } from '../services/app-info-reader/service.js'
 import { makeJobProcessor } from '../services/job-processor/service.js'
+import { makeWebhookProcessor } from '../services/webhook-sender/service.js'
 
 import { makeApp } from './service.js'
 
@@ -79,11 +80,19 @@ export const bootstrap = async () => {
       metrics,
     })
 
+    const webhookProcessor = makeWebhookProcessor(
+      makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
+      logger,
+      config
+    )
+
     const jobProcessor = makeJobProcessor({
       logger,
       config,
       executionApi,
+      consensusApi,
       messagesProcessor,
+      webhookProcessor,
     })
 
     const job = makeJobRunner('validator-ejector', {

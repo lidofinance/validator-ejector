@@ -58,6 +58,8 @@ export const makeConfig = ({
   RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
 
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
+
+  WEBHOOK_ENDPOINT: optional(() => str(env.WEBHOOK_ENDPOINT)),
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({

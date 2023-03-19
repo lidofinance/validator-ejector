@@ -2,6 +2,8 @@ import type { LoggerService } from 'lido-nanolib'
 import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'
+import type { ConsensusApiService } from '../consensus-api/service.js'
+import type { WebhookProcessorService } from '../webhook-sender/service.js'
 
 type ExitMessage = {
   message: {
@@ -17,12 +19,16 @@ export const makeJobProcessor = ({
   logger,
   config,
   executionApi,
+  consensusApi,
   messagesProcessor,
+  webhookProcessor,
 }: {
   logger: LoggerService
   config: ConfigService
   executionApi: ExecutionApiService
+  consensusApi: ConsensusApiService
   messagesProcessor: MessagesProcessorService
+  webhookProcessor: WebhookProcessorService
 }) => {
   const handleJob = async ({
     eventsNumber,
@@ -60,7 +66,15 @@ export const makeJobProcessor = ({
     for (const event of eventsForEject) {
       logger.info('Handling exit', event)
       try {
+        if (await consensusApi.isExiting(event.validatorPubkey)) {
+          logger.debug(
+            `Exit was initiated, but ${event.validatorPubkey} is already exiting(ed), skipping`
+          )
+          return
+        }
+
         await messagesProcessor.exit(messages, event.validatorPubkey)
+        await webhookProcessor.send(event)
       } catch (e) {
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
       }
