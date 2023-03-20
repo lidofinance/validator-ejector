@@ -57,9 +57,9 @@ export const makeConfig = ({
   RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
   RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
 
-  DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
-
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
+
+  DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({

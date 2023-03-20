@@ -37,6 +37,7 @@ Options are configured via environment variables.
 | LOGGER_LEVEL               | No       | info                | Severity level from which to start showing errors eg info will hide debug messages                                           |
 | LOGGER_FORMAT              | No       | simple              | Simple or JSON log output: simple/json                                                                                       |
 | LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                            |
+| VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook      | POST validator info to an endpoint instead of sending out an exit message when exit is initiated                             |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                   |
 
 ## Preparing Exit Messages
