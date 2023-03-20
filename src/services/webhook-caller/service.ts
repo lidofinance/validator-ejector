@@ -16,7 +16,11 @@ export const makeWebhookProcessor = (
     }
   ) => {
     try {
-      await request(url)
+      await request(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(event),
+      })
       logger.info('Voluntary exit webhook called successfully', event)
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
