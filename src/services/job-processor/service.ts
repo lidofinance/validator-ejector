@@ -73,8 +73,11 @@ export const makeJobProcessor = ({
           return
         }
 
-        await messagesProcessor.exit(messages, event.validatorPubkey)
-        await webhookProcessor.send(event)
+        if (config.VALIDATOR_EXIT_WEBHOOK) {
+          await webhookProcessor.send(config.VALIDATOR_EXIT_WEBHOOK, event)
+        } else {
+          await messagesProcessor.exit(messages, event.validatorPubkey)
+        }
       } catch (e) {
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
       }

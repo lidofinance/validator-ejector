@@ -83,7 +83,7 @@ export const bootstrap = async () => {
     const webhookProcessor = makeWebhookProcessor(
       makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
       logger,
-      config
+      metrics
     )
 
     const jobProcessor = makeJobProcessor({
