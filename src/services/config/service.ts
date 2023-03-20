@@ -59,7 +59,7 @@ export const makeConfig = ({
 
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 
-  WEBHOOK_ENDPOINT: optional(() => str(env.WEBHOOK_ENDPOINT)),
+  VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({

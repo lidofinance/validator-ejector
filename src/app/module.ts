@@ -20,7 +20,7 @@ import { makeMessagesProcessor } from '../services/messages-processor/service.js
 import { makeHttpHandler } from '../services/http-handler/service.js'
 import { makeAppInfoReader } from '../services/app-info-reader/service.js'
 import { makeJobProcessor } from '../services/job-processor/service.js'
-import { makeWebhookProcessor } from '../services/webhook-sender/service.js'
+import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 
 import { makeApp } from './service.js'
 
