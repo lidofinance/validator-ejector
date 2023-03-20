@@ -150,6 +150,9 @@ export const makeMessagesProcessor = ({
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
         continue
       }
 
