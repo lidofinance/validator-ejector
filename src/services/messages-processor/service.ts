@@ -150,7 +150,7 @@ export const makeMessagesProcessor = ({
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
-        return
+        continue
       }
 
       const pubKey = fromHex(validatorInfo.pubKey)
