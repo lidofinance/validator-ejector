@@ -70,7 +70,7 @@ export const makeJobProcessor = ({
           logger.debug(
             `Exit was initiated, but ${event.validatorPubkey} is already exiting(ed), skipping`
           )
-          return
+          continue
         }
 
         if (config.VALIDATOR_EXIT_WEBHOOK) {
