@@ -129,9 +129,11 @@ export const makeMessagesProcessor = ({
     return json
   }
 
-  const verify = async (messages: ExitMessage[]): Promise<void> => {
+  const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
+
+    const validMessages: ExitMessage[] = []
 
     for (const m of messages) {
       const { message, signature: rawSignature } = m
@@ -145,12 +147,18 @@ export const makeMessagesProcessor = ({
           `Failed to get validator info for index ${validatorIndex}`,
           e
         )
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
         continue
       }
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
-        return
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
       }
 
       const pubKey = fromHex(validatorInfo.pubKey)
@@ -194,13 +202,22 @@ export const makeMessagesProcessor = ({
       isValid = verifyFork(CURRENT_FORK)
       if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
 
-      if (!isValid)
+      if (!isValid) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
+
+      validMessages.push(m)
 
       metrics.exitMessages.inc({
-        valid: isValid.toString(),
+        valid: 'true',
       })
     }
+
+    return validMessages
   }
 
   const exit = async (messages: ExitMessage[], pubKey: string) => {

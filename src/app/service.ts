@@ -29,17 +29,18 @@ export const makeApp = ({
 
     logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
     const messages = await messagesProcessor.load()
-    logger.info(`Loaded ${messages.length} messages`)
+    logger.info('Loaded messages', { amount: messages.length })
 
     logger.info('Validating messages')
-    await messagesProcessor.verify(messages)
+    const verifiedMessages = await messagesProcessor.verify(messages)
+    logger.info('Finished validation', { validAmount: verifiedMessages.length })
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
-    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages })
+    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages: verifiedMessages })
 
     logger.info(
       `Starting ${
@@ -47,7 +48,7 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    job.pooling({ eventsNumber: BLOCKS_LOOP, messages })
+    job.pooling({ eventsNumber: BLOCKS_LOOP, messages: verifiedMessages })
   }
 
   return { run }
