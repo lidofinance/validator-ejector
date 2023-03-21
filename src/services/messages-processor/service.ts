@@ -147,6 +147,9 @@ export const makeMessagesProcessor = ({
           `Failed to get validator info for index ${validatorIndex}`,
           e
         )
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
         continue
       }
 
