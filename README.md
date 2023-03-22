@@ -17,7 +17,6 @@ This service has to be run in a single instance as it expects to fulfil every re
 ## Configuration
 
 Options are configured via environment variables.
-
 | Variable                   | Required | Default/Example     | Description                                                                                                                                                                                                                                             |
 | -------------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | EXECUTION_NODE             | Yes      | http://1.2.3.4:8545 | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
@@ -29,6 +28,7 @@ Options are configured via environment variables.
 | VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook      | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]           | Allowed Oracle addresses to accept transactions from [Goerli](https://testnet.testnet.fi/#/lido-testnet-prater/0x24d8451bc07e7af4ba94f69acdd9ad3c6579d9fb/) / [Mainnet](https://mainnet.lido.fi/#/lido-dao/0x442af784a788a5bd6f42a01ebe9f287a871243fb/) |
 | MESSAGES_PASSWORD          | No       | password            | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory                                                                                                                                         |
+| MESSAGES_PASSWORD_FILE     | No       | password_file       | Path to file with password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory                                                                                                                       |
 | BLOCKS_PRELOAD             | No       | 50000               | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks                                                                                                                            |
 | BLOCKS_LOOP                | No       | 64                  | Amount of blocks to load events from on every poll. Defaults to 2 epochs                                                                                                                                                                                |
 | JOB_INTERVAL               | No       | 384000              | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                                                                                                                                                |
@@ -38,7 +38,9 @@ Options are configured via environment variables.
 | LOGGER_LEVEL               | No       | info                | Severity level from which to start showing errors eg info will hide debug messages                                                                                                                                                                      |
 | LOGGER_FORMAT              | No       | simple              | Simple or JSON log output: simple/json                                                                                                                                                                                                                  |
 | LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                                                                                                                                                       |
+| LOGGER_SECRETS_FILE        | No       | secret_file         | Path to file with json string array of exact secrets to sanitize in logs                                                                                                                                                                                |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                                                                                                                                              |
+
 
 ## Preparing Exit Messages
 

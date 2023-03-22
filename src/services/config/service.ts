@@ -8,6 +8,7 @@ import {
   log_format,
   json_arr,
 } from 'lido-nanolib'
+import { readFileSync } from 'fs';
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -46,7 +47,7 @@ export const makeConfig = ({
   MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-  MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
+  MESSAGES_PASSWORD: extractOptionalWithFile(env, 'MESSAGES_PASSWORD'),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
@@ -64,6 +65,11 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
   LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
   LOGGER_SECRETS:
     optional(() =>
-      json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+      json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) => secrets.map(str))
     ) ?? [],
 })
+
+
+function extractOptionalWithFile(env, envName: string): string|null {
+  return str(env[envName] ?? (env[envName + '_FILE'] && readFileSync(env[envName + '_FILE'], 'utf-8').toString()))
+}
