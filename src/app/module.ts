@@ -33,13 +33,14 @@ export const bootstrap = async () => {
   try {
     const loggerConfig = makeLoggerConfig({ env: process.env })
 
+    const sanitizer = loggerConfig.LOGGER_PASSWORD ? {
+      secrets: loggerConfig.LOGGER_SECRETS,
+      replacer: '<secret>',
+    } : undefined
     const logger = makeLogger({
       level: loggerConfig.LOGGER_LEVEL,
       format: loggerConfig.LOGGER_FORMAT,
-      sanitizer: {
-        secrets: loggerConfig.LOGGER_SECRETS,
-        replacer: '<secret>',
-      },
+      sanitizer,
     })
     const config = makeConfig({ logger, env: process.env })
 

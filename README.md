@@ -37,6 +37,7 @@ Options are configured via environment variables.
 | RUN_HEALTH_CHECK           | No       | false               | Enable health check endpoint                                                                                                 |
 | LOGGER_LEVEL               | No       | info                | Severity level from which to start showing errors eg info will hide debug messages                                           |
 | LOGGER_FORMAT              | No       | simple              | Simple or JSON log output: simple/json                                                                                       |
+| LOGGER_PASSWORD            | No       | false               | Enable sanitize in logs                                                                             |
 | LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                            |
 | LOGGER_SECRETS_FILE        | No       | secret_file         | Path to file with json string array of exact secrets to sanitize in logs                                                                            |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                   |
