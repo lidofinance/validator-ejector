@@ -13,7 +13,6 @@ export const makeApp = ({
   const {
     OPERATOR_ID,
     BLOCKS_PRELOAD,
-    MESSAGES_LOCATION,
     BLOCKS_LOOP,
     JOB_INTERVAL,
   } = config
@@ -27,7 +26,7 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
+    logger.info(`Loading messages`)
     const messages = await messagesProcessor.load()
     logger.info('Loaded messages', { amount: messages.length })
 

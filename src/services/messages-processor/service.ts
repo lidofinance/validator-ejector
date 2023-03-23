@@ -9,11 +9,12 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
 import type { LoggerService } from 'lido-nanolib'
-import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
+import type { S3StoreService } from '../s3-store/service.js'
+import type { GsStoreService } from '../gs-store/service.js'
 
 type ExitMessage = {
   message: {
@@ -33,39 +34,35 @@ export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
 export const makeMessagesProcessor = ({
   logger,
   config,
-  reader,
   consensusApi,
   executionApi,
   metrics,
+  s3Service,
+  gsService,
 }: {
   logger: LoggerService
   config: ConfigService
-  reader: ReaderService
   consensusApi: ConsensusApiService
   executionApi: ExecutionApiService
   metrics: MetricsService
+  s3Service: S3StoreService
+  gsService: GsStoreService
 }) => {
   const load = async () => {
-    if (!(await reader.dirExists(config.MESSAGES_LOCATION))) {
-      logger.error('Messages directory is not accessible, exiting...')
-      process.exit()
-    }
-
-    const folder = await reader.dir(config.MESSAGES_LOCATION)
     const messages: ExitMessage[] = []
 
-    for (const file of folder) {
-      if (!file.endsWith('.json')) {
-        logger.warn(
-          `File with invalid extension found in messages folder: ${file}`
-        )
+    for (const file of config.MESSAGES_LOCATIONS) {
+      let read: string
+      try {
+        read = await readFile(file)
+      } catch (error) {
+        logger.warn(`Unparseable read file ${file}`, error)
         continue
       }
-      const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
-
+      
       let json: Record<string, unknown>
       try {
-        json = JSON.parse(read.toString())
+        json = JSON.parse(read)
       } catch (error) {
         logger.warn(`Unparseable JSON in file ${file}`, error)
         metrics.exitMessages.inc({
@@ -103,6 +100,10 @@ export const makeMessagesProcessor = ({
     }
 
     return messages
+  }
+
+  const readFile = async (uri: string): Promise<string> => {
+    return uri.startsWith('s3://') ? s3Service.read(uri) : gsService.read(uri)
   }
 
   const decryptMessage = async (input: Record<string, unknown>) => {

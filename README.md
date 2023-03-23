@@ -25,7 +25,13 @@ Options are configured via environment variables.
 | LOCATOR_ADDRESS            | Yes      | 0x123               | Address of the Locator contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)                |
 | STAKING_MODULE_ID          | Yes      | 123                 | Staking Module ID for which operator ID is set                                                                               |
 | OPERATOR_ID                | Yes      | 123                 | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
-| MESSAGES_LOCATION          | Yes      | messages            | Folder to load json exit message files from                                                                                  |
+| MESSAGES_LOCATIONS         | Yes      | []                  | Array with links to json exit message files from                                                                                  |
+| S3_REGION                  | No       | eu-central-1        | S3 region for accessing to json exit message files from                                                                                  |
+| S3_SECRET_ACCESS_KEY       | No       |                     | S3 secret access key for accessing to json exit message files from                                                                                  |
+| S3_SECRET_ACCESS_KEY_FILE  | No       |                     | Path to file with S3 secret access key for accessing to json exit message files from                                                                                  |
+| S3_ACCESS_KEY_ID           | No       |                     | S3 access key id for accessing to json exit message files from                                                                                  |
+| GS_CREDENTIAL_FILE         | No       |                     | Path to Google Cloud Store credential file for accessing to json exit message files from                                                                                  |
+| GS_PROJECT_ID              | No       |                     | Project ID in Google Cloud Store with json exit message files from                                                                                  |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]           | Allowed Oracle addresses to accept transactions from                                                                         |
 | MESSAGES_PASSWORD          | No       | password            | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
 | MESSAGES_PASSWORD_FILE     | No       | password_file       | Path to file with password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
