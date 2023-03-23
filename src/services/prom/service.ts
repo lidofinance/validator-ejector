@@ -18,6 +18,8 @@ export const makeMetrics = () => {
     labelNames: ['valid'] as const,
   })
   register.registerMetric(exitMessages)
+  exitMessages.labels('true').inc(0)
+  exitMessages.labels('false').inc(0)
 
   const exitActions = new client.Counter({
     name: PREFIX + 'exit_actions',
@@ -25,6 +27,8 @@ export const makeMetrics = () => {
     labelNames: ['result'] as const,
   })
   register.registerMetric(exitActions)
+  exitActions.labels('success').inc(0)
+  exitActions.labels('error').inc(0)
 
   const pollingLastBlocksDurationSeconds = new client.Histogram({
     name: PREFIX + 'polling_last_blocks_duration_seconds',
