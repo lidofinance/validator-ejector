@@ -38,16 +38,45 @@ export const makeConfig = ({
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'
   ),
+  MESSAGES_LOCATIONS: 
+    optional(() =>
+      json_arr(env.MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
+    ) ?? [],
+
+  S3_REGION: str(
+    env.S3_REGION,
+    'Please, setup S3_REGION'
+  ),
+  S3_SECRET_ACCESS_KEY: str(
+    extractOptionalWithFile(env, 'S3_SECRET_ACCESS_KEY'),
+    'Please, setup S3_SECRET_ACCESS_KEY'
+  ),
+  S3_ACCESS_KEY_ID: str(
+    env.S3_ACCESS_KEY_ID,
+    'Please, setup S3_ACCESS_KEY_ID'
+  ),
+
+  GS_CREDENTIAL_FILE: str(
+    env.GS_CREDENTIAL_FILE,
+    'Please, setup GS_CREDENTIAL_FILE'
+  ),
+  GS_PROJECT_ID: str(
+    env.GS_PROJECT_ID,
+    'Please, setup GS_PROJECT_ID'
+  ),
+
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),
     'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
   ),
 
-  MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-  MESSAGES_PASSWORD: extractOptionalWithFile(env, 'MESSAGES_PASSWORD'),
+  MESSAGES_PASSWORD: str(
+    extractOptionalWithFile(env, 'MESSAGES_PASSWORD'),
+    'Please, setup MESSAGES_PASSWORD'
+  ),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
@@ -72,5 +101,5 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
 
 
 function extractOptionalWithFile(env, envName: string): string|null {
-  return str(env[envName] ?? (env[envName + '_FILE'] && readFileSync(env[envName + '_FILE'], 'utf-8').toString()))
+  return env[envName] ?? (env[envName + '_FILE'] && readFileSync(env[envName + '_FILE'], 'utf-8').toString())
 }

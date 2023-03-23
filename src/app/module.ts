@@ -18,9 +18,11 @@ import { makeMetrics, register } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
-import { makeAppInfoReader } from '../services/app-info-reader/service.js'
+import { makeAppInfoReader } from '../services/appInfoReader/service.js'
 import { makeJobProcessor } from '../services/job-processor/service.js'
 import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
+import { makeS3Store } from '../services/s3-store/service.js'
+import { makeGsStore } from '../services/gs-store/service.js'
 
 import { makeApp } from './service.js'
 
@@ -86,12 +88,16 @@ export const bootstrap = async () => {
 
     const reader = makeReader()
 
+    const s3Service = makeS3Store({config})
+    const gsService = makeGsStore({config})
+
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
-      reader,
       consensusApi,
       metrics,
+      s3Service,
+      gsService,
     })
 
     const webhookProcessor = makeWebhookProcessor(

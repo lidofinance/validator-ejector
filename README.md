@@ -17,8 +17,7 @@ This service has to be run in a single instance as it expects to fulfil every re
 ## Configuration
 
 Options are configured via environment variables.
-| Variable                   | Required | Default/Example     | Description                                                                                                                                                                                                                                             |
-| -------------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | EXECUTION_NODE             | Yes      | http://1.2.3.4:8545 | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
 | CONSENSUS_NODE             | Yes      | http://1.2.3.4:5051 | Ethereum Consensus Node endpoint                                                                                                                                                                                                                        |
 | LOCATOR_ADDRESS            | Yes      | 0x123               | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
@@ -41,7 +40,6 @@ Options are configured via environment variables.
 | LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                                                                                                                                                       |
 | LOGGER_SECRETS_FILE        | No       | secret_file         | Path to file with json string array of exact secrets to sanitize in logs                                                                                                                                                                                |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                                                                                                                                              |
-
 
 
 ## Preparing Exit Messages
