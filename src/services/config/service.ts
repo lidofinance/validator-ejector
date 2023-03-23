@@ -63,6 +63,7 @@ export const makeConfig = ({
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
   LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
   LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+  LOGGER_PASSWORD: optional(() => bool(env.LOGGER_PASSWORD)) ?? false,
   LOGGER_SECRETS:
     optional(() =>
       json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) => secrets.map(str))
