@@ -45,6 +45,18 @@ export const bootstrap = async () => {
     })
     const config = makeConfig({ logger, env: process.env })
 
+    if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
+      throw new Error(
+        'Both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined. Ensure only one is set.'
+      )
+    }
+
+    if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
+      throw new Error(
+        'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+      )
+    }
+
     const metrics = makeMetrics()
 
     const executionApi = makeExecutionApi(
