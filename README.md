@@ -26,12 +26,6 @@ Options are configured via environment variables.
 | STAKING_MODULE_ID          | Yes      | 123                 | Staking Module ID for which operator ID is set                                                                               |
 | OPERATOR_ID                | Yes      | 123                 | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
 | MESSAGES_LOCATIONS         | Yes      | []                  | Array with links to json exit message files from                                                                                  |
-| S3_REGION                  | No       | eu-central-1        | S3 region for accessing to json exit message files from                                                                                  |
-| S3_SECRET_ACCESS_KEY       | No       |                     | S3 secret access key for accessing to json exit message files from                                                                                  |
-| S3_SECRET_ACCESS_KEY_FILE  | No       |                     | Path to file with S3 secret access key for accessing to json exit message files from                                                                                  |
-| S3_ACCESS_KEY_ID           | No       |                     | S3 access key id for accessing to json exit message files from                                                                                  |
-| GS_CREDENTIAL_FILE         | No       |                     | Path to Google Cloud Store credential file for accessing to json exit message files from                                                                                  |
-| GS_PROJECT_ID              | No       |                     | Project ID in Google Cloud Store with json exit message files from                                                                                  |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]           | Allowed Oracle addresses to accept transactions from                                                                         |
 | MESSAGES_PASSWORD          | No       | password            | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
 | MESSAGES_PASSWORD_FILE     | No       | password_file       | Path to file with password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
@@ -47,6 +41,12 @@ Options are configured via environment variables.
 | LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                            |
 | LOGGER_SECRETS_FILE        | No       | secret_file         | Path to file with json string array of exact secrets to sanitize in logs                                                                            |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                   |
+
+## Setting access to AWS S3 and GCS
+
+To connect to GCS is used [ADC](https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa)
+
+To connect to AWS S3 is used [Setting credentials](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html)
 
 ## Preparing Exit Messages
 

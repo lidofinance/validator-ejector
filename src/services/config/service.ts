@@ -43,28 +43,6 @@ export const makeConfig = ({
       json_arr(env.MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
     ) ?? [],
 
-  S3_REGION: str(
-    env.S3_REGION,
-    'Please, setup S3_REGION'
-  ),
-  S3_SECRET_ACCESS_KEY: str(
-    extractOptionalWithFile(env, 'S3_SECRET_ACCESS_KEY'),
-    'Please, setup S3_SECRET_ACCESS_KEY'
-  ),
-  S3_ACCESS_KEY_ID: str(
-    env.S3_ACCESS_KEY_ID,
-    'Please, setup S3_ACCESS_KEY_ID'
-  ),
-
-  GS_CREDENTIAL_FILE: str(
-    env.GS_CREDENTIAL_FILE,
-    'Please, setup GS_CREDENTIAL_FILE'
-  ),
-  GS_PROJECT_ID: str(
-    env.GS_PROJECT_ID,
-    'Please, setup GS_PROJECT_ID'
-  ),
-
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),
