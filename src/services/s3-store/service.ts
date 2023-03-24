@@ -1,21 +1,9 @@
-import type { ConfigService } from 'services/config/service'
-
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
-export const makeS3Store = ({
-  config: { S3_REGION, S3_SECRET_ACCESS_KEY, S3_ACCESS_KEY_ID },
-}: {
-  config: ConfigService
-}) => {
-  const client = new S3Client({
-    region: S3_REGION,
-    credentials: {
-      secretAccessKey: S3_SECRET_ACCESS_KEY,
-      accessKeyId: S3_ACCESS_KEY_ID
-    }
-  })
+export const makeS3Store = () => {
+  const client = new S3Client({})
   const paramReg = /^[sS]3:\/\/(?<Bucket>.+)\/(?<Key>.*)/
   return {
     async read(uri: string): Promise<string> {

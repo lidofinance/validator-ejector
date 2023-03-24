@@ -88,8 +88,8 @@ export const bootstrap = async () => {
 
     const reader = makeReader()
 
-    const s3Service = makeS3Store({config})
-    const gsService = makeGsStore({config})
+    const s3Service = makeS3Store()
+    const gsService = makeGsStore()
 
     const messagesProcessor = makeMessagesProcessor({
       logger,

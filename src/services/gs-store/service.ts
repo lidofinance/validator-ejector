@@ -1,18 +1,9 @@
-import type { ConfigService } from 'services/config/service'
-
 import {Storage} from '@google-cloud/storage';
 
 export type GsStoreService = ReturnType<typeof makeGsStore>
 
-export const makeGsStore = ({
-  config: { GS_CREDENTIAL_FILE, GS_PROJECT_ID },
-}: {
-  config: ConfigService
-}) => {
-  const storage = new Storage({
-    keyFilename: GS_CREDENTIAL_FILE,
-    projectId: GS_PROJECT_ID,
-  });
+export const makeGsStore = () => {
+  const storage = new Storage();
   const paramReg = /^gs:\/\/(?<Bucket>.+)\/(?<Key>.*)/
   return {
     async read(uri: string): Promise<string> {

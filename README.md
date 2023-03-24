@@ -17,13 +17,14 @@ This service has to be run in a single instance as it expects to fulfil every re
 ## Configuration
 
 Options are configured via environment variables.
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable                   | Required | Default/Example     | Description                                                                                                                                                                                                                                             |
+| -------------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | EXECUTION_NODE             | Yes      | http://1.2.3.4:8545 | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
 | CONSENSUS_NODE             | Yes      | http://1.2.3.4:5051 | Ethereum Consensus Node endpoint                                                                                                                                                                                                                        |
 | LOCATOR_ADDRESS            | Yes      | 0x123               | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
 | STAKING_MODULE_ID          | Yes      | 123                 | Staking Module ID for which operator ID is set                                                                                                                                                                                                          |
 | OPERATOR_ID                | Yes      | 123                 | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                                                                                                                                               |
-| MESSAGES_LOCATION          | No       | messages            | Folder to load json exit message files from. Required if you are using exit messages mode                                                                                                                                                               |
+| MESSAGES_LOCATIONS         | Yes      | []                  | Array with links to json exit message files from                                                                                                                                                                                                        |
 | VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook      | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]           | Allowed Oracle addresses to accept transactions from [Goerli](https://testnet.testnet.fi/#/lido-testnet-prater/0x24d8451bc07e7af4ba94f69acdd9ad3c6579d9fb/) / [Mainnet](https://mainnet.lido.fi/#/lido-dao/0x442af784a788a5bd6f42a01ebe9f287a871243fb/) |
 | MESSAGES_PASSWORD          | No       | password            | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory                                                                                                                                         |
@@ -41,6 +42,12 @@ Options are configured via environment variables.
 | LOGGER_SECRETS_FILE        | No       | secret_file         | Path to file with json string array of exact secrets to sanitize in logs                                                                                                                                                                                |
 | DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                                                                                                                                              |
 
+
+## Setting access to AWS S3 and GCS
+
+To connect to GCS is used [ADC](https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa)
+
+To connect to AWS S3 is used [Setting credentials](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html)
 
 ## Preparing Exit Messages
 
