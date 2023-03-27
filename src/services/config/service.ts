@@ -38,6 +38,10 @@ export const makeConfig = ({
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'
   ),
+  MESSAGES_LOCATION: str(
+    env.MESSAGES_LOCATION,
+    'Please, setup MESSAGES_LOCATION. Example: messages'
+  ),
   MESSAGES_LOCATIONS: 
     optional(() =>
       json_arr(env.MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
@@ -70,7 +74,10 @@ export const makeConfig = ({
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
   LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
   LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
-  LOGGER_PASSWORD: optional(() => bool(env.LOGGER_PASSWORD)) ?? false,
+  LOGGER_HIDDEN_ENV: 
+    optional(() =>
+      json_arr(env.LOGGER_HIDDEN_ENV, (secrets) => secrets.map(str))
+    ) ?? [],
   LOGGER_SECRETS:
     optional(() =>
       json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) => secrets.map(str))

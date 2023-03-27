@@ -37,14 +37,16 @@ export const bootstrap = async () => {
   try {
     const loggerConfig = makeLoggerConfig({ env: process.env })
 
-    const sanitizer = loggerConfig.LOGGER_PASSWORD ? {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    } : undefined
+    let hiddenEnvs: string[] = loggerConfig.LOGGER_HIDDEN_ENV.map(env => process.env[env]?.toString() ?? '')
+    let secrets = loggerConfig.LOGGER_SECRETS.concat(hiddenEnvs)
+
     const logger = makeLogger({
       level: loggerConfig.LOGGER_LEVEL,
       format: loggerConfig.LOGGER_FORMAT,
-      sanitizer,
+      sanitizer: {
+        secrets,
+        replacer: '<secret>',
+      },
     })
     const config = makeConfig({ logger, env: process.env })
 
@@ -94,6 +96,7 @@ export const bootstrap = async () => {
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
+      reader,
       consensusApi,
       metrics,
       s3Service,
