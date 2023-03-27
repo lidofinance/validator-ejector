@@ -72,9 +72,6 @@ export const makeMessagesProcessor = ({
           logger.warn(
             `File with invalid extension found in messages folder: ${file}`
           )
-          metrics.exitMessages.inc({
-            valid: 'false',
-          })
         }
         const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
         reads.push(read.toString())
