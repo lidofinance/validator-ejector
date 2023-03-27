@@ -10,30 +10,20 @@ export const makeApp = ({
   consensusApi,
   appInfoReader,
 }: Dependencies) => {
-  const {
-    OPERATOR_ID,
-    BLOCKS_PRELOAD,
-    MESSAGES_LOCATION,
-    BLOCKS_LOOP,
-    JOB_INTERVAL,
-  } = config
+  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
-    logger.info(`Application started, version ${version}`, config)
+    const mode = config.MESSAGES_LOCATION ? 'message' : 'webhook'
+    logger.info(`Validator Ejector v${version} started in ${mode} mode`, config)
 
     await executionApi.checkSync()
     await consensusApi.checkSync()
 
     await httpHandler.run()
 
-    logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
     const messages = await messagesProcessor.load()
-    logger.info('Loaded messages', { amount: messages.length })
-
-    logger.info('Validating messages')
     const verifiedMessages = await messagesProcessor.verify(messages)
-    logger.info('Finished validation', { validAmount: verifiedMessages.length })
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`

@@ -43,6 +43,13 @@ export const makeMessagesProcessor = ({
   metrics: MetricsService
 }) => {
   const load = async () => {
+    if (!config.MESSAGES_LOCATION) {
+      logger.debug('Skipping loading messages in webhook mode')
+      return []
+    }
+
+    logger.info(`Loading messages from ${config.MESSAGES_LOCATION}`)
+
     if (!(await reader.dirExists(config.MESSAGES_LOCATION))) {
       logger.error('Messages directory is not accessible, exiting...')
       process.exit()
@@ -99,6 +106,8 @@ export const makeMessagesProcessor = ({
       messages.push(message)
     }
 
+    logger.info(`Loaded ${messages.length} messages`)
+
     return messages
   }
 
@@ -124,6 +133,13 @@ export const makeMessagesProcessor = ({
   }
 
   const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
+    if (!config.MESSAGES_LOCATION) {
+      logger.debug('Skipping loading messages in webhook mode')
+      return []
+    }
+
+    logger.info('Validating messages')
+
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
@@ -210,6 +226,8 @@ export const makeMessagesProcessor = ({
         valid: 'true',
       })
     }
+
+    logger.info('Finished validation', { validAmount: validMessages.length })
 
     return validMessages
   }
