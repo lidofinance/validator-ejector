@@ -9,6 +9,7 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
 import type { LoggerService } from 'lido-nanolib'
+import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
@@ -34,6 +35,7 @@ export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
 export const makeMessagesProcessor = ({
   logger,
   config,
+  reader,
   consensusApi,
   executionApi,
   metrics,
@@ -42,6 +44,7 @@ export const makeMessagesProcessor = ({
 }: {
   logger: LoggerService
   config: ConfigService
+  reader: ReaderService,
   consensusApi: ConsensusApiService
   executionApi: ExecutionApiService
   metrics: MetricsService
@@ -51,20 +54,39 @@ export const makeMessagesProcessor = ({
   const load = async () => {
     const messages: ExitMessage[] = []
 
+    let reads: string[] = []
+    if (await reader.dirExists(config.MESSAGES_LOCATION)) {
+      const folder = await reader.dir(config.MESSAGES_LOCATION)
+      for (const file of folder) {
+        if (!file.endsWith('.json')) {
+          logger.warn(
+            `File with invalid extension found in messages folder: ${file}`
+          )
+          metrics.exitMessages.inc({
+            valid: 'false',
+          })
+        }
+        const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
+        reads.push(read.toString())
+      }
+    }
     for (const file of config.MESSAGES_LOCATIONS) {
-      let read: string
       try {
-        read = await readFile(file)
+        const read = await readFile(file)
+        reads.push(read.toString())
       } catch (error) {
         logger.warn(`Unparseable read file ${file}`, error)
         continue
       }
-      
+    }
+
+
+    for (const read of reads) {
       let json: Record<string, unknown>
       try {
         json = JSON.parse(read)
       } catch (error) {
-        logger.warn(`Unparseable JSON in file ${file}`, error)
+        logger.warn(`Unparseable JSON`, error)
         metrics.exitMessages.inc({
           valid: 'false',
         })
@@ -75,7 +97,7 @@ export const makeMessagesProcessor = ({
         try {
           json = await decryptMessage(json)
         } catch (e) {
-          logger.warn(`Unable to decrypt encrypted file: ${file}`)
+          logger.warn(`Unable to decrypt`)
           metrics.exitMessages.inc({
             valid: 'false',
           })
@@ -88,7 +110,7 @@ export const makeMessagesProcessor = ({
       try {
         validated = exitOrEthDoExitDTO(json)
       } catch (e) {
-        logger.error(`${file} failed validation:`, e)
+        logger.error(`failed validation:`, e)
         metrics.exitMessages.inc({
           valid: 'false',
         })
