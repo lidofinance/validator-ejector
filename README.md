@@ -18,26 +18,36 @@ This service has to be run in a single instance as it expects to fulfil every re
 
 Options are configured via environment variables.
 
-| Variable                   | Required | Default/Example     | Description                                                                                                                  |
-| -------------------------- | -------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| EXECUTION_NODE             | Yes      | http://1.2.3.4:8545 | Ethereum Execution Node endpoint                                                                                             |
-| CONSENSUS_NODE             | Yes      | http://1.2.3.4:5051 | Ethereum Consensus Node endpoint                                                                                             |
-| LOCATOR_ADDRESS            | Yes      | 0x123               | Address of the Locator contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)                |
-| STAKING_MODULE_ID          | Yes      | 123                 | Staking Module ID for which operator ID is set                                                                               |
-| OPERATOR_ID                | Yes      | 123                 | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
-| MESSAGES_LOCATION          | Yes      | messages            | Folder to load json exit message files from                                                                                  |
-| ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]           | Allowed Oracle addresses to accept transactions from                                                                         |
-| MESSAGES_PASSWORD          | No       | password            | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
-| BLOCKS_PRELOAD             | No       | 50000               | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks |
-| BLOCKS_LOOP                | No       | 64                  | Amount of blocks to load events from on every poll. Defaults to 2 epochs                                                     |
-| JOB_INTERVAL               | No       | 384000              | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                     |
-| HTTP_PORT                  | No       | false               | Port to serve metrics and health check on                                                                                    |
-| RUN_METRICS                | No       | false               | Enable metrics endpoint                                                                                                      |
-| RUN_HEALTH_CHECK           | No       | false               | Enable health check endpoint                                                                                                 |
-| LOGGER_LEVEL               | No       | info                | Severity level from which to start showing errors eg info will hide debug messages                                           |
-| LOGGER_FORMAT              | No       | simple              | Simple or JSON log output: simple/json                                                                                       |
-| LOGGER_SECRETS             | No       | ["secret","secret"] | String array of exact secrets to sanitize in logs                                                                            |
-| DRY_RUN                    | No       | false               | Run the service without actually sending out exit messages                                                                   |
+| Variable                   | Required | Default/Example       | Description                                                                                                                  |
+| -------------------------- | -------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| EXECUTION_NODE             | Yes      | http://1.2.3.4:8545   | Ethereum Execution Node endpoint                                                                                             |
+| CONSENSUS_NODE             | Yes      | http://1.2.3.4:5051   | Ethereum Consensus Node endpoint                                                                                             |
+| LOCATOR_ADDRESS            | Yes      | 0x123                 | Address of the Locator contract, can be found in the [lido-dao repo](https://github.com/lidofinance/lido-dao)                |
+| STAKING_MODULE_ID          | Yes      | 123                   | Staking Module ID for which operator ID is set                                                                               |
+| OPERATOR_ID                | Yes      | 123                   | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
+| MESSAGES_LOCATION          | Yes      | messages              | Folder to load json exit message files from                                                                                  
+| MESSAGES_LOCATIONS         | Yes      | []                    | Array with links to json exit message files from                                                                                  |
+| ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]             | Allowed Oracle addresses to accept transactions from                                                                         |
+| MESSAGES_PASSWORD          | No       | password              | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
+| MESSAGES_PASSWORD_FILE     | No       | password_file         | Path to file with password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
+| BLOCKS_PRELOAD             | No       | 50000                 | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a day of blocks |
+| BLOCKS_LOOP                | No       | 64                    | Amount of blocks to load events from on every poll. Defaults to 2 epochs                                                     |
+| JOB_INTERVAL               | No       | 384000                | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                     |
+| HTTP_PORT                  | No       | false                 | Port to serve metrics and health check on                                                                                    |
+| RUN_METRICS                | No       | false                 | Enable metrics endpoint                                                                                                      |
+| RUN_HEALTH_CHECK           | No       | false                 | Enable health check endpoint                                                                                                 |
+| LOGGER_LEVEL               | No       | info                  | Severity level from which to start showing errors eg info will hide debug messages                                           |
+| LOGGER_FORMAT              | No       | simple                | Simple or JSON log output: simple/json                                                                                       |
+| LOGGER_SECRETS             | No       | ["secret","secret"]   | String array of exact secrets to sanitize in logs                                                                            |
+| LOGGER_SECRETS_FILE        | No       | secret_file           | Path to file with json string array of exact secrets to sanitize in logs                                                                            |
+| LOGGER_HIDDEN_ENV          | No       | ["MESSAGES_PASSWORD"] | List of environment variables whose values ​​will be hidden from logging                                                                            |
+| DRY_RUN                    | No       | false                 | Run the service without actually sending out exit messages                                                                   |
+
+## Setting access to AWS S3 and GCS
+
+To connect to GCS is used [ADC](https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa)
+
+To connect to AWS S3 is used [Setting credentials](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html)
 
 ## Preparing Exit Messages
 

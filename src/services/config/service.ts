@@ -8,6 +8,7 @@ import {
   log_format,
   json_arr,
 } from 'lido-nanolib'
+import { readFileSync } from 'fs';
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -41,13 +42,21 @@ export const makeConfig = ({
     env.MESSAGES_LOCATION,
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
+  MESSAGES_LOCATIONS: 
+    optional(() =>
+      json_arr(env.MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
+    ) ?? [],
+
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),
     'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
   ),
 
-  MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
+  MESSAGES_PASSWORD: str(
+    extractOptionalWithFile(env, 'MESSAGES_PASSWORD'),
+    'Please, setup MESSAGES_PASSWORD'
+  ),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
@@ -63,8 +72,17 @@ export const makeConfig = ({
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
   LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
   LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+  LOGGER_HIDDEN_ENV: 
+    optional(() =>
+      json_arr(env.LOGGER_HIDDEN_ENV, (secrets) => secrets.map(str))
+    ) ?? [],
   LOGGER_SECRETS:
     optional(() =>
-      json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+      json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) => secrets.map(str))
     ) ?? [],
 })
+
+
+function extractOptionalWithFile(env, envName: string): string|null {
+  return env[envName] ?? (env[envName + '_FILE'] && readFileSync(env[envName + '_FILE'], 'utf-8').toString())
+}

@@ -19,6 +19,8 @@ import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
 import { makeAppInfoReader } from '../services/appInfoReader/service.js'
+import { makeS3Store } from '../services/s3-store/service.js'
+import { makeGsStore } from '../services/gs-store/service.js'
 
 import { makeApp } from './service.js'
 
@@ -33,11 +35,14 @@ export const bootstrap = async () => {
   try {
     const loggerConfig = makeLoggerConfig({ env: process.env })
 
+    let hiddenEnvs: string[] = loggerConfig.LOGGER_HIDDEN_ENV.map(env => process.env[env]?.toString() ?? '')
+    let secrets = loggerConfig.LOGGER_SECRETS.concat(hiddenEnvs)
+
     const logger = makeLogger({
       level: loggerConfig.LOGGER_LEVEL,
       format: loggerConfig.LOGGER_FORMAT,
       sanitizer: {
-        secrets: loggerConfig.LOGGER_SECRETS,
+        secrets,
         replacer: '<secret>',
       },
     })
@@ -70,6 +75,9 @@ export const bootstrap = async () => {
 
     const reader = makeReader()
 
+    const s3Service = makeS3Store()
+    const gsService = makeGsStore()
+
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
@@ -77,6 +85,8 @@ export const bootstrap = async () => {
       consensusApi,
       executionApi,
       metrics,
+      s3Service,
+      gsService,
     })
 
     const job = makeJobRunner('validator-ejector', {
