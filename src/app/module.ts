@@ -18,7 +18,9 @@ import { makeMetrics, register } from '../services/prom/service.js'
 import { makeReader } from '../services/reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
-import { makeAppInfoReader } from '../services/appInfoReader/service.js'
+import { makeAppInfoReader } from '../services/app-info-reader/service.js'
+import { makeJobProcessor } from '../services/job-processor/service.js'
+import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 
 import { makeApp } from './service.js'
 
@@ -42,6 +44,18 @@ export const bootstrap = async () => {
       },
     })
     const config = makeConfig({ logger, env: process.env })
+
+    if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
+      throw new Error(
+        'Both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined. Ensure only one is set.'
+      )
+    }
+
+    if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
+      throw new Error(
+        'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+      )
+    }
 
     const metrics = makeMetrics()
 
@@ -75,15 +89,29 @@ export const bootstrap = async () => {
       config,
       reader,
       consensusApi,
-      executionApi,
       metrics,
+    })
+
+    const webhookProcessor = makeWebhookProcessor(
+      makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
+      logger,
+      metrics
+    )
+
+    const jobProcessor = makeJobProcessor({
+      logger,
+      config,
+      executionApi,
+      consensusApi,
+      messagesProcessor,
+      webhookProcessor,
     })
 
     const job = makeJobRunner('validator-ejector', {
       config,
       logger,
       metric: metrics.jobDuration,
-      handler: messagesProcessor.runJob,
+      handler: jobProcessor.handleJob,
     })
 
     const httpHandler = makeHttpHandler({ register, config })

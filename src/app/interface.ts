@@ -5,7 +5,7 @@ import type { MetricsService } from 'services/prom/service.js'
 import type { HttpHandlerService } from 'services/http-handler/service.js'
 import type { ExecutionApiService } from 'services/execution-api/service.js'
 import type { ConsensusApiService } from 'services/consensus-api/service.js'
-import type { AppInfoReaderService } from 'services/appInfoReader/service.js'
+import type { AppInfoReaderService } from 'services/app-info-reader/service.js'
 
 export interface Dependencies {
   config: ConfigService

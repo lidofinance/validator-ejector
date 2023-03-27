@@ -37,15 +37,14 @@ export const makeConfig = ({
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'
   ),
-  MESSAGES_LOCATION: str(
-    env.MESSAGES_LOCATION,
-    'Please, setup MESSAGES_LOCATION. Example: messages'
-  ),
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),
     'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
   ),
+
+  MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
+  VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
   MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
 
