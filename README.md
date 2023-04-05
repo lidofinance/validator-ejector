@@ -27,6 +27,7 @@ Options are configured via environment variables.
 | OPERATOR_ID                | Yes      | 123                   | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                    |
 | MESSAGES_LOCATION          | Yes      | messages              | Folder to load json exit message files from                                                                                  
 | MESSAGES_LOCATIONS         | Yes      | []                    | Array with links to json exit message files from                                                                                  |
+| VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook      | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]             | Allowed Oracle addresses to accept transactions from                                                                         |
 | MESSAGES_PASSWORD          | No       | password              | Password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
 | MESSAGES_PASSWORD_FILE     | No       | password_file         | Path to file with password to decrypt encrypted exit messages with. Needed only if you have encrypted files in messages directory              |
