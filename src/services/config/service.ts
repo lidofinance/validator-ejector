@@ -42,11 +42,11 @@ export const makeConfig = ({
     env.MESSAGES_LOCATION,
     'Please, setup MESSAGES_LOCATION. Example: messages'
   ),
-  MESSAGES_LOCATIONS:
+  REMOTE_MESSAGES_LOCATIONS:
     optional(() =>
-      json_arr(env.MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
+      json_arr(env.REMOTE_MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
     ) ?? [],
-
+  VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),

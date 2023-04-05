@@ -25,6 +25,9 @@ import { makeJobProcessor } from '../services/job-processor/service.js'
 import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 
 import { makeApp } from './service.js'
+import { makeRemoteMessagesLoader } from 'services/remote-messages-loader/service.js'
+import { makeLocalMessagesLoader } from 'services/local-messages-loader/service.js'
+import { makeCryptoService } from 'services/crypto/service.js'
 
 dotenv.config()
 
@@ -37,8 +40,10 @@ export const bootstrap = async () => {
   try {
     const loggerConfig = makeLoggerConfig({ env: process.env })
 
-    let hiddenEnvs: string[] = loggerConfig.LOGGER_HIDDEN_ENV.map(env => process.env[env]?.toString() ?? '')
-    let secrets = loggerConfig.LOGGER_SECRETS.concat(hiddenEnvs)
+    const hiddenEnvs: string[] = loggerConfig.LOGGER_HIDDEN_ENV.map(
+      (env) => process.env[env]?.toString() ?? ''
+    )
+    const secrets = loggerConfig.LOGGER_SECRETS.concat(hiddenEnvs)
 
     const logger = makeLogger({
       level: loggerConfig.LOGGER_LEVEL,
@@ -48,6 +53,7 @@ export const bootstrap = async () => {
         replacer: '<secret>',
       },
     })
+
     const config = makeConfig({ logger, env: process.env })
 
     if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -56,7 +62,11 @@ export const bootstrap = async () => {
       )
     }
 
-    if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
+    if (
+      !config.MESSAGES_LOCATION &&
+      !config.VALIDATOR_EXIT_WEBHOOK &&
+      !config.REMOTE_MESSAGES_LOCATIONS
+    ) {
       throw new Error(
         'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
       )
@@ -88,18 +98,27 @@ export const bootstrap = async () => {
     )
 
     const reader = makeReader()
+    const crypto = makeCryptoService({ config })
 
     const s3Service = makeS3Store()
     const gsService = makeGsStore()
 
+    const messagesLoader = config.REMOTE_MESSAGES_LOCATIONS
+      ? makeRemoteMessagesLoader({
+          logger,
+          config,
+          metrics,
+          s3Service,
+          gsService,
+          crypto,
+        })
+      : makeLocalMessagesLoader({ logger, config, reader, metrics, crypto })
+
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
-      reader,
       consensusApi,
       metrics,
-      s3Service,
-      gsService,
     })
 
     const webhookProcessor = makeWebhookProcessor(
@@ -138,6 +157,7 @@ export const bootstrap = async () => {
       executionApi,
       consensusApi,
       appInfoReader,
+      messagesLoader,
     })
 
     await app.run()

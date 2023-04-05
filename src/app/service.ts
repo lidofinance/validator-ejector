@@ -9,6 +9,7 @@ export const makeApp = ({
   executionApi,
   consensusApi,
   appInfoReader,
+  messagesLoader,
 }: Dependencies) => {
   const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
@@ -22,7 +23,7 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    const messages = await messagesProcessor.load()
+    const messages = await messagesLoader.load()
     const verifiedMessages = await messagesProcessor.verify(messages)
 
     logger.info(
