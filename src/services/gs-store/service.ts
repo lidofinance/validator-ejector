@@ -1,9 +1,9 @@
-import {Storage} from '@google-cloud/storage';
+import { Storage } from '@google-cloud/storage'
 
 export type GsStoreService = ReturnType<typeof makeGsStore>
 
 export const makeGsStore = () => {
-  const storage = new Storage();
+  const storage = new Storage()
   const paramReg = /^gs:\/\/(?<Bucket>.+)\/(?<Key>.*)/
   return {
     async read(uri: string): Promise<string> {
@@ -12,14 +12,14 @@ export const makeGsStore = () => {
       if (!uriParams || !uriParams.groups) {
         throw new Error('No valid gs uri')
       }
-  
-      let data = '';
+
+      let data = ''
       const readable = await storage
         .bucket(uriParams.groups.Bucket)
         .file(uriParams.groups.Key)
         .createReadStream()
       for await (const chunk of readable) {
-        data += chunk;
+        data += chunk
       }
       return data
     },
