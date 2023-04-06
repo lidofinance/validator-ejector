@@ -1,5 +1,5 @@
 import { LoggerService, LOG_LEVELS } from 'lido-nanolib'
-import { makeConfig } from './service.js'
+import { makeConfig, makeLoggerConfig } from './service.js'
 import { jest } from '@jest/globals'
 
 const validConfig = {
@@ -11,7 +11,7 @@ const validConfig = {
   BLOCKS_PRELOAD: 10000,
   BLOCKS_LOOP: 100,
   MESSAGES_LOCATION: 'messages',
-  REMOTE_MESSAGES_LOCATIONS: [],
+  REMOTE_MESSAGES_LOCATIONS: '[]',
   ORACLE_ADDRESSES_ALLOWLIST: '["0x123","0x12345"]',
   HTTP_PORT: 8080,
   RUN_METRICS: true,
@@ -47,5 +47,22 @@ describe('config module', () => {
       makeConfig({ logger, env: validConfig as unknown as NodeJS.ProcessEnv })
 
     expect(makeConf).not.toThrow()
+  })
+})
+
+describe('logger config module', () => {
+  test('secrets', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_HIDDEN_ENV: `["LOGGER_FORMAT"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+    expect(makeConf).not.toThrow()
+    const config = makeConf()
+
+    expect(config).toHaveProperty('LOGGER_SECRETS')
+    expect(config.LOGGER_SECRETS).toEqual(['simple'])
   })
 })
