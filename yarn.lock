@@ -110,7 +110,7 @@
   dependencies:
     tslib "^2.5.0"
 
-"@aws-sdk/client-s3@^3.297.0":
+"@aws-sdk/client-s3@3.297.0":
   version "3.297.0"
   resolved "https://registry.yarnpkg.com/@aws-sdk/client-s3/-/client-s3-3.297.0.tgz#d84975a56b74c500e8634e55d98b2fdb10d3b6de"
   integrity sha512-Su1ABeuCdvV+c7V6jHwiEfnjsDcQemL53W5QUI6t7rkA6wi1XGCVi686Lgnn8htuqs6DXxyCmPoXCjHG/ZszGQ==
@@ -1723,7 +1723,7 @@
   resolved "https://registry.yarnpkg.com/@google-cloud/promisify/-/promisify-3.0.1.tgz#8d724fb280f47d1ff99953aee0c1669b25238c2e"
   integrity sha512-z1CjRjtQyBOYL+5Qr9DdYIfrdLBe746jRTYfaYU6MeXkqp7UfYs/jX16lFFVzZ7PGEJvqZNqYUEtb1mvDww4pA==
 
-"@google-cloud/storage@^6.9.4":
+"@google-cloud/storage@6.9.4":
   version "6.9.4"
   resolved "https://registry.yarnpkg.com/@google-cloud/storage/-/storage-6.9.4.tgz#23f6b8b3335e517e0ab3b9c641e64ceac674887e"
   integrity sha512-5Li+0xRJ8wgc+vlf7Tgew8COKEJgRzRmC5ozdSYaBj7BK+X39aPPBP6ROsDTiCZ0MpAg7dxIc+HhKiCvQDplXQ==
