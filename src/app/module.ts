@@ -68,7 +68,8 @@ export const bootstrap = async () => {
         abort(30_000),
       ]),
       logger,
-      config
+      config,
+      metrics
     )
 
     const consensusApi = makeConsensusApi(

@@ -2,6 +2,9 @@ import { makeLogger } from 'lido-nanolib'
 import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
+
+import { MetricsService } from '../prom/service'
+
 import {
   syncingDTO,
   lastBlockNumberDTO,
@@ -30,7 +33,8 @@ export const makeExecutionApi = (
     STAKING_MODULE_ID: string
     OPERATOR_ID: string
     ORACLE_ADDRESSES_ALLOWLIST: string[]
-  }
+  },
+  { exitActions }: MetricsService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
     ? EXECUTION_NODE.slice(0, -1)
@@ -224,6 +228,7 @@ export const makeExecutionApi = (
         logger.debug('Event security check passed', { validatorPubkey })
       } catch (e) {
         logger.error(`Event security check failed for ${validatorPubkey}`, e)
+        exitActions.inc({ result: 'error' })
         continue
       }
 
