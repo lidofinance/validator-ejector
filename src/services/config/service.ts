@@ -8,7 +8,7 @@ import {
   log_format,
   json_arr,
 } from 'lido-nanolib'
-import { readFileSync } from 'fs'
+import { readFile } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -94,11 +94,17 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   return config
 }
 
-// TODO: fix implicit any
-function extractOptionalWithFile(env, envName: string): string | null {
-  return (
-    env[envName] ??
-    (env[envName + '_FILE'] &&
-      readFileSync(env[envName + '_FILE'], 'utf-8').toString())
-  )
+const extractOptionalWithFile = (env: NodeJS.ProcessEnv, envName: string) => {
+  if (env.envName) return env.envName
+
+  const extendedName = `${envName}_FILE`
+  if (env[extendedName]) {
+    try {
+      return readFile(env[extendedName]!, 'utf-8')
+    } catch {
+      return undefined
+    }
+  }
+
+  return undefined
 }

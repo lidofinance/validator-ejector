@@ -10,7 +10,7 @@ export const makeAppInfoReader = ({ reader }: { reader: ReaderService }) => ({
     let parsed: unknown
 
     try {
-      data = (await reader.file('package.json')).toString()
+      data = (await reader.readFile('package.json')).toString()
     } catch {
       throw new Error('Unable to read package.json file')
     }

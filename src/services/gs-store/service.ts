@@ -4,24 +4,36 @@ export type GsStoreService = ReturnType<typeof makeGsStore>
 
 export const makeGsStore = () => {
   const storage = new Storage()
-  const paramReg = /^gs:\/\/(?<Bucket>.+)\/(?<Key>.*)/
+
   return {
-    async read(uri: string): Promise<string> {
+    async read(uri: string): Promise<string[]> {
+      const paramReg = /^gs:\/\/(?<Bucket>.+)/
       const uriParams = uri.match(paramReg)
 
       if (!uriParams || !uriParams.groups) {
-        throw new Error('No valid gs uri')
+        throw new Error('Not a valid Google Storage bucket uri.')
       }
 
-      let data = ''
-      const readable = storage
-        .bucket(uriParams.groups.Bucket)
-        .file(uriParams.groups.Key)
-        .createReadStream()
-      for await (const chunk of readable) {
-        data += chunk
+      const bucketName = uriParams.groups.Bucket
+      const bucket = storage.bucket(bucketName)
+
+      const [filesResponse] = await bucket.getFiles()
+      const fileNames = filesResponse.map((item) => item.name)
+
+      const files: string[] = []
+
+      for (const fileName of fileNames) {
+        try {
+          const file = await bucket.file(fileName).download()
+          files.push(file.toString())
+        } catch (e) {
+          throw new Error('Unable to read file from Google Storage.', {
+            cause: e,
+          })
+        }
       }
-      return data
+
+      return files
     },
   }
 }

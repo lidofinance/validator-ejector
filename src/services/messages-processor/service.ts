@@ -1,29 +1,136 @@
 import bls from '@chainsafe/bls'
+import { decrypt } from '@chainsafe/bls-keystore'
 
 import { ssz } from '@lodestar/types'
 import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
+import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
+
 import type { LoggerService } from 'lido-nanolib'
+import type { ReaderService } from '../reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
-import type { ExitMessage } from '../../interfaces/messages.js'
+import type { S3StoreService } from '../s3-store/service.js'
+import type { GsStoreService } from '../gs-store/service.js'
+
+type ExitMessage = {
+  message: {
+    epoch: string
+    validator_index: string
+  }
+  signature: string
+}
+
+type EthDoExitMessage = {
+  exit: ExitMessage
+  fork_version: string
+}
 
 export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
 
 export const makeMessagesProcessor = ({
   logger,
   config,
+  reader,
   consensusApi,
   metrics,
+  s3Service,
+  gsService,
 }: {
   logger: LoggerService
   config: ConfigService
+  reader: ReaderService
   consensusApi: ConsensusApiService
   metrics: MetricsService
+  s3Service: S3StoreService
+  gsService: GsStoreService
 }) => {
+  const load = async () => {
+    if (!config.MESSAGES_LOCATION) {
+      logger.debug('Skipping loading messages in webhook mode')
+      return []
+    }
+
+    logger.info(`Loading messages from ${config.MESSAGES_LOCATION}`)
+
+    if (!(await reader.dirExists(config.MESSAGES_LOCATION))) {
+      logger.error('Messages directory is not accessible, exiting...')
+      process.exit()
+    }
+
+    const folder = await readFolder(config.MESSAGES_LOCATION)
+
+    const messages: ExitMessage[] = []
+
+    for (const file of folder) {
+      let json: Record<string, unknown>
+      try {
+        json = JSON.parse(file)
+      } catch (error) {
+        logger.warn(`Unparseable JSON in file ${file}`, error)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
+
+      if ('crypto' in json) {
+        try {
+          json = await decryptMessage(json)
+        } catch (e) {
+          logger.warn(`Unable to decrypt encrypted file: ${file}`)
+          metrics.exitMessages.inc({
+            valid: 'false',
+          })
+          continue
+        }
+      }
+
+      let validated: ExitMessage | EthDoExitMessage
+
+      try {
+        validated = exitOrEthDoExitDTO(json)
+      } catch (e) {
+        logger.error(`${file} failed validation:`, e)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
+
+      const message = 'exit' in validated ? validated.exit : validated
+      messages.push(message)
+    }
+
+    logger.info(`Loaded ${messages.length} messages`)
+
+    return messages
+  }
+
+  const decryptMessage = async (input: Record<string, unknown>) => {
+    if (!config.MESSAGES_PASSWORD) {
+      throw new Error('Password was not supplied')
+    }
+
+    const checked = encryptedMessageDTO(input)
+
+    const content = await decrypt(checked, config.MESSAGES_PASSWORD)
+
+    const stringed = new TextDecoder().decode(content)
+
+    let json: Record<string, unknown>
+    try {
+      json = JSON.parse(stringed)
+    } catch {
+      throw new Error('Unparseable JSON after decryption')
+    }
+
+    return json
+  }
+
   const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping loading messages in webhook mode')
@@ -154,5 +261,11 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  return { verify, exit }
+  const readFolder = async (uri: string): Promise<string[]> => {
+    if (uri.startsWith('s3://')) return s3Service.read(uri)
+    if (uri.startsWith('gs://')) return gsService.read(uri)
+    return reader.readFilesFromFolder(uri)
+  }
+
+  return { load, verify, exit }
 }

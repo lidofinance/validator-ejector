@@ -6,14 +6,10 @@ import type { HttpHandlerService } from '../services/http-handler/service.js'
 import type { ExecutionApiService } from '../services/execution-api/service.js'
 import type { ConsensusApiService } from '../services/consensus-api/service.js'
 import type { AppInfoReaderService } from '../services/app-info-reader/service.js'
-import type { LocalMessagesLoaderService } from '../services/local-messages-loader/service'
-import type { RemoteMessagesLoaderService } from '../services/remote-messages-loader/service'
-
 export interface Dependencies {
   config: ConfigService
   logger: LoggerService
   job: JobRunnerService
-  messagesLoader: LocalMessagesLoaderService | RemoteMessagesLoaderService
   messagesProcessor: MessagesProcessorService
   metrics: MetricsService
   httpHandler: HttpHandlerService

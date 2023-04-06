@@ -25,9 +25,6 @@ import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
 
 import { makeApp } from './service.js'
-import { makeRemoteMessagesLoader } from 'services/remote-messages-loader/service.js'
-import { makeLocalMessagesLoader } from 'services/local-messages-loader/service.js'
-import { makeCryptoService } from 'services/crypto/service.js'
 
 dotenv.config()
 
@@ -57,11 +54,7 @@ export const bootstrap = async () => {
       )
     }
 
-    if (
-      !config.MESSAGES_LOCATION &&
-      !config.VALIDATOR_EXIT_WEBHOOK &&
-      !config.REMOTE_MESSAGES_LOCATIONS
-    ) {
+    if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
       throw new Error(
         'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
       )
@@ -93,28 +86,19 @@ export const bootstrap = async () => {
       config
     )
 
-    const reader = makeReader()
-    const crypto = makeCryptoService({ config })
+    const reader = makeReader({ logger })
 
     const s3Service = makeS3Store()
     const gsService = makeGsStore()
 
-    const messagesLoader = config.REMOTE_MESSAGES_LOCATIONS
-      ? makeRemoteMessagesLoader({
-          logger,
-          config,
-          metrics,
-          s3Service,
-          gsService,
-          crypto,
-        })
-      : makeLocalMessagesLoader({ logger, config, reader, metrics, crypto })
-
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
+      reader,
       consensusApi,
       metrics,
+      s3Service,
+      gsService,
     })
 
     const webhookProcessor = makeWebhookProcessor(
@@ -153,7 +137,6 @@ export const bootstrap = async () => {
       executionApi,
       consensusApi,
       appInfoReader,
-      messagesLoader,
     })
 
     await app.run()
