@@ -8,7 +8,7 @@ import {
   log_format,
   json_arr,
 } from 'lido-nanolib'
-import { readFile } from 'fs'
+import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -100,7 +100,7 @@ const extractOptionalWithFile = (env: NodeJS.ProcessEnv, envName: string) => {
   const extendedName = `${envName}_FILE`
   if (env[extendedName]) {
     try {
-      return readFile(env[extendedName]!, 'utf-8')
+      return readFileSync(env[extendedName]!, 'utf-8')
     } catch {
       return undefined
     }
