@@ -14,7 +14,7 @@ export const makeGsStore = () => {
       }
 
       let data = ''
-      const readable = await storage
+      const readable = storage
         .bucket(uriParams.groups.Bucket)
         .file(uriParams.groups.Key)
         .createReadStream()
