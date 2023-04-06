@@ -69,20 +69,29 @@ export const makeConfig = ({
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 })
 
-export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
-  LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
-  LOGGER_HIDDEN_ENV:
-    optional(() =>
-      json_arr(env.LOGGER_HIDDEN_ENV, (secrets) => secrets.map(str))
-    ) ?? [],
-  LOGGER_SECRETS:
-    optional(() =>
-      json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) =>
-        secrets.map(str)
-      )
-    ) ?? [],
-})
+export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const config = {
+    LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
+    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+    LOGGER_HIDDEN_ENV:
+      optional(() =>
+        json_arr(env.LOGGER_HIDDEN_ENV, (secrets) => secrets.map(str))
+      ) ?? [],
+    LOGGER_SECRETS:
+      optional(() =>
+        json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) =>
+          secrets.map(str)
+        )
+      ) ?? [],
+  }
+
+  const hiddenEnvs: string[] = config.LOGGER_HIDDEN_ENV.map(
+    (env) => process.env[env]?.toString() ?? ''
+  ).filter((a) => a)
+
+  config.LOGGER_SECRETS.push(...hiddenEnvs)
+  return config
+}
 
 function extractOptionalWithFile(env, envName: string): string | null {
   return (
