@@ -58,6 +58,8 @@ export const makeConfig = ({
   RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
 
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
+  DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
+    optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ?? false,
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
