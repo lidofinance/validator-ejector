@@ -38,25 +38,17 @@ export const makeConfig = ({
     env.OPERATOR_ID,
     'Please, setup OPERATOR_ID id. Example: 123'
   ),
-  MESSAGES_LOCATION: str(
-    env.MESSAGES_LOCATION,
-    'Please, setup MESSAGES_LOCATION. Example: messages'
-  ),
-  REMOTE_MESSAGES_LOCATIONS:
-    optional(() =>
-      json_arr(env.REMOTE_MESSAGES_LOCATIONS, (secrets) => secrets.map(str))
-    ) ?? [],
   ORACLE_ADDRESSES_ALLOWLIST: json_arr(
     env.ORACLE_ADDRESSES_ALLOWLIST,
     (oracles) => oracles.map(str),
     'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
   ),
 
+  MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-  MESSAGES_PASSWORD: str(
-    extractOptionalWithFile(env, 'MESSAGES_PASSWORD'),
-    'Please, setup MESSAGES_PASSWORD'
+  MESSAGES_PASSWORD: optional(() =>
+    str(envOrFile(env, 'MESSAGES_PASSWORD'), 'Please, setup MESSAGES_PASSWORD')
   ),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
@@ -76,7 +68,7 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
     LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
     LOGGER_SECRETS:
       optional(() =>
-        json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) =>
+        json_arr(envOrFile(env, 'LOGGER_SECRETS'), (secrets) =>
           secrets.map(str)
         )
       ) ?? [],
@@ -90,8 +82,8 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   return config
 }
 
-const extractOptionalWithFile = (env: NodeJS.ProcessEnv, envName: string) => {
-  if (env.envName) return env.envName
+const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
+  if (env[envName]) return env[envName]
 
   const extendedName = `${envName}_FILE`
   if (env[extendedName]) {
