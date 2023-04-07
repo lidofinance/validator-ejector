@@ -25,6 +25,7 @@ Options are configured via environment variables.
 | LOCATOR_ADDRESS            | Yes      | 0x123                                     | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
 | STAKING_MODULE_ID          | Yes      | 123                                       | Staking Module ID for which operator ID is set                                                                                                                                                                                                          |
 | OPERATOR_ID                | Yes      | 123                                       | Operator ID in the Node Operators registry, easiest to get from [Operators UI](https://operators.lido.fi)                                                                                                                                               |
+| MESSAGES_LOCATION          | No       | messages                                  | Local folder or external storage bucket url to load json exit message files from. Required if you are using exit messages mode                                                                                                                          |
 | VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook                            | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
 | ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]                                 | Allowed Oracle addresses to accept transactions from [Goerli](https://testnet.testnet.fi/#/lido-testnet-prater/0x24d8451bc07e7af4ba94f69acdd9ad3c6579d9fb/) / [Mainnet](https://mainnet.lido.fi/#/lido-dao/0x442af784a788a5bd6f42a01ebe9f287a871243fb/) |
 | MESSAGES_PASSWORD          | No       | password                                  | Password to decrypt encrypted exit messages with. Needed only if you encrypt your exit messages                                                                                                                                                         |
@@ -40,11 +41,14 @@ Options are configured via environment variables.
 | LOGGER_SECRETS             | No       | ["MESSAGES_PASSWORD","additional_secret"] | String array of either exact secret values to sanitize in logs or env var names                                                                                                                                                                         |
 | DRY_RUN                    | No       | false                                     | Run the service without actually sending out exit messages                                                                                                                                                                                              |
 
-## Setting access to AWS S3 and GCS
+Messages can also be loaded from remote storages: AWS S3 and Google Cloud Storage.
 
-To connect to GCS is used [ADC](https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa)
+Simply set a url with an appropriate protocol in `MESSAGES_LOCATION`:
 
-To connect to AWS S3 is used [Setting credentials](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html)
+- `s3://` for S3
+- `gs://` for GCS
+
+Authentication setup: [GCS](https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa), [S3](https://docs.aws.amazon.com/sdk-for-javascript/v3/developer-guide/setting-credentials-node.html).
 
 ## Preparing Exit Messages
 
