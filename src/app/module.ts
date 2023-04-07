@@ -15,7 +15,7 @@ import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
-import { makeReader } from '../services/reader/service.js'
+import { makeLocalFileReader } from '../services/local-file-reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
 import { makeAppInfoReader } from '../services/app-info-reader/service.js'
@@ -86,7 +86,7 @@ export const bootstrap = async () => {
       config
     )
 
-    const reader = makeReader({ logger })
+    const localFileReader = makeLocalFileReader({ logger })
 
     const s3Service = makeS3Store()
     const gsService = makeGsStore()
@@ -94,7 +94,7 @@ export const bootstrap = async () => {
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
-      reader,
+      localFileReader,
       consensusApi,
       metrics,
       s3Service,
@@ -125,7 +125,7 @@ export const bootstrap = async () => {
 
     const httpHandler = makeHttpHandler({ register, config })
 
-    const appInfoReader = makeAppInfoReader({ reader })
+    const appInfoReader = makeAppInfoReader({ localFileReader })
 
     const app = makeApp({
       config,

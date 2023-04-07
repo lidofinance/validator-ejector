@@ -1,16 +1,20 @@
-import { ReaderService } from 'services/reader/service.js'
+import { LocalFileReaderService } from 'services/local-file-reader/service.js'
 
 import { versionDTO } from './dto.js'
 
 export type AppInfoReaderService = ReturnType<typeof makeAppInfoReader>
 
-export const makeAppInfoReader = ({ reader }: { reader: ReaderService }) => ({
+export const makeAppInfoReader = ({
+  localFileReader,
+}: {
+  localFileReader: LocalFileReaderService
+}) => ({
   getVersion: async () => {
     let data: string
     let parsed: unknown
 
     try {
-      data = (await reader.readFile('package.json')).toString()
+      data = (await localFileReader.readFile('package.json')).toString()
     } catch {
       throw new Error('Unable to read package.json file')
     }

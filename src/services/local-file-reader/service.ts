@@ -1,10 +1,10 @@
 import { readFile, readdir, stat } from 'fs/promises'
 
-export type ReaderService = ReturnType<typeof makeReader>
+export type LocalFileReaderService = ReturnType<typeof makeLocalFileReader>
 
 import type { LoggerService } from 'lido-nanolib'
 
-export const makeReader = ({ logger }: { logger: LoggerService }) => {
+export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
   const dirExists = async (path: string) => {
     try {
       return (await stat(path)).isDirectory()
