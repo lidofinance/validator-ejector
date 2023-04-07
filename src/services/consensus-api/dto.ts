@@ -61,6 +61,7 @@ export const validatorInfoDTO = (json: unknown) =>
         status: str(data.status, 'Invalid status'),
         validator: obj(data.validator, (validator) => ({
           pubkey: str(validator.pubkey, 'Invalid pubkey'),
+          exit_epoch: str(validator.exit_epoch, 'Invalid exit epoch'),
         })),
       })),
     }),

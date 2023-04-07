@@ -1,6 +1,8 @@
 import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
 import { syncingDTO, genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
 
+const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
+
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
 export const makeConsensusApi = (
@@ -63,27 +65,16 @@ export const makeConsensusApi = (
     }
 
     const result = validatorInfoDTO(await req.json())
+    const data = result.data
 
-    const index = result.data.index
-    const pubKey = result.data.validator.pubkey
-    const status = result.data.status
+    const index = data.index
+    const pubKey = data.validator.pubkey
+    const status = data.status
 
-    let isExiting: boolean
-    switch (status) {
-      case 'active_exiting':
-      case 'exited_unslashed':
-      case 'exited_slashed':
-      case 'withdrawal_possible': // already exited
-      case 'withdrawal_done': // already exited
-        isExiting = true
-      default:
-        isExiting = false
-    }
+    const isExiting =
+      data.validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
 
-    logger.debug(`Validator index for ${id} is ${index}`)
-    logger.debug(`Validator pubKey for ${id} is ${pubKey}`)
-    logger.debug(`Validator status for ${id} is ${status}`)
-    logger.debug(`Validator exiting for ${id} is ${isExiting}`)
+    logger.debug('Validator info', { index, pubKey, status, isExiting })
 
     return { index, pubKey, status, isExiting }
   }
