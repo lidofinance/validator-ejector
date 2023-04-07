@@ -4,7 +4,10 @@ import { create } from '@chainsafe/bls-keystore'
 import { utils } from 'ethers'
 
 const FOLDER = 'encryptor' // change if you move the script or run it directly
-const PASSWORD = process.env.MESSAGES_PASSWORD
+const PASSWORD =
+  process.env.MESSAGES_PASSWORD ??
+  (process.env.MESSAGES_PASSWORD_FILE &&
+    (await readFile(process.env.MESSAGES_PASSWORD_FILE)).toString())
 
 if (!PASSWORD) {
   console.error('Please set encryption password in .env')

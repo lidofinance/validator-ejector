@@ -8,6 +8,7 @@ import {
   log_format,
   json_arr,
 } from 'lido-nanolib'
+import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -46,7 +47,7 @@ export const makeConfig = ({
   MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-  MESSAGES_PASSWORD: optional(() => str(env.MESSAGES_PASSWORD)),
+  MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
@@ -59,11 +60,36 @@ export const makeConfig = ({
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
 })
 
-export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
-  LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
-  LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
-  LOGGER_SECRETS:
-    optional(() =>
-      json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
-    ) ?? [],
-})
+export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const config = {
+    LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
+    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+    LOGGER_SECRETS:
+      optional(() =>
+        json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+      ) ?? [],
+  }
+
+  // Resolve the value of an env var if such exists
+  config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
+    (envVar) => env[envVar] ?? envVar
+  )
+
+  return config
+}
+
+const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
+  if (env[envName]) return env[envName]
+
+  const extendedName = `${envName}_FILE`
+  const extendedNameValue = env[extendedName]
+  if (extendedNameValue) {
+    try {
+      return readFileSync(extendedNameValue, 'utf-8')
+    } catch {
+      return undefined
+    }
+  }
+
+  return undefined
+}

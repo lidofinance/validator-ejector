@@ -49,9 +49,7 @@ export const makeConsensusApi = (
   }
 
   const isExiting = async (validatorPubkey: string) => {
-    return await (
-      await validatorInfo(validatorPubkey)
-    ).isExiting
+    return (await validatorInfo(validatorPubkey)).isExiting
   }
 
   const validatorInfo = async (id: string) => {
