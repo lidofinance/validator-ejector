@@ -82,9 +82,10 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (env[envName]) return env[envName]
 
   const extendedName = `${envName}_FILE`
-  if (env[extendedName]) {
+  const extendedNameValue = env[extendedName]
+  if (extendedNameValue) {
     try {
-      return readFileSync(env[extendedName]!, 'utf-8')
+      return readFileSync(extendedNameValue, 'utf-8')
     } catch {
       return undefined
     }

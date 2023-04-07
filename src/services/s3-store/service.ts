@@ -15,7 +15,7 @@ export const makeS3Store = () => {
       const uriParams = uri.match(paramReg)
 
       if (!uriParams || !uriParams.groups) {
-        throw new Error('Not a valid AWS S3 bucket uri')
+        throw new Error('Not a valid AWS S3 bucket uri.')
       }
 
       const bucketName = uriParams.groups.Bucket
@@ -33,11 +33,15 @@ export const makeS3Store = () => {
           const { Contents, IsTruncated, NextContinuationToken } =
             await client.send(listCommand)
 
-          if (!Contents) throw new Error('No contents in response')
+          if (!Contents) throw new Error('No contents in response.')
 
-          Contents.map((c) => c.Key!).forEach((c) => fileNames.push(c))
+          for (const item of Contents) {
+            if (!item.Key)
+              throw new Error('Key not found in an object in bucket.')
+            fileNames.push(item.Key)
+          }
 
-          if (!IsTruncated) throw new Error('No IsTruncated in response')
+          if (!IsTruncated) throw new Error('No IsTruncated in response.')
 
           isTruncated = IsTruncated
 
