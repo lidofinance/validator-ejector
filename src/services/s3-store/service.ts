@@ -4,9 +4,11 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
+import { LoggerService } from 'lido-nanolib'
+
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
-export const makeS3Store = () => {
+export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
   let client: S3Client
   try {
     client = new S3Client({})
@@ -64,7 +66,9 @@ export const makeS3Store = () => {
 
       const files: string[] = []
 
-      for (const fileName of fileNames) {
+      for (const [ix, fileName] of fileNames.entries()) {
+        logger.info(`${ix + 1}/${fileNames.length}`)
+
         const downloadCommand = new GetObjectCommand({
           Bucket: bucketName,
           Key: fileName,

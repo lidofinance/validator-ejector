@@ -139,7 +139,9 @@ export const makeMessagesProcessor = ({
 
     const validMessages: ExitMessage[] = []
 
-    for (const m of messages) {
+    for (const [ix, m] of messages.entries()) {
+      logger.info(`${ix + 1}/${messages.length}`)
+
       const { message, signature: rawSignature } = m
       const { validator_index: validatorIndex, epoch } = message
 

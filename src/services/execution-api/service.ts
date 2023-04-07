@@ -213,7 +213,11 @@ export const makeExecutionApi = (
       validatorPubkey: string
     }[] = []
 
-    for (const log of result) {
+    logger.info('Verifying validity of exit requests')
+
+    for (const [ix, log] of result.entries()) {
+      logger.info(`${ix + 1}/${result.length}`)
+
       const parsedLog = iface.parseLog(log)
 
       const { validatorIndex, validatorPubkey } = parsedLog.args as unknown as {

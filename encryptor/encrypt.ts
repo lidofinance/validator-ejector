@@ -14,7 +14,11 @@ if (!PASSWORD) {
   process.exit()
 }
 
-for (const file of await readdir(`${FOLDER}/input`)) {
+const files = await readdir(`${FOLDER}/input`)
+
+for (const [ix, file] of files.entries()) {
+  console.info(`${ix + 1}/${files.length}`)
+
   if (!file.endsWith('.json')) {
     console.info('Ignoring', file)
     continue
