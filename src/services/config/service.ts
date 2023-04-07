@@ -72,7 +72,7 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
 
   // Resolve the value of an env var if such exists
   config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
-    (envVar) => process.env[envVar] ?? envVar
+    (envVar) => env[envVar] ?? envVar
   )
 
   return config
