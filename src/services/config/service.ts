@@ -47,9 +47,7 @@ export const makeConfig = ({
   MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
   VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-  MESSAGES_PASSWORD: optional(() =>
-    str(envOrFile(env, 'MESSAGES_PASSWORD'), 'Please, setup MESSAGES_PASSWORD')
-  ),
+  MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
   BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
