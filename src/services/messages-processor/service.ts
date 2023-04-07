@@ -128,7 +128,7 @@ export const makeMessagesProcessor = ({
 
   const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
     if (!config.MESSAGES_LOCATION) {
-      logger.debug('Skipping loading messages in webhook mode')
+      logger.debug('Skipping messages validation in webhook mode')
       return []
     }
 
