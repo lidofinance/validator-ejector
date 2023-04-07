@@ -7,7 +7,15 @@ import {
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
 export const makeS3Store = () => {
-  const client = new S3Client({})
+  let client: S3Client
+  try {
+    client = new S3Client({})
+  } catch (e) {
+    throw new Error(
+      'Unable to initialise AWS S3 client. Please check credentials availability.',
+      { cause: e }
+    )
+  }
 
   return {
     async read(uri: string): Promise<string[]> {
@@ -33,22 +41,23 @@ export const makeS3Store = () => {
           const { Contents, IsTruncated, NextContinuationToken } =
             await client.send(listCommand)
 
-          if (!Contents) throw new Error('No contents in response.')
+          if (!Contents) throw new Error('No contents in AWS S3 response.')
 
           for (const item of Contents) {
             if (!item.Key)
-              throw new Error('Key not found in an object in bucket.')
+              throw new Error('Key not found in an AWS S3 object in bucket.')
             fileNames.push(item.Key)
           }
 
-          if (!IsTruncated) throw new Error('No IsTruncated in response.')
+          if (!IsTruncated)
+            throw new Error('No IsTruncated in AWS S3 response.')
 
           isTruncated = IsTruncated
 
           listCommand.input.ContinuationToken = NextContinuationToken
         } while (isTruncated)
       } catch (e) {
-        throw new Error('Unable to list bucket files from Google Storage.', {
+        throw new Error('Unable to list bucket files from AWS S3.', {
           cause: e,
         })
       }
@@ -64,7 +73,7 @@ export const makeS3Store = () => {
         const response = await client.send(downloadCommand)
 
         if (!response.Body) {
-          throw new Error('Unable to read file from Google Storage.')
+          throw new Error('Unable to read file from AWS S3.')
         }
 
         const stringified = await response.Body.transformToString()
