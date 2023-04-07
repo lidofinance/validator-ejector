@@ -56,11 +56,6 @@ export const makeMessagesProcessor = ({
 
     logger.info(`Loading messages from ${config.MESSAGES_LOCATION}`)
 
-    if (!(await localFileReader.dirExists(config.MESSAGES_LOCATION))) {
-      logger.error('Messages directory is not accessible, exiting...')
-      process.exit()
-    }
-
     const folder = await readFolder(config.MESSAGES_LOCATION)
 
     const messages: ExitMessage[] = []

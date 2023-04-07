@@ -14,6 +14,11 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
   }
 
   const readFilesFromFolder = async (path: string) => {
+    if (!(await dirExists(path))) {
+      logger.error('Messages directory is not accessible, exiting...')
+      process.exit()
+    }
+
     const folder = await readdir(path)
 
     const files: string[] = []
