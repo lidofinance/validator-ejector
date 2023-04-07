@@ -74,10 +74,6 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
     LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
-    LOGGER_HIDDEN_ENV:
-      optional(() =>
-        json_arr(env.LOGGER_HIDDEN_ENV, (secrets) => secrets.map(str))
-      ) ?? [],
     LOGGER_SECRETS:
       optional(() =>
         json_arr(extractOptionalWithFile(env, 'LOGGER_SECRETS'), (secrets) =>
@@ -86,11 +82,11 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
       ) ?? [],
   }
 
-  const hiddenEnvs: string[] = config.LOGGER_HIDDEN_ENV.map(
-    (env) => process.env[env]?.toString() ?? ''
-  ).filter((a) => a)
+  // Resolve the value of an env var if such exists
+  config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
+    (envVar) => process.env[envVar] ?? envVar
+  )
 
-  config.LOGGER_SECRETS.push(...hiddenEnvs)
   return config
 }
 
