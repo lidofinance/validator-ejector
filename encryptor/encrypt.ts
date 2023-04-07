@@ -16,6 +16,7 @@ if (!PASSWORD) {
 
 for (const file of await readdir(`${FOLDER}/input`)) {
   if (!file.endsWith('.json')) {
+    console.info('Ignoring', file)
     continue
   }
 
