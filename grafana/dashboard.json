@@ -117,8 +117,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
               }
             ]
           }
@@ -153,11 +157,24 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_exit_messages{}",
+          "expr": "validator_ejector_exit_messages{valid=\"true\"}",
           "refId": "A"
         }
       ],
-      "title": "Exit Messages",
+      "title": "Valid Exit Messages",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "includeTimeField": false,
+            "labelsToFields": false,
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -220,6 +237,16 @@
         }
       ],
       "title": "Invalid Exit Messages",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -283,7 +310,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "((validator_ejector_exit_messages{valid=\"true\"} OR vector(0)) / 100 * on() (validator_ejector_exit_actions{result=\"success\"} OR validator_ejector_exit_messages{valid=\"true\"} OR vector(0)))",
+          "expr": "(validator_ejector_exit_messages{valid=\"true\"} - on () validator_ejector_exit_actions{result=\"success\"}) / on () (validator_ejector_exit_messages{valid=\"true\"} > 0 or on() vector(1)) * 100",
           "refId": "A"
         }
       ],
@@ -344,7 +371,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_exit_messages{valid=\"true\"} - on() (validator_ejector_exit_actions{result=\"success\"} OR vector(0)) OR vector(0)",
+          "expr": "validator_ejector_exit_messages{valid=\"true\"} - on () validator_ejector_exit_actions{result=\"success\"}",
           "refId": "A"
         }
       ],
@@ -403,7 +430,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_exit_actions{result=\"success\"}",
+          "expr": "sum(validator_ejector_exit_actions{result=\"success\"})",
           "refId": "A"
         }
       ],
@@ -466,7 +493,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_exit_actions{result=\"error\"}",
+          "expr": "sum(validator_ejector_exit_actions{result=\"error\"})",
           "refId": "A"
         }
       ],
@@ -489,7 +516,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "",
+      "description": "It's currently not possible to calculate values in selected range with perfect accuracy.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -518,12 +545,12 @@
       "id": 9,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -537,11 +564,27 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_job_duration_seconds_bucket{le=\"+Inf\",result=\"success\"}",
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "validator_ejector_job_duration_seconds_count{result=\"success\"}",
+          "instant": false,
+          "range": true,
+          "rawQuery": true,
           "refId": "A"
         }
       ],
-      "title": "Successful Jobs",
+      "title": "Successful Jobs Since Start",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "labelsToFields": false,
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -549,11 +592,13 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
+      "description": "It's currently not possible to calculate values in selected range with perfect accuracy.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [],
           "noValue": "0",
           "thresholds": {
@@ -581,12 +626,12 @@
       "id": 8,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -600,11 +645,21 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_job_duration_seconds_bucket{le=\"+Inf\",result=\"error\"}",
+          "expr": "validator_ejector_job_duration_seconds_count{result=\"error\"}",
           "refId": "A"
         }
       ],
-      "title": "Job Errors",
+      "title": "Job Errors Since Start",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ]
+          }
+        }
+      ],
       "type": "stat"
     },
     {
@@ -616,7 +671,7 @@
         "exponent": 0.5,
         "mode": "opacity"
       },
-      "dataFormat": "timeseries",
+      "dataFormat": "tsbuckets",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -641,7 +696,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(validator_ejector_job_duration_seconds_bucket[1m])) by (le))",
+          "editorMode": "code",
+          "expr": "sum(rate(validator_ejector_job_duration_seconds_bucket [1m])) by (le)",
+          "format": "heatmap",
+          "legendFormat": "{{le}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -761,7 +820,7 @@
         "exponent": 0.5,
         "mode": "opacity"
       },
-      "dataFormat": "timeseries",
+      "dataFormat": "tsbuckets",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -786,7 +845,11 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(validator_ejector_execution_request_duration_seconds_bucket[1m])) by (le))",
+          "editorMode": "code",
+          "expr": "sum(rate(validator_ejector_execution_request_duration_seconds_bucket [1m])) by (le)",
+          "format": "heatmap",
+          "legendFormat": "{{le}}",
+          "range": true,
           "refId": "A"
         }
       ],
@@ -861,7 +924,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_execution_request_duration_seconds_sum/validator_ejector_execution_request_duration_seconds_count",
+          "expr": "sum(validator_ejector_execution_request_duration_seconds_sum)/sum(validator_ejector_execution_request_duration_seconds_count)",
           "refId": "A"
         }
       ],
@@ -923,7 +986,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_consensus_request_duration_seconds_sum/validator_ejector_consensus_request_duration_seconds_count",
+          "expr": "sum(validator_ejector_consensus_request_duration_seconds_sum)/sum(validator_ejector_consensus_request_duration_seconds_count)",
           "refId": "A"
         }
       ],
@@ -981,7 +1044,7 @@
       "type": "logs"
     }
   ],
-  "refresh": "30s",
+  "refresh": "1m",
   "schemaVersion": 36,
   "style": "dark",
   "tags": [],
@@ -989,13 +1052,13 @@
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-7d",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Validator Ejector",
   "uid": "YaydIx14k",
-  "version": 18,
+  "version": 44,
   "weekStart": ""
 }
