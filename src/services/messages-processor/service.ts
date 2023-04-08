@@ -228,10 +228,12 @@ export const makeMessagesProcessor = ({
     return validMessages
   }
 
-  const exit = async (messages: ExitMessage[], pubKey: string) => {
-    const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
+  const exit = async (
+    messages: ExitMessage[],
+    event: { validatorPubkey: string; validatorIndex: string }
+  ) => {
     const message = messages.find(
-      (msg) => msg.message.validator_index === validatorIndex
+      (msg) => msg.message.validator_index === event.validatorIndex
     )
 
     if (!message) {
@@ -246,7 +248,7 @@ export const makeMessagesProcessor = ({
       await consensusApi.exitRequest(message)
       logger.info(
         'Voluntary exit message sent successfully to Consensus Layer',
-        { pubKey, validatorIndex }
+        event
       )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
