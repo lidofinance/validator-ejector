@@ -51,12 +51,10 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
             fileNames.push(item.Key)
           }
 
-          if (!IsTruncated)
-            throw new Error('No IsTruncated in AWS S3 response.')
-
-          isTruncated = IsTruncated
-
-          listCommand.input.ContinuationToken = NextContinuationToken
+          if (IsTruncated) {
+            isTruncated = IsTruncated
+            listCommand.input.ContinuationToken = NextContinuationToken
+          }
         } while (isTruncated)
       } catch (e) {
         throw new Error('Unable to list bucket files from AWS S3.', {
@@ -74,15 +72,19 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
           Key: fileName,
         })
 
-        const response = await client.send(downloadCommand)
+        try {
+          const response = await client.send(downloadCommand)
 
-        if (!response.Body) {
-          throw new Error('Unable to read file from AWS S3.')
+          if (!response.Body) {
+            throw new Error('No body for an object in AWS.')
+          }
+
+          const stringified = await response.Body.transformToString()
+
+          files.push(stringified)
+        } catch (e) {
+          throw new Error('Unable to read file from AWS S3.', { cause: e })
         }
-
-        const stringified = await response.Body.transformToString()
-
-        files.push(stringified)
       }
 
       return files
