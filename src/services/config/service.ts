@@ -88,8 +88,8 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (extendedNameValue) {
     try {
       return readFileSync(extendedNameValue, 'utf-8')
-    } catch {
-      return undefined
+    } catch (e) {
+      throw new Error(`Unable to load ${extendedName}`, { cause: e })
     }
   }
 
