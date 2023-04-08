@@ -86,11 +86,6 @@ export const makeConsensusApi = (
     }
     signature: string
   }) => {
-    if (DRY_RUN) {
-      logger.info('Not sending an exit in a dry run mode')
-      return
-    }
-
     const req = await request(
       `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
       {

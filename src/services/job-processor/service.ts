@@ -69,6 +69,10 @@ export const makeJobProcessor = ({
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
           logger.info('Validator is already exiting(ed), skipping')
+        }
+
+        if (config.DRY_RUN) {
+          logger.info('Not initiating an exit in dry run mode')
           continue
         }
 
