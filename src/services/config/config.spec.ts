@@ -90,4 +90,20 @@ describe('logger config module', () => {
 
     expect(config.LOGGER_SECRETS).toEqual(['simple'])
   })
+
+  test('exact and dynamic secret values', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["LOGGER_FORMAT","secret"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual(['simple', 'secret'])
+  })
 })
