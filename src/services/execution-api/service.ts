@@ -3,6 +3,7 @@ import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
 
+import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
 
 import {
@@ -28,14 +29,7 @@ export const makeExecutionApi = (
     OPERATOR_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
-  }: {
-    EXECUTION_NODE: string
-    LOCATOR_ADDRESS: string
-    STAKING_MODULE_ID: string
-    OPERATOR_ID: string
-    ORACLE_ADDRESSES_ALLOWLIST: string[]
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION: boolean
-  },
+  }: ConfigService,
   { exitActions }: MetricsService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
