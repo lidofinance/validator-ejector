@@ -65,11 +65,10 @@ export const makeJobProcessor = ({
 
     for (const event of eventsForEject) {
       logger.info('Handling exit', event)
+
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
-          logger.debug(
-            `Exit was initiated, but ${event.validatorPubkey} is already exiting(ed), skipping`
-          )
+          logger.info('Validator is already exiting(ed), skipping')
           continue
         }
 
