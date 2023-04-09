@@ -67,14 +67,11 @@ export const makeConsensusApi = (
     }
 
     const result = validatorInfoDTO(await req.json())
-    const data = result.data
 
-    const index = data.index
-    const pubKey = data.validator.pubkey
-    const status = data.status
+    const { index, validator, status } = result.data
+    const pubKey = validator.pubkey
 
-    const isExiting =
-      data.validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
+    const isExiting = validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
 
     logger.debug('Validator info', { index, pubKey, status, isExiting })
 
