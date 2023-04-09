@@ -3,6 +3,7 @@ import { makeRequest } from 'lido-nanolib'
 
 import { ethers } from 'ethers'
 
+import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
 
 import {
@@ -27,13 +28,8 @@ export const makeExecutionApi = (
     STAKING_MODULE_ID,
     OPERATOR_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
-  }: {
-    EXECUTION_NODE: string
-    LOCATOR_ADDRESS: string
-    STAKING_MODULE_ID: string
-    OPERATOR_ID: string
-    ORACLE_ADDRESSES_ALLOWLIST: string[]
-  },
+    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+  }: ConfigService,
   { exitActions }: MetricsService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
@@ -211,7 +207,11 @@ export const makeExecutionApi = (
       validatorPubkey: string
     }[] = []
 
-    for (const log of result) {
+    logger.info('Verifying validity of exit requests')
+
+    for (const [ix, log] of result.entries()) {
+      logger.info(`${ix + 1}/${result.length}`)
+
       const parsedLog = iface.parseLog(log)
 
       const { validatorIndex, validatorPubkey } = parsedLog.args as unknown as {
@@ -219,17 +219,24 @@ export const makeExecutionApi = (
         validatorPubkey: string
       }
 
-      try {
-        await verifyEvent(
-          validatorPubkey,
-          log.transactionHash,
-          parseInt(log.blockNumber)
-        )
-        logger.debug('Event security check passed', { validatorPubkey })
-      } catch (e) {
-        logger.error(`Event security check failed for ${validatorPubkey}`, e)
-        exitActions.inc({ result: 'error' })
-        continue
+      if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
+        try {
+          await verifyEvent(
+            validatorPubkey,
+            log.transactionHash,
+            parseInt(log.blockNumber)
+          )
+          logger.debug('Event security check passed', { validatorPubkey })
+        } catch (e) {
+          logger.error(`Event security check failed for ${validatorPubkey}`, e)
+          exitActions.inc({ result: 'error' })
+          continue
+        }
+      } else {
+        logger.warn('WARNING')
+        logger.warn('Skipping protocol exit requests security checks.')
+        logger.warn('Please double-check this is intentional.')
+        logger.warn('WARNING')
       }
 
       validatorsToEject.push({

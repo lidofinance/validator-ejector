@@ -4,9 +4,11 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
+import { LoggerService } from 'lido-nanolib'
+
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
-export const makeS3Store = () => {
+export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
   let client: S3Client
   try {
     client = new S3Client({})
@@ -49,12 +51,10 @@ export const makeS3Store = () => {
             fileNames.push(item.Key)
           }
 
-          if (!IsTruncated)
-            throw new Error('No IsTruncated in AWS S3 response.')
-
-          isTruncated = IsTruncated
-
-          listCommand.input.ContinuationToken = NextContinuationToken
+          if (IsTruncated) {
+            isTruncated = IsTruncated
+            listCommand.input.ContinuationToken = NextContinuationToken
+          }
         } while (isTruncated)
       } catch (e) {
         throw new Error('Unable to list bucket files from AWS S3.', {
@@ -64,21 +64,27 @@ export const makeS3Store = () => {
 
       const files: string[] = []
 
-      for (const fileName of fileNames) {
+      for (const [ix, fileName] of fileNames.entries()) {
+        logger.info(`${ix + 1}/${fileNames.length}`)
+
         const downloadCommand = new GetObjectCommand({
           Bucket: bucketName,
           Key: fileName,
         })
 
-        const response = await client.send(downloadCommand)
+        try {
+          const response = await client.send(downloadCommand)
 
-        if (!response.Body) {
-          throw new Error('Unable to read file from AWS S3.')
+          if (!response.Body) {
+            throw new Error('No body for an object in AWS.')
+          }
+
+          const stringified = await response.Body.transformToString()
+
+          files.push(stringified)
+        } catch (e) {
+          throw new Error('Unable to read file from AWS S3.', { cause: e })
         }
-
-        const stringified = await response.Body.transformToString()
-
-        files.push(stringified)
       }
 
       return files

@@ -9,13 +9,11 @@ const configBase = {
   STAKING_MODULE_ID: '123',
   OPERATOR_ID: '123',
   BLOCKS_PRELOAD: 10000,
-  BLOCKS_LOOP: 100,
   ORACLE_ADDRESSES_ALLOWLIST: '["0x123","0x12345"]',
   HTTP_PORT: 8080,
   RUN_METRICS: true,
   RUN_HEALTH_CHECK: true,
   DRY_RUN: true,
-  JOB_INTERVAL: 10000,
   LOGGER_LEVEL: 'debug',
   LOGGER_PRETTY: true,
 }
@@ -91,5 +89,21 @@ describe('logger config module', () => {
     const config = makeConf()
 
     expect(config.LOGGER_SECRETS).toEqual(['simple'])
+  })
+
+  test('exact and dynamic secret values', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["LOGGER_FORMAT","secret"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual(['simple', 'secret'])
   })
 })

@@ -1,8 +1,10 @@
 import { Storage, File } from '@google-cloud/storage'
 
+import { LoggerService } from 'lido-nanolib'
+
 export type GsStoreService = ReturnType<typeof makeGsStore>
 
-export const makeGsStore = () => {
+export const makeGsStore = ({ logger }: { logger: LoggerService }) => {
   let storage: Storage
   try {
     storage = new Storage()
@@ -38,7 +40,9 @@ export const makeGsStore = () => {
 
       const files: string[] = []
 
-      for (const fileName of fileNames) {
+      for (const [ix, fileName] of fileNames.entries()) {
+        logger.info(`${ix + 1}/${fileNames.length}`)
+
         try {
           const file = await bucket.file(fileName).download()
           files.push(file.toString())

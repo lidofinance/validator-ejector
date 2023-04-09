@@ -23,7 +23,9 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
 
     const files: string[] = []
 
-    for (const fileName of folder) {
+    for (const [ix, fileName] of folder.entries()) {
+      logger.info(`${ix + 1}/${folder.length}`)
+
       if (!fileName.endsWith('.json')) {
         logger.warn(
           `File with invalid extension found in messages folder: ${fileName}`

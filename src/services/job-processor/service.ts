@@ -63,20 +63,24 @@ export const makeJobProcessor = ({
       amount: eventsForEject.length,
     })
 
-    for (const event of eventsForEject) {
-      logger.info('Handling exit', event)
+    for (const [ix, event] of eventsForEject.entries()) {
+      logger.info(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
+
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
-          logger.debug(
-            `Exit was initiated, but ${event.validatorPubkey} is already exiting(ed), skipping`
-          )
+          logger.info('Validator is already exiting(ed), skipping')
+          continue
+        }
+
+        if (config.DRY_RUN) {
+          logger.info('Not initiating an exit in dry run mode')
           continue
         }
 
         if (config.VALIDATOR_EXIT_WEBHOOK) {
           await webhookProcessor.send(config.VALIDATOR_EXIT_WEBHOOK, event)
         } else {
-          await messagesProcessor.exit(messages, event.validatorPubkey)
+          await messagesProcessor.exit(messages, event)
         }
       } catch (e) {
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)

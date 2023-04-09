@@ -50,7 +50,7 @@ export const makeConfig = ({
   MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
   BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
-  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 64, // 2 epochs
+  BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 900, // 3 hours of blocks
   JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
   HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? false,
@@ -58,6 +58,8 @@ export const makeConfig = ({
   RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? false,
 
   DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
+  DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
+    optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ?? false,
 })
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
@@ -86,8 +88,8 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (extendedNameValue) {
     try {
       return readFileSync(extendedNameValue, 'utf-8')
-    } catch {
-      return undefined
+    } catch (e) {
+      throw new Error(`Unable to load ${extendedName}`, { cause: e })
     }
   }
 

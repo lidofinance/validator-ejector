@@ -128,7 +128,7 @@ export const makeMessagesProcessor = ({
 
   const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
     if (!config.MESSAGES_LOCATION) {
-      logger.debug('Skipping loading messages in webhook mode')
+      logger.debug('Skipping messages validation in webhook mode')
       return []
     }
 
@@ -139,7 +139,9 @@ export const makeMessagesProcessor = ({
 
     const validMessages: ExitMessage[] = []
 
-    for (const m of messages) {
+    for (const [ix, m] of messages.entries()) {
+      logger.info(`${ix + 1}/${messages.length}`)
+
       const { message, signature: rawSignature } = m
       const { validator_index: validatorIndex, epoch } = message
 
@@ -226,10 +228,12 @@ export const makeMessagesProcessor = ({
     return validMessages
   }
 
-  const exit = async (messages: ExitMessage[], pubKey: string) => {
-    const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
+  const exit = async (
+    messages: ExitMessage[],
+    event: { validatorPubkey: string; validatorIndex: string }
+  ) => {
     const message = messages.find(
-      (msg) => msg.message.validator_index === validatorIndex
+      (msg) => msg.message.validator_index === event.validatorIndex
     )
 
     if (!message) {
@@ -244,7 +248,7 @@ export const makeMessagesProcessor = ({
       await consensusApi.exitRequest(message)
       logger.info(
         'Voluntary exit message sent successfully to Consensus Layer',
-        { pubKey, validatorIndex }
+        event
       )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {

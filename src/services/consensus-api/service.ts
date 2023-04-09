@@ -1,12 +1,16 @@
 import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
 import { syncingDTO, genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
 
+import { ConfigService } from 'services/config/service.js'
+
+const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
+
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
 export const makeConsensusApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { CONSENSUS_NODE, DRY_RUN }: { CONSENSUS_NODE: string; DRY_RUN: boolean }
+  { CONSENSUS_NODE }: ConfigService
 ) => {
   const normalizedUrl = CONSENSUS_NODE.endsWith('/')
     ? CONSENSUS_NODE.slice(0, -1)
@@ -64,26 +68,12 @@ export const makeConsensusApi = (
 
     const result = validatorInfoDTO(await req.json())
 
-    const index = result.data.index
-    const pubKey = result.data.validator.pubkey
-    const status = result.data.status
+    const { index, validator, status } = result.data
+    const pubKey = validator.pubkey
 
-    let isExiting: boolean
-    switch (status) {
-      case 'active_exiting':
-      case 'exited_unslashed':
-      case 'exited_slashed':
-      case 'withdrawal_possible': // already exited
-      case 'withdrawal_done': // already exited
-        isExiting = true
-      default:
-        isExiting = false
-    }
+    const isExiting = validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
 
-    logger.debug(`Validator index for ${id} is ${index}`)
-    logger.debug(`Validator pubKey for ${id} is ${pubKey}`)
-    logger.debug(`Validator status for ${id} is ${status}`)
-    logger.debug(`Validator exiting for ${id} is ${isExiting}`)
+    logger.debug('Validator info', { index, pubKey, status, isExiting })
 
     return { index, pubKey, status, isExiting }
   }
@@ -95,11 +85,6 @@ export const makeConsensusApi = (
     }
     signature: string
   }) => {
-    if (DRY_RUN) {
-      logger.info('Not sending an exit in a dry run mode')
-      return
-    }
-
     const req = await request(
       `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
       {

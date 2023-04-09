@@ -4446,10 +4446,10 @@ levn@^0.4.1:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
 
-lido-nanolib@1.3.4:
-  version "1.3.4"
-  resolved "https://registry.npmjs.org/lido-nanolib/-/lido-nanolib-1.3.4.tgz"
-  integrity sha512-NrSsagK28kNkLYCxOCQ/FB46uqWPlJ7F8vqGhC3ue4C7GCTKrSGcHiIBicam1NADKVSxWOmUferPpKFJccQ3/w==
+lido-nanolib@1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/lido-nanolib/-/lido-nanolib-1.4.0.tgz#c00b0f13886c05104a5466d27d11feda023f005d"
+  integrity sha512-rdj5H5qWBcbCSJsTXrg7Vz7FpZtpy4V+J63oUtH5+ZNXyQzA5HrMYNExNsIP6UL8/9QqvfoJRVwgFx6m9ot6zA==
 
 lines-and-columns@^1.1.6:
   version "1.2.4"
