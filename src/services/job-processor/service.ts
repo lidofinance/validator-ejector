@@ -63,8 +63,8 @@ export const makeJobProcessor = ({
       amount: eventsForEject.length,
     })
 
-    for (const event of eventsForEject) {
-      logger.info('Handling exit', event)
+    for (const [ix, event] of eventsForEject.entries()) {
+      logger.info(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
 
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
