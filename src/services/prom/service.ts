@@ -30,6 +30,15 @@ export const makeMetrics = () => {
   exitActions.labels('success').inc(0)
   exitActions.labels('error').inc(0)
 
+  const eventSecurityVerification = new client.Counter({
+    name: PREFIX + 'event_security_verification',
+    help: 'Statuses of exit event security verifications',
+    labelNames: ['result'] as const,
+  })
+  register.registerMetric(eventSecurityVerification)
+  eventSecurityVerification.labels('success').inc(0)
+  eventSecurityVerification.labels('error').inc(0)
+
   const pollingLastBlocksDurationSeconds = new client.Histogram({
     name: PREFIX + 'polling_last_blocks_duration_seconds',
     help: 'Duration of polling last blocks in seconds',
@@ -65,6 +74,7 @@ export const makeMetrics = () => {
   return {
     exitMessages,
     exitActions,
+    eventSecurityVerification,
     pollingLastBlocksDurationSeconds,
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
