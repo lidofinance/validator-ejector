@@ -30,7 +30,7 @@ export const makeExecutionApi = (
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
   }: ConfigService,
-  { exitActions }: MetricsService
+  { eventSecurityVerification }: MetricsService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
     ? EXECUTION_NODE.slice(0, -1)
@@ -227,9 +227,10 @@ export const makeExecutionApi = (
             parseInt(log.blockNumber)
           )
           logger.debug('Event security check passed', { validatorPubkey })
+          eventSecurityVerification.inc({ result: 'success' })
         } catch (e) {
           logger.error(`Event security check failed for ${validatorPubkey}`, e)
-          exitActions.inc({ result: 'error' })
+          eventSecurityVerification.inc({ result: 'error' })
           continue
         }
       } else {
