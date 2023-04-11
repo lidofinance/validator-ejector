@@ -16,6 +16,37 @@ This service has to be run in a single instance as it expects to fulfil every re
 
 ## Configuration
 
+### Operation Modes
+
+For both modes, Ejector will monitor exit request events, but react to them differently.
+
+#### Messages Mode
+
+In this mode, Ejector will load pre-signed exit messages from .json files on start, validate them, and submit them to a CL node when necessary.
+
+Mode is activated by setting the MESSAGES_LOCATION variable.
+
+#### Webhook Mode
+
+In this mode, Ejector will make a request to a specified endpoint when an exit needs to be made instead of submitting a pre-signed exit message to a CL node.
+
+Mode is activated by setting the VALIDATOR_EXIT_WEBHOOK variable.
+
+This allows NOs to implement JIT approach by offloading exiting logic to an external service and using the Ejector as a secure exit events reader.
+
+On the endpoint, JSON will be POSTed with the following structure:
+
+```json
+{
+  "validatorIndex": "123",
+  "validatorPubkey": "0x123"
+}
+```
+
+200 response from the endpoint will be counted as a successful exit, non-200 as a fail.
+
+### Environment Variables
+
 Options are configured via environment variables.
 
 | Variable                   | Required | Default/Example       | Description                                                                                                                                                                                                                                             |
