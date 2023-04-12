@@ -8,7 +8,7 @@ On start, it will load events from a configurable amount of blocks behind and th
 
 ## Requirements
 
-- Folder of pre-signed exit messages as individual JSON files in either spec format or [ethdo output format](https://github.com/wealdtech/ethdo/blob/master/docs/usage.md#exit)
+- Folder of pre-signed exit messages as individual JSON files in either [spec format](https://github.com/lidofinance/validator-ejector/blob/d2e4db190935239e019618b948a1bd1cea20f88f/src/services/messages-processor/service.ts#L19-L25) (generic) or [ethdo output format](https://github.com/wealdtech/ethdo/blob/master/docs/usage.md#exit)
 - Execution node
 - Consensus node
 
