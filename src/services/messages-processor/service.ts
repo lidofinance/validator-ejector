@@ -60,7 +60,11 @@ export const makeMessagesProcessor = ({
 
     const messages: ExitMessage[] = []
 
-    for (const file of folder) {
+    logger.info('Parsing loaded messages')
+
+    for (const [ix, file] of folder.entries()) {
+      logger.info(`${ix + 1}/${folder.length}`)
+
       let json: Record<string, unknown>
       try {
         json = JSON.parse(file)
