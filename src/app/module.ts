@@ -102,6 +102,7 @@ export const bootstrap = async () => {
       consensusApi,
       messagesProcessor,
       webhookProcessor,
+      metrics,
     })
 
     const job = makeJobRunner('validator-ejector', {
