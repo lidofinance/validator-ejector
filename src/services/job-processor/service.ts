@@ -4,6 +4,7 @@ import type { ConfigService } from '../config/service.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { WebhookProcessorService } from '../webhook-caller/service.js'
+import type { MetricsService } from 'services/prom/service.js'
 
 type ExitMessage = {
   message: {
@@ -22,6 +23,7 @@ export const makeJobProcessor = ({
   consensusApi,
   messagesProcessor,
   webhookProcessor,
+  metrics,
 }: {
   logger: LoggerService
   config: ConfigService
@@ -29,6 +31,7 @@ export const makeJobProcessor = ({
   consensusApi: ConsensusApiService
   messagesProcessor: MessagesProcessorService
   webhookProcessor: WebhookProcessorService
+  metrics: MetricsService
 }) => {
   const handleJob = async ({
     eventsNumber,
@@ -84,6 +87,7 @@ export const makeJobProcessor = ({
         }
       } catch (e) {
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
+        metrics.exitActions.inc({ result: 'error' })
       }
     }
 
