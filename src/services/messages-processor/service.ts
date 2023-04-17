@@ -102,6 +102,9 @@ export const makeMessagesProcessor = ({
 
       const message = 'exit' in validated ? validated.exit : validated
       messages.push(message)
+
+      // Unblock event loop for http server responses
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
 
     logger.info(`Loaded ${messages.length} messages`)
