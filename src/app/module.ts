@@ -15,27 +15,37 @@ import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
-import { makeReader } from '../services/reader/service.js'
+import { makeLocalFileReader } from '../services/local-file-reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { makeHttpHandler } from '../services/http-handler/service.js'
+import { makeAppInfoReader } from '../services/app-info-reader/service.js'
+import { makeJobProcessor } from '../services/job-processor/service.js'
+import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
+import { makeS3Store } from '../services/s3-store/service.js'
+import { makeGsStore } from '../services/gs-store/service.js'
 
 import { makeApp } from './service.js'
 
 dotenv.config()
 
 export const bootstrap = async () => {
-  const loggerConfig = makeLoggerConfig({ env: process.env })
-
-  const logger = makeLogger({
-    level: loggerConfig.LOGGER_LEVEL,
-    format: loggerConfig.LOGGER_FORMAT,
-    sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    },
+  const defaultLogger = makeLogger({
+    level: 'debug',
+    format: 'simple',
   })
 
   try {
+    const loggerConfig = makeLoggerConfig({ env: process.env })
+
+    const logger = makeLogger({
+      level: loggerConfig.LOGGER_LEVEL,
+      format: loggerConfig.LOGGER_FORMAT,
+      sanitizer: {
+        secrets: loggerConfig.LOGGER_SECRETS,
+        replacer: '<secret>',
+      },
+    })
+
     const config = makeConfig({ logger, env: process.env })
 
     const metrics = makeMetrics()
@@ -46,10 +56,11 @@ export const bootstrap = async () => {
         loggerMiddleware(logger),
         prom(metrics.executionRequestDurationSeconds),
         notOkError(),
-        abort(5000),
+        abort(30_000),
       ]),
       logger,
-      config
+      config,
+      metrics
     )
 
     const consensusApi = makeConsensusApi(
@@ -57,20 +68,40 @@ export const bootstrap = async () => {
         retry(3),
         loggerMiddleware(logger),
         prom(metrics.consensusRequestDurationSeconds),
-        abort(5000),
+        abort(30_000),
       ]),
       logger,
       config
     )
 
-    const reader = makeReader()
+    const localFileReader = makeLocalFileReader({ logger })
+
+    const s3Service = makeS3Store({ logger })
+    const gsService = makeGsStore({ logger })
 
     const messagesProcessor = makeMessagesProcessor({
       logger,
       config,
-      reader,
+      localFileReader,
       consensusApi,
+      metrics,
+      s3Service,
+      gsService,
+    })
+
+    const webhookProcessor = makeWebhookProcessor(
+      makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
+      logger,
+      metrics
+    )
+
+    const jobProcessor = makeJobProcessor({
+      logger,
+      config,
       executionApi,
+      consensusApi,
+      messagesProcessor,
+      webhookProcessor,
       metrics,
     })
 
@@ -78,10 +109,12 @@ export const bootstrap = async () => {
       config,
       logger,
       metric: metrics.jobDuration,
-      handler: messagesProcessor.proceed,
+      handler: jobProcessor.handleJob,
     })
 
     const httpHandler = makeHttpHandler({ register, config })
+
+    const appInfoReader = makeAppInfoReader({ localFileReader })
 
     const app = makeApp({
       config,
@@ -92,11 +125,12 @@ export const bootstrap = async () => {
       httpHandler,
       executionApi,
       consensusApi,
+      appInfoReader,
     })
 
     await app.run()
   } catch (error) {
-    logger.error('Startup error', error)
+    defaultLogger.error('Startup error', error)
     process.exit(1)
   }
 }

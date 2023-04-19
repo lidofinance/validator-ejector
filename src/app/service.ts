@@ -8,36 +8,29 @@ export const makeApp = ({
   httpHandler,
   executionApi,
   consensusApi,
+  appInfoReader,
 }: Dependencies) => {
-  const {
-    OPERATOR_ID,
-    BLOCKS_PRELOAD,
-    MESSAGES_LOCATION,
-    BLOCKS_LOOP,
-    JOB_INTERVAL,
-  } = config
+  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
   const run = async () => {
-    logger.info('Application started', config)
+    const version = await appInfoReader.getVersion()
+    const mode = config.MESSAGES_LOCATION ? 'message' : 'webhook'
+    logger.info(`Validator Ejector v${version} started in ${mode} mode`, config)
 
     await executionApi.checkSync()
     await consensusApi.checkSync()
 
     await httpHandler.run()
 
-    logger.info(`Loading messages from ${MESSAGES_LOCATION}`)
     const messages = await messagesProcessor.load()
-    logger.info(`Loaded ${messages.length} messages`)
-
-    logger.info('Validating messages')
-    await messagesProcessor.verify(messages)
+    const verifiedMessages = await messagesProcessor.verify(messages)
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
-    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages })
+    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages: verifiedMessages })
 
     logger.info(
       `Starting ${
@@ -45,7 +38,7 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    job.pooling({ eventsNumber: BLOCKS_LOOP, messages })
+    job.pooling({ eventsNumber: BLOCKS_LOOP, messages: verifiedMessages })
   }
 
   return { run }

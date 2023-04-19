@@ -1,24 +1,23 @@
 import { LoggerService, LOG_LEVELS } from 'lido-nanolib'
-import { makeConfig } from './service.js'
+import { makeConfig, makeLoggerConfig } from './service.js'
 import { jest } from '@jest/globals'
 
-const validConfig = {
+const configBase = {
   EXECUTION_NODE: 'someurl',
   CONSENSUS_NODE: 'someurl',
-  CONTRACT_ADDRESS: '0x596BBA96Fa92e0A3EAf2ca0B157b06193858ba5E',
+  LOCATOR_ADDRESS: '0x12cd349E19Ab2ADBE478Fc538A66C059Cf40CFeC',
   STAKING_MODULE_ID: '123',
   OPERATOR_ID: '123',
   BLOCKS_PRELOAD: 10000,
-  BLOCKS_LOOP: 100,
-  MESSAGES_LOCATION: 'messages',
+  ORACLE_ADDRESSES_ALLOWLIST: '["0x123","0x12345"]',
   HTTP_PORT: 8080,
   RUN_METRICS: true,
   RUN_HEALTH_CHECK: true,
   DRY_RUN: true,
-  JOB_INTERVAL: 10000,
   LOGGER_LEVEL: 'debug',
   LOGGER_PRETTY: true,
 }
+
 const testingLogger = () =>
   LOG_LEVELS.reduce((acc, level) => {
     acc[level] = jest.fn()
@@ -40,10 +39,71 @@ describe('config module', () => {
     expect(makeConf).toThrow()
   })
 
-  test('valid config', () => {
-    const makeConf = () =>
-      makeConfig({ logger, env: validConfig as unknown as NodeJS.ProcessEnv })
+  test('config with messages', () => {
+    const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
 
-    expect(makeConf).toBeDefined()
+    const makeConf = () =>
+      makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+    expect(makeConf).not.toThrow()
+  })
+
+  test('config with webhook', () => {
+    const config = { ...configBase, VALIDATOR_EXIT_WEBHOOK: 'http://webhook' }
+
+    const makeConf = () =>
+      makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+    expect(makeConf).not.toThrow()
+  })
+})
+
+describe('logger config module', () => {
+  test('exact secret values', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["secret"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual(['secret'])
+  })
+
+  test('dynamic secret values', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["LOGGER_FORMAT"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual(['simple'])
+  })
+
+  test('exact and dynamic secret values', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["LOGGER_FORMAT","secret"]`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual(['simple', 'secret'])
   })
 })

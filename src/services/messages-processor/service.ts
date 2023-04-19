@@ -1,18 +1,20 @@
 import bls from '@chainsafe/bls'
+import { decrypt } from '@chainsafe/bls-keystore'
 
 import { ssz } from '@lodestar/types'
 import { fromHex, toHexString } from '@lodestar/utils'
 import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
 import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
-import { exitOrEthDoExitDTO } from './dto.js'
+import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
 import type { LoggerService } from 'lido-nanolib'
-import type { ReaderService } from '../reader/service.js'
+import type { LocalFileReaderService } from '../local-file-reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
-import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
+import type { S3StoreService } from '../s3-store/service.js'
+import type { GsStoreService } from '../gs-store/service.js'
 
 type ExitMessage = {
   message: {
@@ -32,37 +34,40 @@ export type MessagesProcessorService = ReturnType<typeof makeMessagesProcessor>
 export const makeMessagesProcessor = ({
   logger,
   config,
-  reader,
+  localFileReader,
   consensusApi,
-  executionApi,
   metrics,
+  s3Service,
+  gsService,
 }: {
   logger: LoggerService
   config: ConfigService
-  reader: ReaderService
+  localFileReader: LocalFileReaderService
   consensusApi: ConsensusApiService
-  executionApi: ExecutionApiService
   metrics: MetricsService
+  s3Service: S3StoreService
+  gsService: GsStoreService
 }) => {
   const load = async () => {
-    const folder = await reader.dir(config.MESSAGES_LOCATION)
+    if (!config.MESSAGES_LOCATION) {
+      logger.debug('Skipping loading messages in webhook mode')
+      return []
+    }
+
+    logger.info(`Loading messages from ${config.MESSAGES_LOCATION}`)
+
+    const folder = await readFolder(config.MESSAGES_LOCATION)
+
     const messages: ExitMessage[] = []
 
-    for (const file of folder) {
-      if (!file.endsWith('.json')) {
-        logger.warn(
-          `File with invalid extension found in messages folder: ${file}`
-        )
-        metrics.exitMessages.inc({
-          valid: 'false',
-        })
-        continue
-      }
-      const read = await reader.file(`${config.MESSAGES_LOCATION}/${file}`)
-      let parsed: EthDoExitMessage | ExitMessage
+    logger.info('Parsing loaded messages')
+
+    for (const [ix, file] of folder.entries()) {
+      logger.info(`${ix + 1}/${folder.length}`)
+
+      let json: Record<string, unknown>
       try {
-        const json = JSON.parse(read.toString())
-        parsed = exitOrEthDoExitDTO(json)
+        json = JSON.parse(file)
       } catch (error) {
         logger.warn(`Unparseable JSON in file ${file}`, error)
         metrics.exitMessages.inc({
@@ -70,26 +75,103 @@ export const makeMessagesProcessor = ({
         })
         continue
       }
-      const message = 'exit' in parsed ? parsed.exit : parsed
+
+      if ('crypto' in json) {
+        try {
+          json = await decryptMessage(json)
+        } catch (e) {
+          logger.warn(`Unable to decrypt encrypted file: ${file}`)
+          metrics.exitMessages.inc({
+            valid: 'false',
+          })
+          continue
+        }
+      }
+
+      let validated: ExitMessage | EthDoExitMessage
+
+      try {
+        validated = exitOrEthDoExitDTO(json)
+      } catch (e) {
+        logger.error(`${file} failed validation:`, e)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
+
+      const message = 'exit' in validated ? validated.exit : validated
       messages.push(message)
+
+      // Unblock event loop for http server responses
+      await new Promise((resolve) => setTimeout(resolve, 0))
     }
+
+    logger.info(`Loaded ${messages.length} messages`)
 
     return messages
   }
 
-  const verify = async (messages: ExitMessage[]): Promise<void> => {
+  const decryptMessage = async (input: Record<string, unknown>) => {
+    if (!config.MESSAGES_PASSWORD) {
+      throw new Error('Password was not supplied')
+    }
+
+    const checked = encryptedMessageDTO(input)
+
+    const content = await decrypt(checked, config.MESSAGES_PASSWORD)
+
+    const stringed = new TextDecoder().decode(content)
+
+    let json: Record<string, unknown>
+    try {
+      json = JSON.parse(stringed)
+    } catch {
+      throw new Error('Unparseable JSON after decryption')
+    }
+
+    return json
+  }
+
+  const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
+    if (!config.MESSAGES_LOCATION) {
+      logger.debug('Skipping messages validation in webhook mode')
+      return []
+    }
+
+    logger.info('Validating messages')
+
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
-    for (const m of messages) {
+    const validMessages: ExitMessage[] = []
+
+    for (const [ix, m] of messages.entries()) {
+      logger.info(`${ix + 1}/${messages.length}`)
+
       const { message, signature: rawSignature } = m
       const { validator_index: validatorIndex, epoch } = message
 
-      const validatorInfo = await consensusApi.validatorInfo(validatorIndex)
+      let validatorInfo: { pubKey: string; isExiting: boolean }
+      try {
+        validatorInfo = await consensusApi.validatorInfo(validatorIndex)
+      } catch (e) {
+        logger.error(
+          `Failed to get validator info for index ${validatorIndex}`,
+          e
+        )
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
-        return
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
       }
 
       const pubKey = fromHex(validatorInfo.pubKey)
@@ -133,26 +215,32 @@ export const makeMessagesProcessor = ({
       isValid = verifyFork(CURRENT_FORK)
       if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
 
-      if (!isValid)
+      if (!isValid) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
+        metrics.exitMessages.inc({
+          valid: 'false',
+        })
+        continue
+      }
+
+      validMessages.push(m)
 
       metrics.exitMessages.inc({
-        valid: isValid.toString(),
+        valid: 'true',
       })
     }
+
+    logger.info('Finished validation', { validAmount: validMessages.length })
+
+    return validMessages
   }
 
-  const exit = async (messages: ExitMessage[], pubKey: string) => {
-    if ((await consensusApi.validatorInfo(pubKey)).isExiting) {
-      logger.debug(
-        `Exit was initiated, but ${pubKey} is already exiting(ed), skipping`
-      )
-      return
-    }
-
-    const validatorIndex = (await consensusApi.validatorInfo(pubKey)).index
+  const exit = async (
+    messages: ExitMessage[],
+    event: { validatorPubkey: string; validatorIndex: string }
+  ) => {
     const message = messages.find(
-      (msg) => msg.message.validator_index === validatorIndex
+      (msg) => msg.message.validator_index === event.validatorIndex
     )
 
     if (!message) {
@@ -165,7 +253,10 @@ export const makeMessagesProcessor = ({
 
     try {
       await consensusApi.exitRequest(message)
-      logger.info('Message sent successfully to exit', pubKey)
+      logger.info(
+        'Voluntary exit message sent successfully to Consensus Layer',
+        event
+      )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
       logger.error(
@@ -176,38 +267,11 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const proceed = async ({
-    eventsNumber,
-    messages,
-  }: {
-    eventsNumber: number
-    messages: ExitMessage[]
-  }) => {
-    logger.info('Job started')
-
-    const toBlock = await executionApi.latestBlockNumber()
-    const fromBlock = toBlock - eventsNumber
-
-    logger.info(
-      `Fetching events for ${eventsNumber} last blocks (${fromBlock}-${toBlock})`
-    )
-
-    const pubKeys = await executionApi.logs(fromBlock, toBlock)
-    logger.debug(`Loaded ${pubKeys.length} events`)
-
-    for (const pubKey of pubKeys) {
-      logger.debug(`Handling exit for ${pubKey}`)
-      try {
-        await exit(messages, pubKey)
-      } catch (e: unknown) {
-        logger.error(
-          `Unable to process exit for ${pubKey}`,
-          e instanceof Error && e.message ? e.message : undefined
-        )
-      }
-    }
-    logger.info('Job finished')
+  const readFolder = async (uri: string): Promise<string[]> => {
+    if (uri.startsWith('s3://')) return s3Service.read(uri)
+    if (uri.startsWith('gs://')) return gsService.read(uri)
+    return localFileReader.readFilesFromFolder(uri)
   }
 
-  return { load, verify, exit, proceed }
+  return { load, verify, exit }
 }
