@@ -92,8 +92,15 @@ export const makeJobProcessor = ({
     }
 
     logger.info('Updating exit messages left metrics from contract state')
-    const lastRequestedValIx = await executionApi.lastRequestedValidatorIndex()
-    metrics.updateLeftMessages(messages, lastRequestedValIx)
+    try {
+      const lastRequestedValIx =
+        await executionApi.lastRequestedValidatorIndex()
+      metrics.updateLeftMessages(messages, lastRequestedValIx)
+    } catch {
+      logger.error(
+        'Unable to update exit messages left metrics from contract state'
+      )
+    }
 
     logger.info('Job finished')
   }
