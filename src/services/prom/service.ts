@@ -94,7 +94,8 @@ export const makeMetrics = () => {
     ).length
     exitMessagesLeftNumber.set(numberLeft)
 
-    const percentLeft = (numberLeft / messages.length) * 100
+    const percentLeft =
+      messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
     exitMessagesLeftPercent.set(percentLeft)
   }
 
