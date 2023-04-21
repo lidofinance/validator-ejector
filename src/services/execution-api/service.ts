@@ -478,13 +478,13 @@ export const makeExecutionApi = (
 
       const { result } = funcDTO(json)
 
+      // One last index or -1 if no exit requests have been sent yet, in BigNumber
       const decoded = iface.decodeFunctionResult(func.name, result)
 
       logger.debug('Fetched last requested validator exit for NO')
 
       const plainNumber = parseInt(decoded.toString())
 
-      // One last index or -1 if no exit requests have been sent yet, in BigNumber
       return plainNumber
     } catch (e) {
       const msg = 'Unable to retrieve last requested validator exit for NO'
