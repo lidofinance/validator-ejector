@@ -16,7 +16,7 @@ export const makeMetrics = () => {
 
   const exitMessages = new client.Counter({
     name: PREFIX + 'exit_messages',
-    help: 'Exit messages and their validity: JSON parseability, structure and signature. Already exiting(ed) validator exit messages are not counted',
+    help: 'Exit messages and their validity: JSON parseability, structure and signature.',
     labelNames: ['valid'] as const,
   })
   register.registerMetric(exitMessages)
