@@ -168,8 +168,10 @@ export const makeMessagesProcessor = ({
 
       if (validatorInfo.isExiting) {
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
+        // Assuming here in order to make this optimisation work
+        // (if val exited this message had to be valid)
         metrics.exitMessages.inc({
-          valid: 'false',
+          valid: 'true',
         })
         continue
       }
