@@ -310,7 +310,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "(validator_ejector_exit_messages{valid=\"true\"} - on () validator_ejector_exit_actions{result=\"success\"}) / on () (validator_ejector_exit_messages{valid=\"true\"} > 0 or on() vector(1)) * 100",
+          "expr": "validator_ejector_exit_messages_left_percent",
           "refId": "A"
         }
       ],
@@ -371,7 +371,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "validator_ejector_exit_messages{valid=\"true\"} - on () validator_ejector_exit_actions{result=\"success\"}",
+          "expr": "validator_ejector_exit_messages_left_number",
           "refId": "A"
         }
       ],
@@ -1182,6 +1182,6 @@
   "timezone": "",
   "title": "Validator Ejector",
   "uid": "YaydIx14k",
-  "version": 47,
+  "version": 49,
   "weekStart": ""
 }
