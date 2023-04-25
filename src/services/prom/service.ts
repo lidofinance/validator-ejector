@@ -1,5 +1,7 @@
 import client from 'prom-client'
 
+import { ExitMessage } from 'services/job-processor/service'
+
 export const register = new client.Registry()
 
 export type MetricsService = ReturnType<typeof makeMetrics>
@@ -14,7 +16,7 @@ export const makeMetrics = () => {
 
   const exitMessages = new client.Counter({
     name: PREFIX + 'exit_messages',
-    help: 'Exit messages and their validity: JSON parseability, structure and signature. Already exiting(ed) validator exit messages are not counted',
+    help: 'Exit messages and their validity: JSON parseability, structure and signature.',
     labelNames: ['valid'] as const,
   })
   register.registerMetric(exitMessages)
@@ -71,6 +73,32 @@ export const makeMetrics = () => {
   })
   register.registerMetric(jobDuration)
 
+  const exitMessagesLeftNumber = new client.Gauge({
+    name: PREFIX + 'exit_messages_left_number',
+    help: 'Number of exit messages left',
+  })
+  register.registerMetric(exitMessagesLeftNumber)
+
+  const exitMessagesLeftPercent = new client.Gauge({
+    name: PREFIX + 'exit_messages_left_percent',
+    help: 'Percentage of exit messages left',
+  })
+  register.registerMetric(exitMessagesLeftPercent)
+
+  const updateLeftMessages = (
+    messages: ExitMessage[],
+    lastRequestedIx: number
+  ) => {
+    const numberLeft = messages.filter(
+      (msg) => parseInt(msg.message.validator_index) > lastRequestedIx
+    ).length
+    exitMessagesLeftNumber.set(numberLeft)
+
+    const percentLeft =
+      messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
+    exitMessagesLeftPercent.set(percentLeft)
+  }
+
   return {
     exitMessages,
     exitActions,
@@ -79,5 +107,6 @@ export const makeMetrics = () => {
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
     jobDuration,
+    updateLeftMessages,
   }
 }

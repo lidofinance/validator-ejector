@@ -6,7 +6,7 @@ import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { WebhookProcessorService } from '../webhook-caller/service.js'
 import type { MetricsService } from 'services/prom/service.js'
 
-type ExitMessage = {
+export type ExitMessage = {
   message: {
     epoch: string
     validator_index: string
@@ -89,6 +89,17 @@ export const makeJobProcessor = ({
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
         metrics.exitActions.inc({ result: 'error' })
       }
+    }
+
+    logger.info('Updating exit messages left metrics from contract state')
+    try {
+      const lastRequestedValIx =
+        await executionApi.lastRequestedValidatorIndex()
+      metrics.updateLeftMessages(messages, lastRequestedValIx)
+    } catch {
+      logger.error(
+        'Unable to update exit messages left metrics from contract state'
+      )
     }
 
     logger.info('Job finished')

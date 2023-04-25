@@ -445,6 +445,54 @@ export const makeExecutionApi = (
     }
   }
 
+  const lastRequestedValidatorIndex = async () => {
+    const func = ethers.utils.Fragment.from(
+      'function getLastRequestedValidatorIndices(uint256 moduleId, uint256[] nodeOpIds) view returns (int256[])'
+    )
+    const iface = new ethers.utils.Interface([func])
+    const sig = iface.encodeFunctionData(func.name, [
+      STAKING_MODULE_ID,
+      [OPERATOR_ID],
+    ])
+
+    try {
+      const res = await request(normalizedUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              from: null,
+              to: exitBusAddress,
+              data: sig,
+            },
+            'finalized',
+          ],
+          id: 1,
+        }),
+      })
+
+      const json = await res.json()
+
+      const { result } = funcDTO(json)
+
+      // One last index or -1 if no exit requests have been sent yet, in BigNumber
+      const decoded = iface.decodeFunctionResult(func.name, result)
+
+      logger.debug('Fetched last requested validator exit for NO')
+
+      const plainNumber = parseInt(decoded.toString())
+
+      return plainNumber
+    } catch (e) {
+      const msg = 'Unable to retrieve last requested validator exit for NO'
+      logger.error(msg, e)
+      throw new Error(msg)
+    }
+  }
+
   return {
     syncing,
     checkSync,
@@ -452,5 +500,6 @@ export const makeExecutionApi = (
     logs,
     resolveExitBusAddress,
     resolveConsensusAddress,
+    lastRequestedValidatorIndex,
   }
 }

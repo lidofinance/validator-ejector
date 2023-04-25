@@ -58,7 +58,7 @@ export const makeConsensusApi = (
 
   const validatorInfo = async (id: string) => {
     const req = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/finalized/validators/${id}`
+      `${normalizedUrl}/eth/v1/beacon/states/head/validators/${id}`
     )
 
     if (!req.ok) {
