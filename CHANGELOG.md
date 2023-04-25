@@ -1,4 +1,19 @@
-# 1.1.0 (2023-04-21)
+# [1.2.0](https://github.com/lidofinance/validator-ejector/compare/1.1.0...1.2.0) (2023-04-25)
+
+
+### Bug Fixes
+
+* prom percentage math ([f9c0beb](https://github.com/lidofinance/validator-ejector/commit/f9c0beb99a8198ff542f980d8c69ceee29bb9a64))
+* remove part of help msg in message metric ([ad7dabf](https://github.com/lidofinance/validator-ejector/commit/ad7dabfe076bc5217f9ac3672d787eaaac615bf0))
+
+
+### Features
+
+* dedicated exit messages left metrics ([c8f6ceb](https://github.com/lidofinance/validator-ejector/commit/c8f6cebbf58726f37858ddfd16f2d664b607a586))
+
+
+
+# [1.1.0](https://github.com/lidofinance/validator-ejector/compare/ae006433a9e9432b3a948d89884bca0c0b357dbd...1.1.0) (2023-04-21)
 
 
 ### Bug Fixes
