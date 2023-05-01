@@ -1,6 +1,5 @@
 import { LoggerService, LOG_LEVELS } from 'lido-nanolib'
 import { makeConfig, makeLoggerConfig } from './service.js'
-import { jest } from '@jest/globals'
 
 const configBase = {
   EXECUTION_NODE: 'someurl',
@@ -20,7 +19,7 @@ const configBase = {
 
 const testingLogger = () =>
   LOG_LEVELS.reduce((acc, level) => {
-    acc[level] = jest.fn()
+    acc[level] = vi.fn()
     return acc
   }, {}) as LoggerService
 
