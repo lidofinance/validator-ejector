@@ -6,13 +6,14 @@ export const register = new client.Registry()
 
 export type MetricsService = ReturnType<typeof makeMetrics>
 
-const PREFIX = 'validator_ejector_'
-
-export const makeMetrics = () => {
+export const makeMetrics = ({
+  PREFIX = 'validator_ejector_',
+}: {
+  PREFIX?: string
+}) => {
   register.setDefaultLabels({
     app: 'validator-ejector',
   })
-  client.collectDefaultMetrics({ register })
 
   const exitMessages = new client.Counter({
     name: PREFIX + 'exit_messages',
@@ -98,7 +99,10 @@ export const makeMetrics = () => {
       messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
     exitMessagesLeftPercent.set(percentLeft)
   }
-
+  // TODO
+  const collectDefaultMetrics = () => {
+    client.collectDefaultMetrics({ register })
+  }
   return {
     exitMessages,
     exitActions,
@@ -108,5 +112,6 @@ export const makeMetrics = () => {
     consensusRequestDurationSeconds,
     jobDuration,
     updateLeftMessages,
+    collectDefaultMetrics,
   }
 }
