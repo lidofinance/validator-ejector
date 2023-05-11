@@ -1,7 +1,8 @@
 version: '3.7'
 services:
   app:
-    image: lidofinance/validator-ejector@sha256:e5768026ddec080faa6d0ff27d3b043bc874855fbbd38d4f9789bea14dcf8592
+    # get last hash from https://docs.lido.fi/guides/tooling#validator-ejector
+    image: lidofinance/validator-ejector@<latest-hash>
     container_name: validator-ejector
     restart: unless-stopped
     environment:
