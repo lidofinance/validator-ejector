@@ -42,9 +42,11 @@ export const makeApp = ({
 
     job.pooling({ eventsNumber: BLOCKS_LOOP, messages: verifiedMessages })
   }
+
   const stop = () => {
     if (!timer) return
     clearInterval(timer)
   }
+
   return { run, stop }
 }

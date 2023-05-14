@@ -1,33 +1,12 @@
-import { LoggerService, LOG_LEVELS } from 'lido-nanolib'
+import { configBase } from '../../test/config.js'
 import { makeConfig, makeLoggerConfig } from './service.js'
+import { mockLogger } from '../../test/logger.js'
 
-const configBase = {
-  EXECUTION_NODE: 'someurl',
-  CONSENSUS_NODE: 'someurl',
-  LOCATOR_ADDRESS: '0x12cd349E19Ab2ADBE478Fc538A66C059Cf40CFeC',
-  STAKING_MODULE_ID: '123',
-  OPERATOR_ID: '123',
-  BLOCKS_PRELOAD: 10000,
-  ORACLE_ADDRESSES_ALLOWLIST: '["0x123","0x12345"]',
-  HTTP_PORT: 8080,
-  RUN_METRICS: true,
-  RUN_HEALTH_CHECK: true,
-  DRY_RUN: true,
-  LOGGER_LEVEL: 'debug',
-  LOGGER_PRETTY: true,
-}
-
-const testingLogger = () =>
-  LOG_LEVELS.reduce((acc, level) => {
-    acc[level] = vi.fn()
-    return acc
-  }, {}) as LoggerService
-
-let logger = testingLogger()
+let logger = mockLogger()
 
 describe('config module', () => {
   beforeEach(() => {
-    logger = testingLogger()
+    logger = mockLogger()
   })
 
   test('invalid config', () => {
