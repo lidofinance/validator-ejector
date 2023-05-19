@@ -12,7 +12,7 @@ export const makeApp = ({
 }: Dependencies) => {
   const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
-  let timer
+  let timer: NodeJS.Timer
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
@@ -40,7 +40,10 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    job.pooling({ eventsNumber: BLOCKS_LOOP, messages: verifiedMessages })
+    timer = job.pooling({
+      eventsNumber: BLOCKS_LOOP,
+      messages: verifiedMessages,
+    })
   }
 
   const stop = () => {
