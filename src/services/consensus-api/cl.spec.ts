@@ -26,7 +26,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch syncing status', async () => {
-    mockCLServer(nodeSyncingMock(), config)
+    mockCLServer(nodeSyncingMock(), config.CONSENSUS_NODE)
 
     const res = await api.syncing()
 
@@ -34,7 +34,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch genesis data', async () => {
-    mockCLServer(genesisMock(), config)
+    mockCLServer(genesisMock(), config.CONSENSUS_NODE)
 
     const res = await api.genesis()
 
@@ -42,7 +42,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch state data', async () => {
-    mockCLServer(stateMock(), config)
+    mockCLServer(stateMock(), config.CONSENSUS_NODE)
 
     const res = await api.state()
 
@@ -52,7 +52,7 @@ describe('makeConsensusApi', () => {
   it('should fetch validator info', async () => {
     const id = '1'
     const mock = validatorInfoMock(id)
-    mockCLServer(mock, config)
+    mockCLServer(mock, config.CONSENSUS_NODE)
 
     const res = await api.validatorInfo(id)
 
@@ -72,7 +72,7 @@ describe('makeConsensusApi', () => {
       },
       signature: '1',
     }
-    mockCLServer(exitRequestMock(), config)
+    mockCLServer(exitRequestMock(), config.CONSENSUS_NODE)
 
     await api.exitRequest(message)
 
