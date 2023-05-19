@@ -2,8 +2,8 @@ import { LoggerService } from 'lido-nanolib'
 import { makeConfig } from '../services/config/service.js'
 
 export const configBase = {
-  EXECUTION_NODE: 'someurl',
-  CONSENSUS_NODE: 'someurl',
+  EXECUTION_NODE: 'http://localhost:4445',
+  CONSENSUS_NODE: 'http://localhost:4455',
   LOCATOR_ADDRESS: '0x12cd349E19Ab2ADBE478Fc538A66C059Cf40CFeC',
   STAKING_MODULE_ID: '123',
   OPERATOR_ID: '123',

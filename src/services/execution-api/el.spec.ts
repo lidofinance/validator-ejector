@@ -1,7 +1,7 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
 import { LoggerService, RequestService, makeRequest } from 'lido-nanolib'
-import { lastBlockNumberMock, syncingMock } from './fixtures.js'
-import { mockCLServer } from '../../test/cl-server.js'
+import { funcMock, lastBlockNumberMock, syncingMock } from './fixtures.js'
+import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
@@ -27,57 +27,32 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch syncing status', async () => {
-    mockCLServer(syncingMock(), config.EXECUTION_NODE)
+    mockEthServer(syncingMock(), config.EXECUTION_NODE)
 
     const res = await api.syncing()
 
     expect(res).toBe(true)
   })
 
-  //   it('should fetch genesis data', async () => {
-  //     mockCLServer(lastBlockNumberMock(), config.EXECUTION_NODE)
+  it('should fetch genesis data', async () => {
+    mockEthServer(lastBlockNumberMock(), config.EXECUTION_NODE)
 
-  //     const res = await api.latestBlockNumber()
+    const res = await api.latestBlockNumber()
 
-  //     expect(res).toEqual(lastBlockNumberMock().result)
-  //   })
+    expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
+  })
 
-  //   it('should fetch state data', async () => {
-  //     mockCLServer(stateMock(), config)
+  it('should fetch locator', async () => {
+    const CL_ADDR =
+      '0x0000000000000000000000008374b4ac337d7e367ea1ef54bb29880c3f036a51'
+    const EX_BUS_ADDR =
+      '0x0000000000000000000000008374b4ac337d7e367ea1ef54bb29880c3f036a52'
+    mockEthServer(funcMock(CL_ADDR), config.EXECUTION_NODE)
+    await api.resolveConsensusAddress()
 
-  //     const res = await api.state()
+    mockEthServer(funcMock(EX_BUS_ADDR), config.EXECUTION_NODE)
+    await api.resolveExitBusAddress()
 
-  //     expect(res).toEqual(stateMock().result.data)
-  //   })
-
-  //   it('should fetch validator info', async () => {
-  //     const id = '1'
-  //     const mock = validatorInfoMock(id)
-  //     mockCLServer(mock, config)
-
-  //     const res = await api.validatorInfo(id)
-
-  //     expect(res).toEqual({
-  //       index: mock.result.data.index,
-  //       pubKey: mock.result.data.validator.pubkey,
-  //       status: mock.result.data.status,
-  //       isExiting: false,
-  //     })
-  //   })
-
-  //   it('should send exit request', async () => {
-  //     const message = {
-  //       message: {
-  //         epoch: '1',
-  //         validator_index: '1',
-  //       },
-  //       signature: '1',
-  //     }
-  //     mockCLServer(exitRequestMock(), config)
-
-  //     await api.exitRequest(message)
-
-  //     // Since exitRequest doesn't return a value, we simply check that no error is thrown
-  //     expect(true).toBe(true)
-  //   })
+    expect(true).toBe(true)
+  })
 })

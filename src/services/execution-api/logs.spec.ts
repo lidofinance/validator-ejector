@@ -6,7 +6,7 @@ import {
   txSecondVerificationMock,
   logsSecurityMock,
 } from './fixtures.js'
-import { mockCLServer } from '../../test/cl-server.js'
+import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
@@ -34,7 +34,7 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should fetch and parse logs without security', async () => {
-    mockCLServer(logsMock(), config.EXECUTION_NODE)
+    mockEthServer(logsMock(), config.EXECUTION_NODE)
 
     config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
     api = makeExecutionApi(request, logger, config, metrics)
@@ -50,10 +50,10 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should fetch and parse logs with security', async () => {
-    mockCLServer(logsMock(), config.EXECUTION_NODE)
-    mockCLServer(txFirstVerificationMock(), config.EXECUTION_NODE)
-    mockCLServer(txSecondVerificationMock(), config.EXECUTION_NODE)
-    mockCLServer(logsSecurityMock(), config.EXECUTION_NODE)
+    mockEthServer(logsMock(), config.EXECUTION_NODE)
+    mockEthServer(txFirstVerificationMock(), config.EXECUTION_NODE)
+    mockEthServer(txSecondVerificationMock(), config.EXECUTION_NODE)
+    mockEthServer(logsSecurityMock(), config.EXECUTION_NODE)
 
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',

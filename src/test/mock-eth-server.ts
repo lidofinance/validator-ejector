@@ -3,16 +3,16 @@ import nock from 'nock'
 type MockParams<T> = {
   url: string
   method: string
-  result: T
+  result?: T
   body?: any
 }
 
-export const mockCLServer = <T>(
+export const mockEthServer = <T>(
   { url, method, result, body }: MockParams<T>,
   domain: string
 ) => {
   const nockInstance = nock(domain)
-
+  console.log(domain, url, method, body)
   switch (method) {
     case 'GET':
       nockInstance.get(url).reply(200, result as any)

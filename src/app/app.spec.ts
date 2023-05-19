@@ -1,6 +1,10 @@
 import { makeLogger } from 'lido-nanolib'
 import { makeConfig as mC } from '../services/config/service.js'
+import { mockEthServer } from '../test/mock-eth-server.js'
+import * as ELMocks from '../services/execution-api/fixtures.js'
+import * as CLMocks from '../services/consensus-api/fixtures.js'
 import dotenv from 'dotenv'
+import { configBase } from '../test/config.js'
 
 dotenv.config()
 
@@ -14,7 +18,7 @@ const mockConfig = async (config) => {
       makeConfig() {
         return {
           ...makeConfig({
-            env: { ...process.env, ...config },
+            env: { ...configBase, ...config },
             logger: makeLogger({
               level: 'error',
               format: 'simple',
@@ -40,6 +44,12 @@ const getApp = async () => {
 
 describe('App bootstrap', () => {
   beforeEach(() => {
+    Object.values(ELMocks).forEach((mock) => {
+      mockEthServer(mock() as any, configBase.EXECUTION_NODE)
+    })
+    Object.values(CLMocks).forEach((mock) => {
+      mockEthServer(mock() as any, configBase.CONSENSUS_NODE)
+    })
     vi.resetModules()
   })
 

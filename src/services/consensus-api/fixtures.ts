@@ -35,7 +35,7 @@ export const stateMock = () => ({
   },
 })
 
-export const validatorInfoMock = (id: string) => ({
+export const validatorInfoMock = (id = '1') => ({
   url: `/eth/v1/beacon/states/head/validators/${id}`,
   method: 'GET',
   result: {

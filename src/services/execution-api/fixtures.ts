@@ -9,7 +9,7 @@ export const syncingMock = () => ({
 
 export const lastBlockNumberMock = () => ({
   url: '/',
-  method: 'GET',
+  method: 'POST',
   result: {
     result: {
       number: '456',
@@ -44,11 +44,16 @@ export const logsMock = () => ({
   },
 })
 
-export const funcMock = () => ({
-  url: '/eth/v1/func',
-  method: 'GET',
+export const funcMock = (hash = '0x0001111') => ({
+  url: '/',
+  method: 'POST',
   result: {
-    result: '0x0001111',
+    result: hash,
+  },
+  body: {
+    jsonrpc: '2.0',
+    method: 'eth_call',
+    id: 1,
   },
 })
 
@@ -90,9 +95,9 @@ export const logsSecurityMock = () => ({
     ],
   },
 })
-
+//!!
 export const txMock = () => ({
-  url: '/eth/v1/tx',
+  url: '/',
   method: 'GET',
   result: {
     result: {
@@ -112,6 +117,11 @@ export const txMock = () => ({
       r: '0x0001115',
       s: '0x0001116',
     },
+  },
+  body: {
+    jsonrpc: '2.0',
+    method: 'eth_getTransactionByHash',
+    id: 1,
   },
 })
 
