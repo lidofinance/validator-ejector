@@ -99,10 +99,11 @@ export const makeMetrics = ({
       messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
     exitMessagesLeftPercent.set(percentLeft)
   }
-  // TODO
+
   const collectDefaultMetrics = () => {
     client.collectDefaultMetrics({ register })
   }
+
   return {
     exitMessages,
     exitActions,
