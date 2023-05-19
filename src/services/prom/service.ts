@@ -14,6 +14,7 @@ export const makeMetrics = ({
   register.setDefaultLabels({
     app: 'validator-ejector',
   })
+  client.collectDefaultMetrics({ register })
 
   const exitMessages = new client.Counter({
     name: PREFIX + 'exit_messages',
@@ -100,10 +101,6 @@ export const makeMetrics = ({
     exitMessagesLeftPercent.set(percentLeft)
   }
 
-  const collectDefaultMetrics = () => {
-    client.collectDefaultMetrics({ register })
-  }
-
   return {
     exitMessages,
     exitActions,
@@ -113,6 +110,5 @@ export const makeMetrics = ({
     consensusRequestDurationSeconds,
     jobDuration,
     updateLeftMessages,
-    collectDefaultMetrics,
   }
 }

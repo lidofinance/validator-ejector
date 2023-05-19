@@ -44,8 +44,6 @@ export const makeAppModule = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
-  metrics.collectDefaultMetrics()
-
   const executionApi = makeExecutionApi(
     makeRequest([
       retry(3),
