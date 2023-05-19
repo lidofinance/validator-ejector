@@ -55,7 +55,7 @@ describe('App bootstrap', () => {
 
   it('should bootstrap the app with MESSAGES_LOCATION', async () => {
     await mockConfig({
-      MESSAGES_LOCATION: 'messages',
+      MESSAGES_LOCATION: 'encryptor',
       VALIDATOR_EXIT_WEBHOOK: undefined,
       PROM_PREFIX: 'test',
     })

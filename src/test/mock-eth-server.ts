@@ -12,7 +12,6 @@ export const mockEthServer = <T>(
   domain: string
 ) => {
   const nockInstance = nock(domain)
-  console.log(domain, url, method, body)
   switch (method) {
     case 'GET':
       nockInstance.get(url).reply(200, result as any)
