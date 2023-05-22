@@ -6,9 +6,11 @@ export const register = new client.Registry()
 
 export type MetricsService = ReturnType<typeof makeMetrics>
 
-const PREFIX = 'validator_ejector_'
-
-export const makeMetrics = () => {
+export const makeMetrics = ({
+  PREFIX = 'validator_ejector_',
+}: {
+  PREFIX?: string
+}) => {
   register.setDefaultLabels({
     app: 'validator-ejector',
   })
