@@ -1,6 +1,6 @@
 import client from 'prom-client'
 
-import { ExitMessage } from 'services/job-processor/service'
+import type { MessageStorage } from '../job-processor/message-storage.js'
 
 export const register = new client.Registry()
 
@@ -88,16 +88,16 @@ export const makeMetrics = ({
   register.registerMetric(exitMessagesLeftPercent)
 
   const updateLeftMessages = (
-    messages: ExitMessage[],
+    messageStorage: MessageStorage,
     lastRequestedIx: number
   ) => {
-    const numberLeft = messages.filter(
+    const numberLeft = messageStorage.messages.filter(
       (msg) => parseInt(msg.message.validator_index) > lastRequestedIx
     ).length
     exitMessagesLeftNumber.set(numberLeft)
 
     const percentLeft =
-      messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
+      messageStorage.length > 0 ? (numberLeft / messageStorage.length) * 100 : 0
     exitMessagesLeftPercent.set(percentLeft)
   }
 

@@ -1,4 +1,5 @@
 import type { Dependencies } from './interface.js'
+import { MessageStorage } from '../services/job-processor/message-storage.js'
 
 export const makeApp = ({
   config,
@@ -24,15 +25,39 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    const messages = await messagesProcessor.load()
-    const verifiedMessages = await messagesProcessor.verify(messages)
+    /**
+     * Appends new messages to messageStorage,
+     * Not modifying the messagesStorage reference
+     *
+     * Notes:
+     *   - new messages are identified by difference of signature
+     */
+    const reloadAndVerifyMessages = async (messagesStorage: MessageStorage) => {
+      logger.info(`Will reload messages`)
+      logger.info(`Existing messages count ${messagesStorage.length}`)
+      const messages = await messagesProcessor.load()
+      const verifiedMessages = await messagesProcessor.verify(messages)
+
+      logger.info(`Existing messages count ${messagesStorage.length}`)
+
+      const appendedMessagesCount =
+        messagesStorage.addMessages(verifiedMessages)
+
+      logger.info(`Appended ${appendedMessagesCount} new messages`)
+    }
+
+    const messageStorage = new MessageStorage()
+    await reloadAndVerifyMessages(messageStorage)
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
-    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages: verifiedMessages })
+    await job.once({
+      eventsNumber: BLOCKS_PRELOAD,
+      messageStorage: messageStorage,
+    })
 
     logger.info(
       `Starting ${
@@ -40,9 +65,13 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
+    setInterval(() => {
+      reloadAndVerifyMessages(messageStorage).catch((err) => logger.error(err))
+    }, 60 * 1000)
+
     timer = job.pooling({
       eventsNumber: BLOCKS_LOOP,
-      messages: verifiedMessages,
+      messageStorage: messageStorage,
     })
   }
 

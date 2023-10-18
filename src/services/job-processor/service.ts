@@ -5,6 +5,7 @@ import type { MessagesProcessorService } from '../messages-processor/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { WebhookProcessorService } from '../webhook-caller/service.js'
 import type { MetricsService } from 'services/prom/service.js'
+import type { MessageStorage } from './message-storage.js'
 
 export type ExitMessage = {
   message: {
@@ -35,15 +36,15 @@ export const makeJobProcessor = ({
 }) => {
   const handleJob = async ({
     eventsNumber,
-    messages,
+    messageStorage,
   }: {
     eventsNumber: number
-    messages: ExitMessage[]
+    messageStorage: MessageStorage
   }) => {
     logger.info('Job started', {
       operatorId: config.OPERATOR_ID,
       stakingModuleId: config.STAKING_MODULE_ID,
-      loadedMessages: messages.length,
+      loadedMessages: messageStorage.length,
     })
 
     // Resolving contract addresses on each job to automatically pick up changes without requiring a restart
@@ -83,7 +84,7 @@ export const makeJobProcessor = ({
         if (config.VALIDATOR_EXIT_WEBHOOK) {
           await webhookProcessor.send(config.VALIDATOR_EXIT_WEBHOOK, event)
         } else {
-          await messagesProcessor.exit(messages, event)
+          await messagesProcessor.exit(messageStorage, event)
         }
       } catch (e) {
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
@@ -95,7 +96,7 @@ export const makeJobProcessor = ({
     try {
       const lastRequestedValIx =
         await executionApi.lastRequestedValidatorIndex()
-      metrics.updateLeftMessages(messages, lastRequestedValIx)
+      metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
     } catch {
       logger.error(
         'Unable to update exit messages left metrics from contract state'

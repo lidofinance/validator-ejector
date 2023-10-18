@@ -15,6 +15,7 @@ import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
+import type { MessageStorage } from '../job-processor/message-storage.js'
 
 type ExitMessage = {
   message: {
@@ -54,7 +55,7 @@ export const makeMessagesProcessor = ({
       return []
     }
 
-    logger.info(`Loading messages from ${config.MESSAGES_LOCATION}`)
+    logger.info(`Loading messages from '${config.MESSAGES_LOCATION}' folder`)
 
     const folder = await readFolder(config.MESSAGES_LOCATION)
 
@@ -238,10 +239,10 @@ export const makeMessagesProcessor = ({
   }
 
   const exit = async (
-    messages: ExitMessage[],
+    messageStorage: MessageStorage,
     event: { validatorPubkey: string; validatorIndex: string }
   ) => {
-    const message = messages.find(
+    const message = messageStorage.messages.find(
       (msg) => msg.message.validator_index === event.validatorIndex
     )
 
