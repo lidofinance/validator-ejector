@@ -13,7 +13,8 @@ export const makeApp = ({
 }: Dependencies) => {
   const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
-  let timer: NodeJS.Timer
+  let timer: NodeJS.Timer | null = null
+  let reloadTimer: NodeJS.Timer | null = null
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
@@ -33,17 +34,21 @@ export const makeApp = ({
      *   - new messages are identified by difference of signature
      */
     const reloadAndVerifyMessages = async (messagesStorage: MessageStorage) => {
+      if (!config.MESSAGES_LOCATION) {
+        // webhook mode
+        return
+      }
+
       logger.info(`Will reload messages`)
-      logger.info(`Existing messages count ${messagesStorage.length}`)
-      const messages = await messagesProcessor.load()
-      const verifiedMessages = await messagesProcessor.verify(messages)
+      logger.info(`Existing messages count ${messagesStorage.size}`)
+      const newMessagesStats = await messagesProcessor.loadToMemoryStorage(
+        messagesStorage
+      )
 
-      logger.info(`Existing messages count ${messagesStorage.length}`)
-
-      const appendedMessagesCount =
-        messagesStorage.addMessages(verifiedMessages)
-
-      logger.info(`Appended ${appendedMessagesCount} new messages`)
+      logger.info(
+        `Added ${newMessagesStats.added} new messages, updated ${newMessagesStats.updated} messages`
+      )
+      logger.info(`Total messages count ${messagesStorage.size}`)
     }
 
     const messageStorage = new MessageStorage()
@@ -65,9 +70,20 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    setInterval(() => {
-      reloadAndVerifyMessages(messageStorage).catch((err) => logger.error(err))
-    }, 60 * 1000)
+    if (mode === 'message') {
+      let reloadingMessages = false
+      reloadTimer = setInterval(() => {
+        if (reloadingMessages) {
+          return
+        }
+        reloadingMessages = true
+        reloadAndVerifyMessages(messageStorage)
+          .catch((err) => logger.error(err))
+          .finally(() => {
+            reloadingMessages = false
+          })
+      }, config.JOB_INTERVAL * 2)
+    }
 
     timer = job.pooling({
       eventsNumber: BLOCKS_LOOP,
@@ -76,8 +92,14 @@ export const makeApp = ({
   }
 
   const stop = () => {
-    if (!timer) return
-    clearInterval(timer)
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
+    if (reloadTimer) {
+      clearInterval(reloadTimer)
+      reloadTimer = null
+    }
   }
 
   return { run, stop }

@@ -1,29 +1,110 @@
-import { ExitMessage } from './service.js'
+import { ExitMessage, ExitMessageWithMetadata } from './service.js'
+
+export type ValidatorIndex = string
+export type TTL = number
 
 export class MessageStorage {
-  protected $messages: ExitMessage[] = []
-  protected $signatures: Set<string> = new Set()
+  private MAX_TTL: TTL = 10
 
-  public addMessage(message: ExitMessage): number {
-    if (!this.$signatures.has(message.signature)) {
-      this.$messages.push(message)
-      this.$signatures.add(message.signature)
+  // Time to live counter for each message
+  private messageTTL: Map<ValidatorIndex, TTL> = new Map<ValidatorIndex, TTL>()
+
+  private messagesMetadatas: Map<ValidatorIndex, ExitMessageWithMetadata> =
+    new Map<ValidatorIndex, ExitMessageWithMetadata>()
+
+  private addOrUpdateMessage(
+    messageWithMetadata: ExitMessageWithMetadata
+  ): number {
+    const hasMsg = this.messagesMetadatas.has(
+      String(messageWithMetadata.data.message.validator_index)
+    )
+
+    this.messagesMetadatas.set(
+      String(messageWithMetadata.data.message.validator_index),
+      messageWithMetadata
+    )
+
+    this.setTTL(messageWithMetadata.data.message.validator_index, this.MAX_TTL)
+
+    if (!hasMsg) {
+      // msg was appended
       return 1
     }
+
+    // msg was updated (overwritten)
     return 0
   }
 
-  public addMessages(messages: ExitMessage[]): number {
-    return messages
-      .map((message) => this.addMessage(message))
-      .reduce((sum, x) => sum + x, 0)
+  private setTTL(validatorIndex: ValidatorIndex, ttl: TTL) {
+    this.messageTTL.set(String(validatorIndex), ttl)
+  }
+
+  public updateMessages(messagesWithMetadata: ExitMessageWithMetadata[]): {
+    updated: number
+    added: number
+  } {
+    return messagesWithMetadata
+      .map((msg) => this.addOrUpdateMessage(msg))
+      .reduce(
+        (stats, x) => {
+          if (x === 1) {
+            stats.added++
+            return stats
+          }
+          stats.updated++
+          return stats
+        },
+        { updated: 0, added: 0 }
+      )
+  }
+
+  public hasMessageWithChecksum(fileChecksum: string): boolean {
+    for (const msgWithMeta of this.messagesMetadatas.values()) {
+      if (msgWithMeta.meta.fileChecksum === fileChecksum) {
+        this.setTTL(msgWithMeta.data.message.validator_index, this.MAX_TTL)
+        return true
+      }
+    }
+
+    return false
+  }
+
+  protected removeMessage(validatorIndex: ValidatorIndex) {
+    this.messageTTL.delete(String(validatorIndex))
+    this.messagesMetadatas.delete(String(validatorIndex))
+  }
+
+  /**
+   * Removes old messages with expired TTL
+   */
+  public removeOldMessages() {
+    for (const [validatorIndex, TTL] of this.messageTTL.entries()) {
+      if (TTL < 0) {
+        this.removeMessage(validatorIndex)
+        continue
+      }
+
+      // decreasing TTL
+      this.setTTL(validatorIndex, TTL - 1)
+    }
+  }
+
+  public findByValidatorIndex(
+    index: ValidatorIndex
+  ): Readonly<ExitMessage> | undefined {
+    return this.messagesMetadatas.get(String(index))?.data
   }
 
   public get messages(): ReadonlyArray<Readonly<ExitMessage>> {
-    return this.$messages
+    const msgs: ExitMessage[] = []
+
+    for (const msgWithMeta of this.messagesMetadatas.values()) {
+      msgs.push(msgWithMeta.data)
+    }
+    return msgs
   }
 
-  public get length(): number {
-    return this.$messages.length
+  public get size(): number {
+    return this.messagesMetadatas.size
   }
 }

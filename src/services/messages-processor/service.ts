@@ -1,5 +1,6 @@
 import bls from '@chainsafe/bls'
 import { decrypt } from '@chainsafe/bls-keystore'
+import { createHash } from 'crypto'
 
 import { ssz } from '@lodestar/types'
 import { fromHex, toHexString } from '@lodestar/utils'
@@ -9,13 +10,17 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
 import type { LoggerService } from 'lido-nanolib'
-import type { LocalFileReaderService } from '../local-file-reader/service.js'
+import type {
+  LocalFileReaderService,
+  MessageFile,
+} from '../local-file-reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
+import type { ExitMessageWithMetadata } from '../job-processor/service.js'
 
 type ExitMessage = {
   message: {
@@ -49,7 +54,9 @@ export const makeMessagesProcessor = ({
   s3Service: S3StoreService
   gsService: GsStoreService
 }) => {
-  const load = async () => {
+  const invalidExitMessageFiles = new Set<string>()
+
+  const load = async (messagesStorage: MessageStorage) => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping loading messages in webhook mode')
       return []
@@ -59,21 +66,36 @@ export const makeMessagesProcessor = ({
 
     const folder = await readFolder(config.MESSAGES_LOCATION)
 
-    const messages: ExitMessage[] = []
+    const messagesWithMetadata: ExitMessageWithMetadata[] = []
 
     logger.info('Parsing loaded messages')
 
-    for (const [ix, file] of folder.entries()) {
+    for (const [ix, messageFile] of folder.entries()) {
       logger.info(`${ix + 1}/${folder.length}`)
+
+      // skipping empty files
+      if (messageFile.content === '') {
+        logger.warn(`Empty file. Skipping...`)
+        invalidExitMessageFiles.add(messageFile.filename)
+        continue
+      }
+
+      // used for uniqueness of file contents
+      const fileChecksum = createHash('sha256')
+        .update(messageFile.content)
+        .digest('hex')
+
+      if (messagesStorage.hasMessageWithChecksum(fileChecksum)) {
+        logger.info(`File already loaded`)
+        continue
+      }
 
       let json: Record<string, unknown>
       try {
-        json = JSON.parse(file)
+        json = JSON.parse(messageFile.content)
       } catch (error) {
-        logger.warn(`Unparseable JSON in file ${file}`, error)
-        metrics.exitMessages.inc({
-          valid: 'false',
-        })
+        logger.warn(`Unparseable JSON in file ${messageFile.filename}`, error)
+        invalidExitMessageFiles.add(messageFile.filename)
         continue
       }
 
@@ -81,10 +103,10 @@ export const makeMessagesProcessor = ({
         try {
           json = await decryptMessage(json)
         } catch (e) {
-          logger.warn(`Unable to decrypt encrypted file: ${file}`)
-          metrics.exitMessages.inc({
-            valid: 'false',
-          })
+          logger.warn(
+            `Unable to decrypt encrypted file: ${messageFile.filename}`
+          )
+          invalidExitMessageFiles.add(messageFile.filename)
           continue
         }
       }
@@ -94,23 +116,24 @@ export const makeMessagesProcessor = ({
       try {
         validated = exitOrEthDoExitDTO(json)
       } catch (e) {
-        logger.error(`${file} failed validation:`, e)
-        metrics.exitMessages.inc({
-          valid: 'false',
-        })
+        logger.error(`${messageFile.filename} failed validation:`, e)
+        invalidExitMessageFiles.add(messageFile.filename)
         continue
       }
 
       const message = 'exit' in validated ? validated.exit : validated
-      messages.push(message)
+      messagesWithMetadata.push({
+        data: message,
+        meta: { fileChecksum: fileChecksum, filename: messageFile.filename },
+      })
 
       // Unblock event loop for http server responses
       await new Promise((resolve) => setTimeout(resolve, 0))
     }
 
-    logger.info(`Loaded ${messages.length} messages`)
+    logger.info(`Loaded ${messagesWithMetadata.length} new messages`)
 
-    return messages
+    return messagesWithMetadata
   }
 
   const decryptMessage = async (input: Record<string, unknown>) => {
@@ -134,7 +157,9 @@ export const makeMessagesProcessor = ({
     return json
   }
 
-  const verify = async (messages: ExitMessage[]): Promise<ExitMessage[]> => {
+  const verify = async (
+    messages: ExitMessageWithMetadata[]
+  ): Promise<ExitMessageWithMetadata[]> => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping messages validation in webhook mode')
       return []
@@ -145,12 +170,12 @@ export const makeMessagesProcessor = ({
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
-    const validMessages: ExitMessage[] = []
+    const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
 
     for (const [ix, m] of messages.entries()) {
       logger.info(`${ix + 1}/${messages.length}`)
 
-      const { message, signature: rawSignature } = m
+      const { message, signature: rawSignature } = m.data
       const { validator_index: validatorIndex, epoch } = message
 
       let validatorInfo: { pubKey: string; isExiting: boolean }
@@ -161,9 +186,7 @@ export const makeMessagesProcessor = ({
           `Failed to get validator info for index ${validatorIndex}`,
           e
         )
-        metrics.exitMessages.inc({
-          valid: 'false',
-        })
+        invalidExitMessageFiles.add(m.meta.filename)
         continue
       }
 
@@ -171,9 +194,6 @@ export const makeMessagesProcessor = ({
         logger.debug(`${validatorInfo.pubKey} exiting(ed), skipping validation`)
         // Assuming here in order to make this optimisation work
         // (if val exited this message had to be valid)
-        metrics.exitMessages.inc({
-          valid: 'true',
-        })
         continue
       }
 
@@ -220,31 +240,25 @@ export const makeMessagesProcessor = ({
 
       if (!isValid) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
-        metrics.exitMessages.inc({
-          valid: 'false',
-        })
+        invalidExitMessageFiles.add(m.meta.filename)
         continue
       }
 
-      validMessages.push(m)
-
-      metrics.exitMessages.inc({
-        valid: 'true',
-      })
+      validMessagesWithMetadata.push(m)
     }
 
-    logger.info('Finished validation', { validAmount: validMessages.length })
+    logger.info('Finished validation', {
+      validAmount: validMessagesWithMetadata.length,
+    })
 
-    return validMessages
+    return validMessagesWithMetadata
   }
 
   const exit = async (
     messageStorage: MessageStorage,
     event: { validatorPubkey: string; validatorIndex: string }
   ) => {
-    const message = messageStorage.messages.find(
-      (msg) => msg.message.validator_index === event.validatorIndex
-    )
+    const message = messageStorage.findByValidatorIndex(event.validatorIndex)
 
     if (!message) {
       logger.error(
@@ -270,11 +284,35 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const readFolder = async (uri: string): Promise<string[]> => {
+  const readFolder = async (uri: string): Promise<MessageFile[]> => {
     if (uri.startsWith('s3://')) return s3Service.read(uri)
     if (uri.startsWith('gs://')) return gsService.read(uri)
     return localFileReader.readFilesFromFolder(uri)
   }
 
-  return { load, verify, exit }
+  const loadToMemoryStorage = async (
+    messagesStorage: MessageStorage
+  ): Promise<{
+    updated: number
+    added: number
+  }> => {
+    invalidExitMessageFiles.clear()
+
+    const newMessages = await load(messagesStorage)
+
+    const verifiedNewMessages = await verify(newMessages)
+
+    messagesStorage.removeOldMessages()
+
+    const stats = messagesStorage.updateMessages(verifiedNewMessages)
+
+    // updating metrics
+    metrics.exitMessages.reset()
+    metrics.exitMessages.labels('true').inc(messagesStorage.size)
+    metrics.exitMessages.labels('false').inc(invalidExitMessageFiles.size)
+
+    return stats
+  }
+
+  return { exit, loadToMemoryStorage }
 }

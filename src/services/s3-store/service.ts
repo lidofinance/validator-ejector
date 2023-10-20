@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-s3'
 
 import { LoggerService } from 'lido-nanolib'
+import type { MessageFile } from '../local-file-reader/service.js'
 
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
@@ -20,7 +21,7 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
   }
 
   return {
-    async read(uri: string): Promise<string[]> {
+    async read(uri: string): Promise<MessageFile[]> {
       const paramReg = /^[sS]3:\/\/(?<Bucket>.+)/
       const uriParams = uri.match(paramReg)
 
@@ -62,7 +63,7 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
         })
       }
 
-      const files: string[] = []
+      const files: MessageFile[] = []
 
       for (const [ix, fileName] of fileNames.entries()) {
         logger.info(`${ix + 1}/${fileNames.length}`)
@@ -81,7 +82,7 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
 
           const stringified = await response.Body.transformToString()
 
-          files.push(stringified)
+          files.push({ filename: fileName, content: stringified })
         } catch (e) {
           throw new Error('Unable to read file from AWS S3.', { cause: e })
         }

@@ -15,6 +15,14 @@ export type ExitMessage = {
   signature: string
 }
 
+export type ExitMessageWithMetadata = {
+  data: ExitMessage
+  meta: {
+    fileChecksum: string
+    filename: string
+  }
+}
+
 export type JobProcessorService = ReturnType<typeof makeJobProcessor>
 
 export const makeJobProcessor = ({
@@ -44,7 +52,7 @@ export const makeJobProcessor = ({
     logger.info('Job started', {
       operatorId: config.OPERATOR_ID,
       stakingModuleId: config.STAKING_MODULE_ID,
-      loadedMessages: messageStorage.length,
+      loadedMessages: messageStorage.size,
     })
 
     // Resolving contract addresses on each job to automatically pick up changes without requiring a restart
