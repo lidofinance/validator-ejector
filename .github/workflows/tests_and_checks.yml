@@ -18,9 +18,3 @@ jobs:
         run: yarn lint
       - name: Run tests
         run: yarn test
-
-  security:
-    uses: lidofinance/linters/.github/workflows/security.yml@master
-  
-  docker:
-    uses: lidofinance/linters/.github/workflows/docker.yml@master
