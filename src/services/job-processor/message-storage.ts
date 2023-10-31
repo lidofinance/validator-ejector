@@ -3,6 +3,11 @@ import { ExitMessage, ExitMessageWithMetadata } from './service.js'
 export type ValidatorIndex = string
 export type TTL = number
 
+export enum Result {
+  UPDATED = 0,
+  ADDED = 1,
+}
+
 /**
  * Stores only valid messages
  */
@@ -17,7 +22,7 @@ export class MessageStorage {
 
   private addOrUpdateMessage(
     messageWithMetadata: ExitMessageWithMetadata
-  ): number {
+  ): Result {
     const hasMsg = this.messagesMetadatas.has(
       String(messageWithMetadata.data.message.validator_index)
     )
@@ -31,11 +36,11 @@ export class MessageStorage {
 
     if (!hasMsg) {
       // msg was appended
-      return 1
+      return Result.ADDED
     }
 
     // msg was updated (overwritten)
-    return 0
+    return Result.UPDATED
   }
 
   private setTTL(validatorIndex: ValidatorIndex, ttl: TTL) {
@@ -50,7 +55,7 @@ export class MessageStorage {
       .map((msg) => this.addOrUpdateMessage(msg))
       .reduce(
         (stats, x) => {
-          if (x === 1) {
+          if (x === Result.ADDED) {
             stats.added++
             return stats
           }
