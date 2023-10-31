@@ -56,7 +56,7 @@ export const makeMessagesProcessor = ({
 }) => {
   const invalidExitMessageFiles = new Set<string>()
 
-  const load = async (messagesStorage: MessageStorage) => {
+  const loadNewMessages = async (messagesStorage: MessageStorage) => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping loading messages in webhook mode')
       return []
@@ -298,7 +298,7 @@ export const makeMessagesProcessor = ({
   }> => {
     invalidExitMessageFiles.clear()
 
-    const newMessages = await load(messagesStorage)
+    const newMessages = await loadNewMessages(messagesStorage)
 
     const verifiedNewMessages = await verify(newMessages)
 
