@@ -85,7 +85,7 @@ export const makeMessagesProcessor = ({
         .update(messageFile.content)
         .digest('hex')
 
-      if (messagesStorage.hasMessageWithChecksum(fileChecksum)) {
+      if (messagesStorage.touchMessageWithChecksum(fileChecksum)) {
         logger.info(`File already loaded`)
         continue
       }
@@ -295,14 +295,17 @@ export const makeMessagesProcessor = ({
   ): Promise<{
     updated: number
     added: number
+    removed: number
   }> => {
     invalidExitMessageFiles.clear()
+
+    messagesStorage.startUpdateCycle()
 
     const newMessages = await loadNewMessages(messagesStorage)
 
     const verifiedNewMessages = await verify(newMessages)
 
-    messagesStorage.removeOldMessages()
+    const removed = messagesStorage.removeOldMessages()
 
     const stats = messagesStorage.updateMessages(verifiedNewMessages)
 
@@ -311,7 +314,7 @@ export const makeMessagesProcessor = ({
     metrics.exitMessages.labels('true').inc(messagesStorage.size)
     metrics.exitMessages.labels('false').inc(invalidExitMessageFiles.size)
 
-    return stats
+    return { ...stats, removed }
   }
 
   return { exit, loadToMemoryStorage }

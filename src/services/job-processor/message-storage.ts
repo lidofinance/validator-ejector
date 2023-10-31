@@ -1,7 +1,7 @@
 import { ExitMessage, ExitMessageWithMetadata } from './service.js'
 
 export type ValidatorIndex = string
-export type TTL = number
+export type LAST_UPDATE = number
 
 export enum Result {
   UPDATED = 0,
@@ -12,27 +12,33 @@ export enum Result {
  * Stores only valid messages
  */
 export class MessageStorage {
-  private MAX_TTL: TTL = 10
+  private LAST_UPDATE: LAST_UPDATE = 0
 
-  // Time to live counter for each message
-  private messageTTL: Map<ValidatorIndex, TTL> = new Map<ValidatorIndex, TTL>()
+  // Last update counter for each message
+  private messagesLastUpdate: Map<ValidatorIndex, LAST_UPDATE> = new Map<
+    ValidatorIndex,
+    LAST_UPDATE
+  >()
 
-  private messagesMetadatas: Map<ValidatorIndex, ExitMessageWithMetadata> =
+  private messagesMetadata: Map<ValidatorIndex, ExitMessageWithMetadata> =
     new Map<ValidatorIndex, ExitMessageWithMetadata>()
 
   private addOrUpdateMessage(
     messageWithMetadata: ExitMessageWithMetadata
   ): Result {
-    const hasMsg = this.messagesMetadatas.has(
+    const hasMsg = this.messagesMetadata.has(
       String(messageWithMetadata.data.message.validator_index)
     )
 
-    this.messagesMetadatas.set(
+    this.messagesMetadata.set(
       String(messageWithMetadata.data.message.validator_index),
       messageWithMetadata
     )
 
-    this.setTTL(messageWithMetadata.data.message.validator_index, this.MAX_TTL)
+    this.setLastUpdate(
+      messageWithMetadata.data.message.validator_index,
+      this.LAST_UPDATE
+    )
 
     if (!hasMsg) {
       // msg was appended
@@ -43,33 +49,44 @@ export class MessageStorage {
     return Result.UPDATED
   }
 
-  private setTTL(validatorIndex: ValidatorIndex, ttl: TTL) {
-    this.messageTTL.set(String(validatorIndex), ttl)
+  private setLastUpdate(validatorIndex: ValidatorIndex, ttl: LAST_UPDATE) {
+    this.messagesLastUpdate.set(String(validatorIndex), ttl)
+  }
+
+  public startUpdateCycle() {
+    this.LAST_UPDATE = Date.now()
   }
 
   public updateMessages(messagesWithMetadata: ExitMessageWithMetadata[]): {
     updated: number
     added: number
   } {
-    return messagesWithMetadata
-      .map((msg) => this.addOrUpdateMessage(msg))
-      .reduce(
-        (stats, x) => {
-          if (x === Result.ADDED) {
-            stats.added++
-            return stats
-          }
-          stats.updated++
-          return stats
-        },
-        { updated: 0, added: 0 }
-      )
+    const processResults = messagesWithMetadata.map((msg) =>
+      this.addOrUpdateMessage(msg)
+    )
+
+    const updated = processResults.filter(
+      (result) => result === Result.UPDATED
+    ).length
+
+    const added = processResults.filter(
+      (result) => result === Result.ADDED
+    ).length
+
+    return { updated, added }
   }
 
-  public hasMessageWithChecksum(fileChecksum: string): boolean {
-    for (const msgWithMeta of this.messagesMetadatas.values()) {
+  /**
+   * Updates TTL of message with checksum if any
+   * Returns true if message was found and updated
+   */
+  public touchMessageWithChecksum(fileChecksum: string): boolean {
+    for (const msgWithMeta of this.messagesMetadata.values()) {
       if (msgWithMeta.meta.fileChecksum === fileChecksum) {
-        this.setTTL(msgWithMeta.data.message.validator_index, this.MAX_TTL)
+        this.setLastUpdate(
+          msgWithMeta.data.message.validator_index,
+          this.LAST_UPDATE
+        )
         return true
       }
     }
@@ -78,36 +95,43 @@ export class MessageStorage {
   }
 
   protected removeMessage(validatorIndex: ValidatorIndex) {
-    this.messageTTL.delete(String(validatorIndex))
-    this.messagesMetadatas.delete(String(validatorIndex))
+    this.messagesLastUpdate.delete(String(validatorIndex))
+    this.messagesMetadata.delete(String(validatorIndex))
   }
 
   /**
-   * Removes old messages with expired TTL
+   * Removes old messages
    */
-  public removeOldMessages() {
-    for (const [validatorIndex, TTL] of this.messageTTL.entries()) {
-      if (TTL < 0) {
+  public removeOldMessages(): number {
+    let removed = 0
+
+    for (const [
+      validatorIndex,
+      LAST_UPDATE,
+    ] of this.messagesLastUpdate.entries()) {
+      if (LAST_UPDATE < this.LAST_UPDATE) {
         this.removeMessage(validatorIndex)
-        continue
+        removed++
       }
 
-      // decreasing TTL
-      this.setTTL(validatorIndex, TTL - 1)
+      // // decreasing LAST_UPDATE
+      // this.setLastUpdate(validatorIndex, LAST_UPDATE - 1)
     }
+
+    return removed
   }
 
   public findByValidatorIndex(
     index: ValidatorIndex
   ): Readonly<ExitMessage> | undefined {
-    return this.messagesMetadatas.get(String(index))?.data
+    return this.messagesMetadata.get(String(index))?.data
   }
 
   public get messages(): ReadonlyArray<Readonly<ExitMessage>> {
-    return Array.from(this.messagesMetadatas.values()).map(({ data }) => data)
+    return Array.from(this.messagesMetadata.values()).map(({ data }) => data)
   }
 
   public get size(): number {
-    return this.messagesMetadatas.size
+    return this.messagesMetadata.size
   }
 }

@@ -34,6 +34,7 @@ export const makeMessageReloader = ({
     logger.info(`Presigned messages updated`, {
       added: newMessagesStats.added,
       updated: newMessagesStats.updated,
+      removed_outdated: newMessagesStats.removed,
       total: messagesStorage.size,
     })
   }
