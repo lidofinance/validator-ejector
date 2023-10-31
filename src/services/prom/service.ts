@@ -67,13 +67,21 @@ export const makeMetrics = ({
   })
   register.registerMetric(consensusRequestDurationSeconds)
 
-  const jobDuration = new client.Histogram({
+  const jobEjectorCycleDuration = new client.Histogram({
     name: PREFIX + 'job_duration_seconds',
     help: 'Duration of cron jobs',
     labelNames: ['name', 'interval', 'result'] as const,
     buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
   })
-  register.registerMetric(jobDuration)
+  register.registerMetric(jobEjectorCycleDuration)
+
+  const jobMessageReloaderDuration = new client.Histogram({
+    name: PREFIX + 'job_message_reloader_duration_seconds',
+    help: 'Duration of message reloader cron job',
+    labelNames: ['name', 'interval', 'result'] as const,
+    buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
+  })
+  register.registerMetric(jobEjectorCycleDuration)
 
   const exitMessagesLeftNumber = new client.Gauge({
     name: PREFIX + 'exit_messages_left_number',
@@ -108,7 +116,8 @@ export const makeMetrics = ({
     pollingLastBlocksDurationSeconds,
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
-    jobDuration,
+    jobEjectorCycleDuration,
+    jobMessageReloaderDuration,
     updateLeftMessages,
   }
 }

@@ -3,6 +3,9 @@ import { ExitMessage, ExitMessageWithMetadata } from './service.js'
 export type ValidatorIndex = string
 export type TTL = number
 
+/**
+ * Stores only valid messages
+ */
 export class MessageStorage {
   private MAX_TTL: TTL = 10
 

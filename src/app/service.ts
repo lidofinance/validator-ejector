@@ -5,16 +5,23 @@ export const makeApp = ({
   config,
   logger,
   job,
-  messagesProcessor,
+  messageReloader,
+  messageReloaderJob,
   httpHandler,
   executionApi,
   consensusApi,
   appInfoReader,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
+  const {
+    OPERATOR_ID,
+    BLOCKS_PRELOAD,
+    BLOCKS_LOOP,
+    JOB_INTERVAL,
+    JOB_MESSAGE_RELOADING_INTERVAL,
+  } = config
 
-  let timer: NodeJS.Timer | null = null
-  let reloadTimer: NodeJS.Timer | null = null
+  let ejectorCycleTimer: NodeJS.Timer | null = null
+  let messageReloadingTimer: NodeJS.Timer | null = null
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
@@ -26,33 +33,10 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    /**
-     * Appends new messages to messageStorage,
-     * Not modifying the messagesStorage reference
-     *
-     * Notes:
-     *   - new messages are identified by difference of signature
-     */
-    const reloadAndVerifyMessages = async (messagesStorage: MessageStorage) => {
-      if (!config.MESSAGES_LOCATION) {
-        // webhook mode
-        return
-      }
-
-      logger.info(`Will reload messages`)
-      logger.info(`Existing messages count ${messagesStorage.size}`)
-      const newMessagesStats = await messagesProcessor.loadToMemoryStorage(
-        messagesStorage
-      )
-
-      logger.info(
-        `Added ${newMessagesStats.added} new messages, updated ${newMessagesStats.updated} messages`
-      )
-      logger.info(`Total messages count ${messagesStorage.size}`)
-    }
-
     const messageStorage = new MessageStorage()
-    await reloadAndVerifyMessages(messageStorage)
+    if (mode === 'message') {
+      await messageReloader.reloadAndVerifyMessages(messageStorage)
+    }
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
@@ -71,34 +55,34 @@ export const makeApp = ({
     )
 
     if (mode === 'message') {
-      let reloadingMessages = false
-      reloadTimer = setInterval(() => {
-        if (reloadingMessages) {
-          return
-        }
-        reloadingMessages = true
-        reloadAndVerifyMessages(messageStorage)
-          .catch((err) => logger.error(err))
-          .finally(() => {
-            reloadingMessages = false
-          })
-      }, config.JOB_INTERVAL * 2)
+      logger.info(
+        `Message hot-reloading enabled with ${
+          JOB_MESSAGE_RELOADING_INTERVAL / 1000
+        }`
+      )
+      messageReloadingTimer = messageReloaderJob.pooling({
+        messageStorage: messageStorage,
+      })
+    } else {
+      logger.info(
+        `Message hot-reloading disabled, because Webhook mode enabled`
+      )
     }
 
-    timer = job.pooling({
+    ejectorCycleTimer = job.pooling({
       eventsNumber: BLOCKS_LOOP,
       messageStorage: messageStorage,
     })
   }
 
   const stop = () => {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
+    if (ejectorCycleTimer) {
+      clearInterval(ejectorCycleTimer)
+      ejectorCycleTimer = null
     }
-    if (reloadTimer) {
-      clearInterval(reloadTimer)
-      reloadTimer = null
+    if (messageReloadingTimer) {
+      clearInterval(messageReloadingTimer)
+      messageReloadingTimer = null
     }
   }
 

@@ -23,8 +23,8 @@ import { makeJobProcessor } from '../services/job-processor/service.js'
 import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
-
 import { makeApp } from './service.js'
+import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 
 dotenv.config()
 
@@ -99,11 +99,26 @@ export const makeAppModule = async () => {
     metrics,
   })
 
+  const messageReloader = makeMessageReloader({
+    logger,
+    config,
+    messagesProcessor,
+  })
+
   const job = makeJobRunner('validator-ejector', {
     config,
     logger,
-    metric: metrics.jobDuration,
+    metric: metrics.jobEjectorCycleDuration,
     handler: jobProcessor.handleJob,
+  })
+
+  const messageReloaderJob = makeJobRunner('message-reloader', {
+    config: {
+      JOB_INTERVAL: config.JOB_MESSAGE_RELOADING_INTERVAL,
+    },
+    logger,
+    metric: metrics.jobMessageReloaderDuration,
+    handler: messageReloader.handleJob,
   })
 
   const httpHandler = makeHttpHandler({ register, config })
@@ -114,7 +129,8 @@ export const makeAppModule = async () => {
     config,
     logger,
     job,
-    messagesProcessor,
+    messageReloader,
+    messageReloaderJob,
     metrics,
     httpHandler,
     executionApi,
