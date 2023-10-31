@@ -99,12 +99,7 @@ export class MessageStorage {
   }
 
   public get messages(): ReadonlyArray<Readonly<ExitMessage>> {
-    const msgs: ExitMessage[] = []
-
-    for (const msgWithMeta of this.messagesMetadatas.values()) {
-      msgs.push(msgWithMeta.data)
-    }
-    return msgs
+    return Array.from(this.messagesMetadatas.values()).map(({ data }) => data)
   }
 
   public get size(): number {
