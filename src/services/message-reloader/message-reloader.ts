@@ -14,8 +14,6 @@ export const makeMessageReloader = ({
   config: ConfigService
   messagesProcessor: MessagesProcessorService
 }) => {
-  let alreadyReloadingMessages = false
-
   /**
    * Appends new messages to messageStorage,
    * Not modifying the messagesStorage reference
@@ -50,21 +48,13 @@ export const makeMessageReloader = ({
       return
     }
 
-    if (alreadyReloadingMessages) {
-      return
-    }
-    alreadyReloadingMessages = true
     logger.info('Presigned messages reload job started', {
       operatorId: config.OPERATOR_ID,
       stakingModuleId: config.STAKING_MODULE_ID,
       loadedMessages: messageStorage.size,
     })
-    reloadAndVerifyMessages(messageStorage)
-      .catch((err) => logger.error(err))
-      .finally(() => {
-        alreadyReloadingMessages = false
-        logger.info('Presigned messages reload job finished')
-      })
+    await reloadAndVerifyMessages(messageStorage)
+    logger.info('Presigned messages reload job finished')
   }
 
   return { handleJob, reloadAndVerifyMessages }
