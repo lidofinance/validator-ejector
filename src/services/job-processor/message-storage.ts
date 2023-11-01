@@ -49,8 +49,11 @@ export class MessageStorage {
     return Result.UPDATED
   }
 
-  private setLastUpdate(validatorIndex: ValidatorIndex, ttl: LAST_UPDATE) {
-    this.messagesLastUpdate.set(String(validatorIndex), ttl)
+  private setLastUpdate(
+    validatorIndex: ValidatorIndex,
+    lastUpdate: LAST_UPDATE
+  ) {
+    this.messagesLastUpdate.set(String(validatorIndex), lastUpdate)
   }
 
   public startUpdateCycle() {
@@ -77,7 +80,7 @@ export class MessageStorage {
   }
 
   /**
-   * Updates TTL of message with checksum if any
+   * Updates LAST_UPDATE of message with checksum if any
    * Returns true if message was found and updated
    */
   public touchMessageWithChecksum(fileChecksum: string): boolean {
