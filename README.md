@@ -49,28 +49,29 @@ On the endpoint, JSON will be POSTed with the following structure:
 
 Options are configured via environment variables.
 
-| Variable                   | Required | Default/Example       | Description                                                                                                                                                                                                                                             |
-| -------------------------- | -------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| EXECUTION_NODE             | Yes      | http://1.2.3.4:8545   | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
-| CONSENSUS_NODE             | Yes      | http://1.2.3.4:5051   | Ethereum Consensus Node endpoint                                                                                                                                                                                                                        |
-| LOCATOR_ADDRESS            | Yes      | 0x123                 | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
-| STAKING_MODULE_ID          | Yes      | 123                   | Staking Module ID for which operator ID is set, currently only one exists - ([NodeOperatorsRegistry](https://github.com/lidofinance/lido-dao#contracts)) with id `1`                                                                                    |
-| OPERATOR_ID                | Yes      | 123                   | Operator ID in the Node Operators registry, easiest to get from Operators UI: [Goerli](https://operators.testnet.fi)/[Mainnet](https://operators.lido.fi)                                                                                               |
-| MESSAGES_LOCATION          | No       | messages              | Local folder or external storage bucket url to load json exit message files from. Required if you are using exit messages mode                                                                                                                          |
-| VALIDATOR_EXIT_WEBHOOK     | No       | http://webhook        | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
-| ORACLE_ADDRESSES_ALLOWLIST | Yes      | ["0x123"]             | Allowed Oracle addresses to accept transactions from [Goerli](https://testnet.testnet.fi/#/lido-testnet-prater/0x24d8451bc07e7af4ba94f69acdd9ad3c6579d9fb/) / [Mainnet](https://mainnet.lido.fi/#/lido-dao/0x442af784a788a5bd6f42a01ebe9f287a871243fb/) |
-| MESSAGES_PASSWORD          | No       | password              | Password to decrypt encrypted exit messages with. Needed only if you encrypt your exit messages                                                                                                                                                         |
-| MESSAGES_PASSWORD_FILE     | No       | password_inside.txt   | Path to a file with password inside to decrypt exit messages with. Needed only if you have encrypted exit messages. If used, MESSAGES_PASSWORD (not MESSAGES_PASSWORD_FILE) needs to be added to LOGGER_SECRETS in order to be sanitized                |
-| BLOCKS_PRELOAD             | No       | 50000                 | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a week of blocks                                                                                                                           |
-| BLOCKS_LOOP                | No       | 900                   | Amount of blocks to load events from on every poll. Defaults to 3 hours of blocks                                                                                                                                                                       |
-| JOB_INTERVAL               | No       | 384000                | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                                                                                                                                                |
-| HTTP_PORT                  | No       | 8989                  | Port to serve metrics and health check on                                                                                                                                                                                                               |
-| RUN_METRICS                | No       | false                 | Enable metrics endpoint                                                                                                                                                                                                                                 |
-| RUN_HEALTH_CHECK           | No       | true                  | Enable health check endpoint                                                                                                                                                                                                                            |
-| LOGGER_LEVEL               | No       | info                  | Severity level from which to start showing errors eg info will hide debug messages                                                                                                                                                                      |
-| LOGGER_FORMAT              | No       | simple                | Simple or JSON log output: simple/json                                                                                                                                                                                                                  |
-| LOGGER_SECRETS             | No       | ["MESSAGES_PASSWORD"] | JSON string array of either env var keys to sanitize in logs or exact values                                                                                                                                                                            |
-| DRY_RUN                    | No       | false                 | Run the service without actually sending out exit messages                                                                                                                                                                                              |
+| Variable                       | Required | Default/Example       | Description                                                                                                                                                                                                                                             |
+|--------------------------------| -------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| EXECUTION_NODE                 | Yes      | http://1.2.3.4:8545   | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
+| CONSENSUS_NODE                 | Yes      | http://1.2.3.4:5051   | Ethereum Consensus Node endpoint                                                                                                                                                                                                                        |
+| LOCATOR_ADDRESS                | Yes      | 0x123                 | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
+| STAKING_MODULE_ID              | Yes      | 123                   | Staking Module ID for which operator ID is set, currently only one exists - ([NodeOperatorsRegistry](https://github.com/lidofinance/lido-dao#contracts)) with id `1`                                                                                    |
+| OPERATOR_ID                    | Yes      | 123                   | Operator ID in the Node Operators registry, easiest to get from Operators UI: [Goerli](https://operators.testnet.fi)/[Mainnet](https://operators.lido.fi)                                                                                               |
+| MESSAGES_LOCATION              | No       | messages              | Local folder or external storage bucket url to load json exit message files from. Required if you are using exit messages mode                                                                                                                          |
+| VALIDATOR_EXIT_WEBHOOK         | No       | http://webhook        | POST validator info to an endpoint instead of sending out an exit message in order to initiate an exit. Required if you are using webhook mode                                                                                                          |
+| ORACLE_ADDRESSES_ALLOWLIST     | Yes      | ["0x123"]             | Allowed Oracle addresses to accept transactions from [Goerli](https://testnet.testnet.fi/#/lido-testnet-prater/0x24d8451bc07e7af4ba94f69acdd9ad3c6579d9fb/) / [Mainnet](https://mainnet.lido.fi/#/lido-dao/0x442af784a788a5bd6f42a01ebe9f287a871243fb/) |
+| MESSAGES_PASSWORD              | No       | password              | Password to decrypt encrypted exit messages with. Needed only if you encrypt your exit messages                                                                                                                                                         |
+| MESSAGES_PASSWORD_FILE         | No       | password_inside.txt   | Path to a file with password inside to decrypt exit messages with. Needed only if you have encrypted exit messages. If used, MESSAGES_PASSWORD (not MESSAGES_PASSWORD_FILE) needs to be added to LOGGER_SECRETS in order to be sanitized                |
+| BLOCKS_PRELOAD                 | No       | 50000                 | Amount of blocks to load events from on start. Increase if daemon was not running for some time. Defaults to a week of blocks                                                                                                                           |
+| BLOCKS_LOOP                    | No       | 900                   | Amount of blocks to load events from on every poll. Defaults to 3 hours of blocks                                                                                                                                                                       |
+| JOB_INTERVAL                   | No       | 384000                | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                                                                                                                                                |
+| JOB_MESSAGE_RELOADING_INTERVAL | No       | 192000                | Time interval in milliseconds to reload messages. Defaults to time of 0.5 epoch                                                                                                                                                                         |
+| HTTP_PORT                      | No       | 8989                  | Port to serve metrics and health check on                                                                                                                                                                                                               |
+| RUN_METRICS                    | No       | false                 | Enable metrics endpoint                                                                                                                                                                                                                                 |
+| RUN_HEALTH_CHECK               | No       | true                  | Enable health check endpoint                                                                                                                                                                                                                            |
+| LOGGER_LEVEL                   | No       | info                  | Severity level from which to start showing errors eg info will hide debug messages                                                                                                                                                                      |
+| LOGGER_FORMAT                  | No       | simple                | Simple or JSON log output: simple/json                                                                                                                                                                                                                  |
+| LOGGER_SECRETS                 | No       | ["MESSAGES_PASSWORD"] | JSON string array of either env var keys to sanitize in logs or exact values                                                                                                                                                                            |
+| DRY_RUN                        | No       | false                 | Run the service without actually sending out exit messages                                                                                                                                                                                              |
 
 Messages can also be loaded from remote storages: AWS S3 and Google Cloud Storage.
 
@@ -128,7 +129,8 @@ Available metrics:
 - polling_last_blocks_duration_seconds: ['eventsNumber'] - Duration of pooling last blocks in microseconds
 - execution_request_duration_seconds: ['result', 'status', 'domain'] - Execution node request duration in microseconds
 - consensus_request_duration_seconds: ['result', 'status', 'domain'] - Consensus node request duration in microseconds
-- job_duration_seconds: ['name', 'interval', 'result'] - Duration of cron jobs
+- job_duration_seconds: ['name', 'interval', 'result'] - Duration of Ejector cycle cron job
+- job_message_reloader_duration_seconds: ['name', 'interval', 'result'] - Duration of Pre-signed message reloader cron job
 - exit_messages_left_number - Number of exit messages left
 - exit_messages_left_percent - Percentage of exit messages left
 
@@ -144,3 +146,22 @@ Available metrics:
 - Node requests are repeated on error or timeouts
 - Amount of messages left to send out can be checked using metrics
 - Dry run mode to test setup
+
+## Troubleshooting
+
+When you try to use Lido Validator Ejector on ARM, you may encounter an unexpected
+problem related to the inability to install @chainsafe/blst dependencies under darwin arm64.
+
+### Why does it happen?!
+
+It happens because https://www.npmjs.com/package/@chainsafe/blst doesn't provide native C binding to https://github.com/supranational/blst under darwin arm64.
+Such as there no native binding, a user has to compile C binding to blst lab manually for darwin arm64.
+@chainsafe/blst has compile option but inside itself for downloading dependencies this lib uses Python language.
+Historically MacOs uses alias python3 for python. So then @chainsafe/blst fails with an error that it could not install all dependencies.
+To fix it on MacOs just create alias python for python3.
+
+```bash
+ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
+```
+
+More info here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566

@@ -53,6 +53,8 @@ export const makeConfig = ({
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
     BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 900, // 3 hours of blocks
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
+    JOB_MESSAGE_RELOADING_INTERVAL:
+      optional(() => num(env.JOB_MESSAGE_RELOADING_INTERVAL)) ?? 192000, // 0.5 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
     RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,

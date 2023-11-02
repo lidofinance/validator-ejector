@@ -1,18 +1,27 @@
 import type { Dependencies } from './interface.js'
+import { MessageStorage } from '../services/job-processor/message-storage.js'
 
 export const makeApp = ({
   config,
   logger,
   job,
-  messagesProcessor,
+  messageReloader,
+  messageReloaderJob,
   httpHandler,
   executionApi,
   consensusApi,
   appInfoReader,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
+  const {
+    OPERATOR_ID,
+    BLOCKS_PRELOAD,
+    BLOCKS_LOOP,
+    JOB_INTERVAL,
+    JOB_MESSAGE_RELOADING_INTERVAL,
+  } = config
 
-  let timer: NodeJS.Timer
+  let ejectorCycleTimer: NodeJS.Timer | null = null
+  let messageReloadingTimer: NodeJS.Timer | null = null
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
@@ -24,15 +33,20 @@ export const makeApp = ({
 
     await httpHandler.run()
 
-    const messages = await messagesProcessor.load()
-    const verifiedMessages = await messagesProcessor.verify(messages)
+    const messageStorage = new MessageStorage()
+    if (mode === 'message') {
+      await messageReloader.reloadAndVerifyMessages(messageStorage)
+    }
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
-    await job.once({ eventsNumber: BLOCKS_PRELOAD, messages: verifiedMessages })
+    await job.once({
+      eventsNumber: BLOCKS_PRELOAD,
+      messageStorage: messageStorage,
+    })
 
     logger.info(
       `Starting ${
@@ -40,15 +54,36 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    timer = job.pooling({
+    if (mode === 'message') {
+      logger.info(
+        `Message hot-reloading enabled with ${
+          JOB_MESSAGE_RELOADING_INTERVAL / 1000
+        } seconds interval`
+      )
+      messageReloadingTimer = messageReloaderJob.pooling({
+        messageStorage: messageStorage,
+      })
+    } else {
+      logger.info(
+        `Message hot-reloading disabled, because Webhook mode enabled`
+      )
+    }
+
+    ejectorCycleTimer = job.pooling({
       eventsNumber: BLOCKS_LOOP,
-      messages: verifiedMessages,
+      messageStorage: messageStorage,
     })
   }
 
   const stop = () => {
-    if (!timer) return
-    clearInterval(timer)
+    if (ejectorCycleTimer) {
+      clearInterval(ejectorCycleTimer)
+      ejectorCycleTimer = null
+    }
+    if (messageReloadingTimer) {
+      clearInterval(messageReloadingTimer)
+      messageReloadingTimer = null
+    }
   }
 
   return { run, stop }
