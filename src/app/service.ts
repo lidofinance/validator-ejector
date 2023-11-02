@@ -58,7 +58,7 @@ export const makeApp = ({
       logger.info(
         `Message hot-reloading enabled with ${
           JOB_MESSAGE_RELOADING_INTERVAL / 1000
-        }`
+        } seconds interval`
       )
       messageReloadingTimer = messageReloaderJob.pooling({
         messageStorage: messageStorage,
