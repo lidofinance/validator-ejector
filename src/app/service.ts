@@ -5,23 +5,14 @@ export const makeApp = ({
   config,
   logger,
   job,
-  messageReloader,
-  messageReloaderJob,
   httpHandler,
   executionApi,
   consensusApi,
   appInfoReader,
 }: Dependencies) => {
-  const {
-    OPERATOR_ID,
-    BLOCKS_PRELOAD,
-    BLOCKS_LOOP,
-    JOB_INTERVAL,
-    JOB_MESSAGE_RELOADING_INTERVAL,
-  } = config
+  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
 
   let ejectorCycleTimer: NodeJS.Timer | null = null
-  let messageReloadingTimer: NodeJS.Timer | null = null
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
@@ -34,9 +25,6 @@ export const makeApp = ({
     await httpHandler.run()
 
     const messageStorage = new MessageStorage()
-    if (mode === 'message') {
-      await messageReloader.reloadAndVerifyMessages(messageStorage)
-    }
 
     logger.info(
       `Starting, searching only for requests for operator ${OPERATOR_ID}`
@@ -54,21 +42,6 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    if (mode === 'message') {
-      logger.info(
-        `Message hot-reloading enabled with ${
-          JOB_MESSAGE_RELOADING_INTERVAL / 1000
-        } seconds interval`
-      )
-      messageReloadingTimer = messageReloaderJob.pooling({
-        messageStorage: messageStorage,
-      })
-    } else {
-      logger.info(
-        `Message hot-reloading disabled, because Webhook mode enabled`
-      )
-    }
-
     ejectorCycleTimer = job.pooling({
       eventsNumber: BLOCKS_LOOP,
       messageStorage: messageStorage,
@@ -79,10 +52,6 @@ export const makeApp = ({
     if (ejectorCycleTimer) {
       clearInterval(ejectorCycleTimer)
       ejectorCycleTimer = null
-    }
-    if (messageReloadingTimer) {
-      clearInterval(messageReloadingTimer)
-      messageReloadingTimer = null
     }
   }
 

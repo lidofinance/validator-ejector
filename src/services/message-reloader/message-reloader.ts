@@ -22,12 +22,24 @@ export const makeMessageReloader = ({
    *   - new messages are identified by difference of signature
    */
   const reloadAndVerifyMessages = async (messagesStorage: MessageStorage) => {
+    if (!config.MESSAGES_LOCATION) {
+      // webhook mode
+      return
+    }
+
     logger.info(`Presigned messages loading`, {
       existing: messagesStorage.size,
     })
+
     const newMessagesStats = await messagesProcessor.loadToMemoryStorage(
       messagesStorage
     )
+
+    const validatorIndexes = messagesStorage.messages.map(
+      ({ message }) => message.validator_index
+    )
+
+    logger.debug('Uploaded Validators indexes', validatorIndexes)
 
     logger.info(`Presigned messages updated`, {
       added: newMessagesStats.added,
@@ -37,25 +49,5 @@ export const makeMessageReloader = ({
     })
   }
 
-  const handleJob = async ({
-    messageStorage,
-  }: {
-    messageStorage: MessageStorage
-  }) => {
-    // this should never happen, but just in case
-    if (!config.MESSAGES_LOCATION) {
-      // webhook mode
-      return
-    }
-
-    logger.info('Presigned messages reload job started', {
-      operatorId: config.OPERATOR_ID,
-      stakingModuleId: config.STAKING_MODULE_ID,
-      loadedMessages: messageStorage.size,
-    })
-    await reloadAndVerifyMessages(messageStorage)
-    logger.info('Presigned messages reload job finished')
-  }
-
-  return { handleJob, reloadAndVerifyMessages }
+  return { reloadAndVerifyMessages }
 }

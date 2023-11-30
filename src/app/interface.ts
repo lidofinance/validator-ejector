@@ -12,7 +12,6 @@ export interface Dependencies {
   logger: LoggerService
   job: JobRunnerService
   messageReloader: MessageReloader
-  messageReloaderJob: JobRunnerService
   metrics: MetricsService
   httpHandler: HttpHandlerService
   executionApi: ExecutionApiService
