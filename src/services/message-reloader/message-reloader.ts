@@ -23,7 +23,7 @@ export const makeMessageReloader = ({
    */
   const reloadAndVerifyMessages = async (messagesStorage: MessageStorage) => {
     if (!config.MESSAGES_LOCATION) {
-      // webhook mode
+      logger.debug('Skipping loading messages in webhook mode')
       return
     }
 
