@@ -4,8 +4,9 @@ import type { ConfigService } from '../config/service.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
 import type { WebhookProcessorService } from '../webhook-caller/service.js'
-import type { MetricsService } from 'services/prom/service.js'
+import type { MetricsService } from '../prom/service.js'
 import type { MessageStorage } from './message-storage.js'
+import type { MessageReloader } from '../message-reloader/message-reloader.js'
 
 export type ExitMessage = {
   message: {
@@ -28,6 +29,7 @@ export type JobProcessorService = ReturnType<typeof makeJobProcessor>
 export const makeJobProcessor = ({
   logger,
   config,
+  messageReloader,
   executionApi,
   consensusApi,
   messagesProcessor,
@@ -36,6 +38,7 @@ export const makeJobProcessor = ({
 }: {
   logger: LoggerService
   config: ConfigService
+  messageReloader: MessageReloader
   executionApi: ExecutionApiService
   consensusApi: ConsensusApiService
   messagesProcessor: MessagesProcessorService
@@ -52,8 +55,9 @@ export const makeJobProcessor = ({
     logger.info('Job started', {
       operatorId: config.OPERATOR_ID,
       stakingModuleId: config.STAKING_MODULE_ID,
-      loadedMessages: messageStorage.size,
     })
+
+    await messageReloader.reloadAndVerifyMessages(messageStorage)
 
     // Resolving contract addresses on each job to automatically pick up changes without requiring a restart
     await executionApi.resolveExitBusAddress()

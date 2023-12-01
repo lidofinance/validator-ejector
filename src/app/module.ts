@@ -89,9 +89,16 @@ export const makeAppModule = async () => {
     metrics
   )
 
+  const messageReloader = makeMessageReloader({
+    logger,
+    config,
+    messagesProcessor,
+  })
+
   const jobProcessor = makeJobProcessor({
     logger,
     config,
+    messageReloader,
     executionApi,
     consensusApi,
     messagesProcessor,
@@ -99,26 +106,11 @@ export const makeAppModule = async () => {
     metrics,
   })
 
-  const messageReloader = makeMessageReloader({
-    logger,
-    config,
-    messagesProcessor,
-  })
-
   const job = makeJobRunner('validator-ejector', {
     config,
     logger,
     metric: metrics.jobEjectorCycleDuration,
     handler: jobProcessor.handleJob,
-  })
-
-  const messageReloaderJob = makeJobRunner('message-reloader', {
-    config: {
-      JOB_INTERVAL: config.JOB_MESSAGE_RELOADING_INTERVAL,
-    },
-    logger,
-    metric: metrics.jobMessageReloaderDuration,
-    handler: messageReloader.handleJob,
   })
 
   const httpHandler = makeHttpHandler({ register, config })
@@ -130,7 +122,6 @@ export const makeAppModule = async () => {
     logger,
     job,
     messageReloader,
-    messageReloaderJob,
     metrics,
     httpHandler,
     executionApi,
