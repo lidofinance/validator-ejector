@@ -1,6 +1,7 @@
 import { Storage, File } from '@google-cloud/storage'
 
 import { LoggerService } from 'lido-nanolib'
+import type { MessageFile } from '../local-file-reader/service.js'
 
 export type GsStoreService = ReturnType<typeof makeGsStore>
 
@@ -16,7 +17,7 @@ export const makeGsStore = ({ logger }: { logger: LoggerService }) => {
   }
 
   return {
-    async read(uri: string): Promise<string[]> {
+    async read(uri: string): Promise<MessageFile[]> {
       const paramReg = /^gs:\/\/(?<Bucket>.+)/
       const uriParams = uri.match(paramReg)
 
@@ -38,14 +39,14 @@ export const makeGsStore = ({ logger }: { logger: LoggerService }) => {
 
       const fileNames = filesResponse.map((item) => item.name)
 
-      const files: string[] = []
+      const files: MessageFile[] = []
 
       for (const [ix, fileName] of fileNames.entries()) {
         logger.info(`${ix + 1}/${fileNames.length}`)
 
         try {
           const file = await bucket.file(fileName).download()
-          files.push(file.toString())
+          files.push({ filename: fileName, content: file.toString() })
         } catch (e) {
           throw new Error('Unable to read file from Google Storage.', {
             cause: e,

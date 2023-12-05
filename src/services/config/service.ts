@@ -62,6 +62,7 @@ export const makeConfig = ({
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
       optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
       false,
+    PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {

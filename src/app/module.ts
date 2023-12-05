@@ -23,114 +23,118 @@ import { makeJobProcessor } from '../services/job-processor/service.js'
 import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
-
 import { makeApp } from './service.js'
+import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 
 dotenv.config()
 
-export const bootstrap = async () => {
-  const defaultLogger = makeLogger({
-    level: 'debug',
-    format: 'simple',
+export const makeAppModule = async () => {
+  const loggerConfig = makeLoggerConfig({ env: process.env })
+
+  const logger = makeLogger({
+    level: loggerConfig.LOGGER_LEVEL,
+    format: loggerConfig.LOGGER_FORMAT,
+    sanitizer: {
+      secrets: loggerConfig.LOGGER_SECRETS,
+      replacer: '<secret>',
+    },
   })
 
-  try {
-    const loggerConfig = makeLoggerConfig({ env: process.env })
+  const config = makeConfig({ logger, env: process.env })
 
-    const logger = makeLogger({
-      level: loggerConfig.LOGGER_LEVEL,
-      format: loggerConfig.LOGGER_FORMAT,
-      sanitizer: {
-        secrets: loggerConfig.LOGGER_SECRETS,
-        replacer: '<secret>',
-      },
-    })
+  const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
-    const config = makeConfig({ logger, env: process.env })
+  const executionApi = makeExecutionApi(
+    makeRequest([
+      retry(3),
+      loggerMiddleware(logger),
+      prom(metrics.executionRequestDurationSeconds),
+      notOkError(),
+      abort(30_000),
+    ]),
+    logger,
+    config,
+    metrics
+  )
 
-    const metrics = makeMetrics()
+  const consensusApi = makeConsensusApi(
+    makeRequest([
+      retry(3),
+      loggerMiddleware(logger),
+      prom(metrics.consensusRequestDurationSeconds),
+      abort(30_000),
+    ]),
+    logger,
+    config
+  )
 
-    const executionApi = makeExecutionApi(
-      makeRequest([
-        retry(3),
-        loggerMiddleware(logger),
-        prom(metrics.executionRequestDurationSeconds),
-        notOkError(),
-        abort(30_000),
-      ]),
-      logger,
-      config,
-      metrics
-    )
+  const localFileReader = makeLocalFileReader({ logger })
 
-    const consensusApi = makeConsensusApi(
-      makeRequest([
-        retry(3),
-        loggerMiddleware(logger),
-        prom(metrics.consensusRequestDurationSeconds),
-        abort(30_000),
-      ]),
-      logger,
-      config
-    )
+  const s3Service = makeS3Store({ logger })
+  const gsService = makeGsStore({ logger })
 
-    const localFileReader = makeLocalFileReader({ logger })
+  const messagesProcessor = makeMessagesProcessor({
+    logger,
+    config,
+    localFileReader,
+    consensusApi,
+    metrics,
+    s3Service,
+    gsService,
+  })
 
-    const s3Service = makeS3Store({ logger })
-    const gsService = makeGsStore({ logger })
+  const webhookProcessor = makeWebhookProcessor(
+    makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
+    logger,
+    metrics
+  )
 
-    const messagesProcessor = makeMessagesProcessor({
-      logger,
-      config,
-      localFileReader,
-      consensusApi,
-      metrics,
-      s3Service,
-      gsService,
-    })
+  const messageReloader = makeMessageReloader({
+    logger,
+    config,
+    messagesProcessor,
+  })
 
-    const webhookProcessor = makeWebhookProcessor(
-      makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
-      logger,
-      metrics
-    )
+  const jobProcessor = makeJobProcessor({
+    logger,
+    config,
+    messageReloader,
+    executionApi,
+    consensusApi,
+    messagesProcessor,
+    webhookProcessor,
+    metrics,
+  })
 
-    const jobProcessor = makeJobProcessor({
-      logger,
-      config,
-      executionApi,
-      consensusApi,
-      messagesProcessor,
-      webhookProcessor,
-      metrics,
-    })
+  const job = makeJobRunner('validator-ejector', {
+    config,
+    logger,
+    metric: metrics.jobEjectorCycleDuration,
+    handler: jobProcessor.handleJob,
+  })
 
-    const job = makeJobRunner('validator-ejector', {
-      config,
-      logger,
-      metric: metrics.jobDuration,
-      handler: jobProcessor.handleJob,
-    })
+  const httpHandler = makeHttpHandler({ register, config })
 
-    const httpHandler = makeHttpHandler({ register, config })
+  const appInfoReader = makeAppInfoReader({ localFileReader })
 
-    const appInfoReader = makeAppInfoReader({ localFileReader })
+  const app = makeApp({
+    config,
+    logger,
+    job,
+    messageReloader,
+    metrics,
+    httpHandler,
+    executionApi,
+    consensusApi,
+    appInfoReader,
+  })
 
-    const app = makeApp({
-      config,
-      logger,
-      job,
-      messagesProcessor,
-      metrics,
-      httpHandler,
-      executionApi,
-      consensusApi,
-      appInfoReader,
-    })
-
-    await app.run()
-  } catch (error) {
-    defaultLogger.error('Startup error', error)
-    process.exit(1)
+  return {
+    async run() {
+      await app.run()
+    },
+    async destroy() {
+      app.stop()
+    },
   }
 }

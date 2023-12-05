@@ -1,14 +1,16 @@
 import client from 'prom-client'
 
-import { ExitMessage } from 'services/job-processor/service'
+import type { MessageStorage } from '../job-processor/message-storage.js'
 
 export const register = new client.Registry()
 
 export type MetricsService = ReturnType<typeof makeMetrics>
 
-const PREFIX = 'validator_ejector_'
-
-export const makeMetrics = () => {
+export const makeMetrics = ({
+  PREFIX = 'validator_ejector_',
+}: {
+  PREFIX?: string
+}) => {
   register.setDefaultLabels({
     app: 'validator-ejector',
   })
@@ -65,13 +67,21 @@ export const makeMetrics = () => {
   })
   register.registerMetric(consensusRequestDurationSeconds)
 
-  const jobDuration = new client.Histogram({
+  const jobEjectorCycleDuration = new client.Histogram({
     name: PREFIX + 'job_duration_seconds',
     help: 'Duration of cron jobs',
     labelNames: ['name', 'interval', 'result'] as const,
     buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
   })
-  register.registerMetric(jobDuration)
+  register.registerMetric(jobEjectorCycleDuration)
+
+  const jobMessageReloaderDuration = new client.Histogram({
+    name: PREFIX + 'job_message_reloader_duration_seconds',
+    help: 'Duration of message reloader cron job',
+    labelNames: ['name', 'interval', 'result'] as const,
+    buckets: [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 20],
+  })
+  register.registerMetric(jobEjectorCycleDuration)
 
   const exitMessagesLeftNumber = new client.Gauge({
     name: PREFIX + 'exit_messages_left_number',
@@ -86,16 +96,16 @@ export const makeMetrics = () => {
   register.registerMetric(exitMessagesLeftPercent)
 
   const updateLeftMessages = (
-    messages: ExitMessage[],
+    messageStorage: MessageStorage,
     lastRequestedIx: number
   ) => {
-    const numberLeft = messages.filter(
+    const numberLeft = messageStorage.messages.filter(
       (msg) => parseInt(msg.message.validator_index) > lastRequestedIx
     ).length
     exitMessagesLeftNumber.set(numberLeft)
 
     const percentLeft =
-      messages.length > 0 ? (numberLeft / messages.length) * 100 : 0
+      messageStorage.size > 0 ? (numberLeft / messageStorage.size) * 100 : 0
     exitMessagesLeftPercent.set(percentLeft)
   }
 
@@ -106,7 +116,8 @@ export const makeMetrics = () => {
     pollingLastBlocksDurationSeconds,
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
-    jobDuration,
+    jobEjectorCycleDuration,
+    jobMessageReloaderDuration,
     updateLeftMessages,
   }
 }
