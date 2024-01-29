@@ -21,6 +21,7 @@ import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { ExitMessageWithMetadata } from '../job-processor/service.js'
+import type { ForkVersionResolverService } from '../fork-version-resolver/service.js'
 
 type ExitMessage = {
   message: {
@@ -45,6 +46,7 @@ export const makeMessagesProcessor = ({
   metrics,
   s3Service,
   gsService,
+  forkVersionResolver,
 }: {
   logger: LoggerService
   config: ConfigService
@@ -53,10 +55,14 @@ export const makeMessagesProcessor = ({
   metrics: MetricsService
   s3Service: S3StoreService
   gsService: GsStoreService
+  forkVersionResolver: ForkVersionResolverService
 }) => {
   const invalidExitMessageFiles = new Set<string>()
 
-  const loadNewMessages = async (messagesStorage: MessageStorage) => {
+  const loadNewMessages = async (
+    messagesStorage: MessageStorage,
+    forkVersion: string
+  ) => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping loading messages in webhook mode')
       return []
@@ -124,7 +130,11 @@ export const makeMessagesProcessor = ({
       const message = 'exit' in validated ? validated.exit : validated
       messagesWithMetadata.push({
         data: message,
-        meta: { fileChecksum: fileChecksum, filename: messageFile.filename },
+        meta: {
+          fileChecksum: fileChecksum,
+          filename: messageFile.filename,
+          forkVersion,
+        },
       })
 
       // Unblock event loop for http server responses
@@ -158,7 +168,9 @@ export const makeMessagesProcessor = ({
   }
 
   const verify = async (
-    messages: ExitMessageWithMetadata[]
+    messages: ExitMessageWithMetadata[],
+    isDencun: boolean,
+    capellaForkVersion: string
   ): Promise<ExitMessageWithMetadata[]> => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping messages validation in webhook mode')
@@ -203,6 +215,7 @@ export const makeMessagesProcessor = ({
       const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
       const CURRENT_FORK = fromHex(state.current_version)
       const PREVIOUS_FORK = fromHex(state.previous_version)
+      const CAPELLA_FORK_VERSION = fromHex(capellaForkVersion)
 
       const verifyFork = (fork: Uint8Array) => {
         const domain = computeDomain(
@@ -235,11 +248,25 @@ export const makeMessagesProcessor = ({
 
       let isValid = false
 
-      isValid = verifyFork(CURRENT_FORK)
-      if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
+      if (!isDencun) {
+        isValid = verifyFork(CURRENT_FORK)
+        if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
+      } else {
+        isValid = verifyFork(CAPELLA_FORK_VERSION)
+      }
 
-      if (!isValid) {
+      if (!isValid && !isDencun) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
+        invalidExitMessageFiles.add(m.meta.filename)
+        continue
+      }
+
+      if (!isValid && isDencun) {
+        logger.error(
+          'Since the Dencun fork has occurred, CAPELLA_FORK_VERSION must now be specified in the signature'
+        )
+        logger.error(`Invalid signature for validator ${validatorIndex}`)
+
         invalidExitMessageFiles.add(m.meta.filename)
         continue
       }
@@ -301,9 +328,18 @@ export const makeMessagesProcessor = ({
 
     messagesStorage.startUpdateCycle()
 
-    const newMessages = await loadNewMessages(messagesStorage)
+    const { isDencun, currentVersion, capellaVersion } =
+      await forkVersionResolver.getForkVersionMetaData()
 
-    const verifiedNewMessages = await verify(newMessages)
+    messagesStorage.removeOldForkVersionMessages(currentVersion)
+
+    const newMessages = await loadNewMessages(messagesStorage, currentVersion)
+
+    const verifiedNewMessages = await verify(
+      newMessages,
+      isDencun,
+      capellaVersion
+    )
 
     const removed = messagesStorage.removeOldMessages()
 

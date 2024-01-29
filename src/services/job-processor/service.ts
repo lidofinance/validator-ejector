@@ -21,6 +21,7 @@ export type ExitMessageWithMetadata = {
   meta: {
     fileChecksum: string
     filename: string
+    forkVersion: string
   }
 }
 

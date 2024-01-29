@@ -1,5 +1,11 @@
 import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
-import { syncingDTO, genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
+import {
+  syncingDTO,
+  genesisDTO,
+  stateDTO,
+  validatorInfoDTO,
+  specDTO,
+} from './dto.js'
 
 import { ConfigService } from 'services/config/service.js'
 
@@ -49,6 +55,15 @@ export const makeConsensusApi = (
     )
     const { data } = stateDTO(await res.json())
     logger.debug('fetched state data')
+    return data
+  }
+
+  const spec = async () => {
+    const res = await request(`${normalizedUrl}/eth/v1/config/spec `, {
+      middlewares: [notOkError()],
+    })
+    const { data } = specDTO(await res.json())
+    logger.debug('fetched spec data')
     return data
   }
 
@@ -107,5 +122,6 @@ export const makeConsensusApi = (
     validatorInfo,
     exitRequest,
     isExiting,
+    spec,
   }
 }

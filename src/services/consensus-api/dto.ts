@@ -52,6 +52,19 @@ export const stateDTO = (json: unknown) =>
     'Invalid state response'
   )
 
+export const specDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      data: obj(json.data, (data) => ({
+        CAPELLA_FORK_VERSION: str(
+          data.CAPELLA_FORK_VERSION,
+          'Invalid CAPELLA_FORK_VERSION input'
+        ),
+      })),
+    }),
+    'Invalid spec response'
+  )
 export const validatorInfoDTO = (json: unknown) =>
   obj(
     json,

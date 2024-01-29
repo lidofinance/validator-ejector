@@ -103,6 +103,18 @@ export class MessageStorage {
   }
 
   /**
+   * Remove messages that are not relevant for the current fork
+   */
+  public removeOldForkVersionMessages(forkVersion: string) {
+    for (const [
+      validatorIndex,
+      exitMessage,
+    ] of this.messagesMetadata.entries()) {
+      if (exitMessage.meta.forkVersion === forkVersion) continue
+      this.removeMessage(validatorIndex)
+    }
+  }
+  /**
    * Removes old messages
    */
   public removeOldMessages(): number {
