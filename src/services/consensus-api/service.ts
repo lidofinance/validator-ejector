@@ -59,7 +59,7 @@ export const makeConsensusApi = (
   }
 
   const spec = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/config/spec `, {
+    const res = await request(`${normalizedUrl}/eth/v1/config/spec`, {
       middlewares: [notOkError()],
     })
     const { data } = specDTO(await res.json())
