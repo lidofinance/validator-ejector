@@ -29,7 +29,7 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
     const files: MessageFile[] = []
 
     for (const [ix, fileName] of folder.entries()) {
-      logger.info(`${ix + 1}/${folder.length}`)
+      logger.debug(`${ix + 1}/${folder.length}`)
 
       if (!fileName.endsWith('.json')) {
         logger.warn(

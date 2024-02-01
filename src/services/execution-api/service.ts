@@ -210,7 +210,7 @@ export const makeExecutionApi = (
     logger.info('Verifying validity of exit requests')
 
     for (const [ix, log] of result.entries()) {
-      logger.info(`${ix + 1}/${result.length}`)
+      logger.debug(`${ix + 1}/${result.length}`)
 
       const parsedLog = iface.parseLog(log)
 

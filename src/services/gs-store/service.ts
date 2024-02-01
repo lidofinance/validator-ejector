@@ -42,7 +42,7 @@ export const makeGsStore = ({ logger }: { logger: LoggerService }) => {
       const files: MessageFile[] = []
 
       for (const [ix, fileName] of fileNames.entries()) {
-        logger.info(`${ix + 1}/${fileNames.length}`)
+        logger.debug(`${ix + 1}/${fileNames.length}`)
 
         try {
           const file = await bucket.file(fileName).download()

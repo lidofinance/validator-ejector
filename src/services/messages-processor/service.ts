@@ -77,7 +77,7 @@ export const makeMessagesProcessor = ({
     logger.info('Parsing loaded messages')
 
     for (const [ix, messageFile] of folder.entries()) {
-      logger.info(`${ix + 1}/${folder.length}`)
+      logger.debug(`${ix + 1}/${folder.length} 11`)
 
       // skipping empty files
       if (messageFile.content === '') {
@@ -185,7 +185,7 @@ export const makeMessagesProcessor = ({
     const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
 
     for (const [ix, m] of messages.entries()) {
-      logger.info(`${ix + 1}/${messages.length}`)
+      logger.debug(`${ix + 1}/${messages.length}`)
 
       const { message, signature: rawSignature } = m.data
       const { validator_index: validatorIndex, epoch } = message
