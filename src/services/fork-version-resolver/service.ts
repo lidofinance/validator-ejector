@@ -1,5 +1,6 @@
 import { LoggerService } from 'lido-nanolib'
 import { ConsensusApiService } from 'services/consensus-api/service.js'
+import { CAPELLA_FORK_VERSIONS } from './constants.js'
 
 export type ForkVersionResolverService = ReturnType<
   typeof makeForkVersionResolver
@@ -32,9 +33,17 @@ export const makeForkVersionResolver = (
     return isActivated
   }
 
-  const getCapellaForkVersion = async () => {
-    const { CAPELLA_FORK_VERSION } = await consensusApi.spec()
-    return CAPELLA_FORK_VERSION
+  const getCapellaForkVersion = async (): Promise<string> => {
+    const chainId = await consensusApi.chainId()
+    const capellaForkVersion = CAPELLA_FORK_VERSIONS[chainId]
+
+    if (!capellaForkVersion) {
+      throw new Error(
+        `Could not find CAPELLA_FORK_VERSION for network with chain_id ${chainId}`
+      )
+    }
+
+    return capellaForkVersion
   }
 
   const getCurrentForkVersion = async () => {

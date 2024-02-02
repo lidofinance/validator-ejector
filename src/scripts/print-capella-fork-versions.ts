@@ -11,14 +11,16 @@ import { makeMetrics } from '../services/prom/service.js'
 
 dotenv.config()
 
-const MAINNET_CHAIN_ID = 1
-const GOERLI_CHAIN_ID = 5
-const HOLESKY_CHAIN_ID = 17000
+export enum Chains {
+  MAINNET = 1,
+  GOERLI = 5,
+  HOLESKY = 17000,
+}
 
 const networks = new Map([
-  [MAINNET_CHAIN_ID, { name: 'mainnet', CAPELLA_FORK_VERSION: '' }],
-  [GOERLI_CHAIN_ID, { name: 'goerli', CAPELLA_FORK_VERSION: '' }],
-  [HOLESKY_CHAIN_ID, { name: 'holesky', CAPELLA_FORK_VERSION: '' }],
+  [Chains.MAINNET, { name: 'mainnet', CAPELLA_FORK_VERSION: '' }],
+  [Chains.GOERLI, { name: 'goerli', CAPELLA_FORK_VERSION: '' }],
+  [Chains.HOLESKY, { name: 'holesky', CAPELLA_FORK_VERSION: '' }],
 ])
 
 const makeCLNodesConfig = (env: NodeJS.ProcessEnv) => {
