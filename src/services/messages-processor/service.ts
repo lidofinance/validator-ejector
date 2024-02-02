@@ -323,6 +323,7 @@ export const makeMessagesProcessor = ({
     updated: number
     added: number
     removed: number
+    invalidExitMessageFiles: Set<string>
   }> => {
     invalidExitMessageFiles.clear()
 
@@ -350,7 +351,7 @@ export const makeMessagesProcessor = ({
     metrics.exitMessages.labels('true').inc(messagesStorage.size)
     metrics.exitMessages.labels('false').inc(invalidExitMessageFiles.size)
 
-    return { ...stats, removed }
+    return { ...stats, removed, invalidExitMessageFiles }
   }
 
   return { exit, loadToMemoryStorage }
