@@ -88,10 +88,12 @@ const run = async () => {
 
   logger.info(`total messages: ${total}`)
   logger.info(`valid messages: ${added}`)
-  logger.warn(`invalid messages: ${invalidExitMessageFiles.size}`)
 
   if (invalidExitMessageFiles.size) {
+    logger.warn(`invalid messages: ${invalidExitMessageFiles.size}`)
     logger.warn('invalid messages files', Array.from(invalidExitMessageFiles))
+  } else {
+    logger.info(`invalid messages: ${invalidExitMessageFiles.size}`)
   }
 }
 
