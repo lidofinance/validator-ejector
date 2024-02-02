@@ -1,4 +1,4 @@
-import { obj, str, bool } from 'lido-nanolib'
+import { obj, str, bool, num } from 'lido-nanolib'
 
 export const syncingDTO = (json: unknown) =>
   obj(
@@ -65,6 +65,19 @@ export const specDTO = (json: unknown) =>
     }),
     'Invalid spec response'
   )
+
+export const depositContractDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      data: obj(json.data, (data) => ({
+        chain_id: num(data.chain_id, 'Invalid chain_id input'),
+        address: str(data.address, 'Invalid address input'),
+      })),
+    }),
+    'Invalid spec response'
+  )
+
 export const validatorInfoDTO = (json: unknown) =>
   obj(
     json,
