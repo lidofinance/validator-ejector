@@ -54,7 +54,6 @@ const prepareDeps = () => {
     metrics,
     s3Service,
     gsService,
-    forkVersionResolver,
   })
 
   const infoLogger = makeLogger({
@@ -66,16 +65,18 @@ const prepareDeps = () => {
     },
   })
 
-  return { messagesProcessor, logger: infoLogger }
+  return { messagesProcessor, logger: infoLogger, forkVersionResolver }
 }
 
 const run = async () => {
-  const { messagesProcessor, logger } = prepareDeps()
+  const { messagesProcessor, logger, forkVersionResolver } = prepareDeps()
 
   const messageStorage = new MessageStorage()
 
+  const forkInfo = await forkVersionResolver.getForkVersionInfo()
+
   const { added, invalidExitMessageFiles } =
-    await messagesProcessor.loadToMemoryStorage(messageStorage)
+    await messagesProcessor.loadToMemoryStorage(messageStorage, forkInfo)
 
   const total = added + invalidExitMessageFiles.size
 

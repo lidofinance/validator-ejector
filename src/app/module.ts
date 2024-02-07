@@ -84,7 +84,6 @@ export const makeAppModule = async () => {
     metrics,
     s3Service,
     gsService,
-    forkVersionResolver,
   })
 
   const webhookProcessor = makeWebhookProcessor(
@@ -97,6 +96,7 @@ export const makeAppModule = async () => {
     logger,
     config,
     messagesProcessor,
+    forkVersionResolver,
   })
 
   const jobProcessor = makeJobProcessor({

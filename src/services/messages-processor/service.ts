@@ -21,7 +21,6 @@ import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { ExitMessageWithMetadata } from '../job-processor/service.js'
-import type { ForkVersionResolverService } from '../fork-version-resolver/service.js'
 
 type ExitMessage = {
   message: {
@@ -46,7 +45,6 @@ export const makeMessagesProcessor = ({
   metrics,
   s3Service,
   gsService,
-  forkVersionResolver,
 }: {
   logger: LoggerService
   config: ConfigService
@@ -55,7 +53,6 @@ export const makeMessagesProcessor = ({
   metrics: MetricsService
   s3Service: S3StoreService
   gsService: GsStoreService
-  forkVersionResolver: ForkVersionResolverService
 }) => {
   const invalidExitMessageFiles = new Set<string>()
 
@@ -318,7 +315,12 @@ export const makeMessagesProcessor = ({
   }
 
   const loadToMemoryStorage = async (
-    messagesStorage: MessageStorage
+    messagesStorage: MessageStorage,
+    forkInfo: {
+      currentVersion: string
+      capellaVersion: string
+      isDencun: boolean
+    }
   ): Promise<{
     updated: number
     added: number
@@ -329,8 +331,7 @@ export const makeMessagesProcessor = ({
 
     messagesStorage.startUpdateCycle()
 
-    const { isDencun, currentVersion, capellaVersion } =
-      await forkVersionResolver.getForkVersionMetaData()
+    const { isDencun, currentVersion, capellaVersion } = forkInfo
 
     messagesStorage.removeOldForkVersionMessages(currentVersion)
 

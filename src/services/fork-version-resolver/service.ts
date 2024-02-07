@@ -51,7 +51,7 @@ export const makeForkVersionResolver = (
     return current_version
   }
 
-  const getForkVersionMetaData = async () => {
+  const getForkVersionInfo = async () => {
     const currentVersion = await getCurrentForkVersion()
     const capellaVersion = await getCapellaForkVersion()
 
@@ -64,6 +64,6 @@ export const makeForkVersionResolver = (
     isDencunHappened,
     getCurrentForkVersion,
     getCapellaForkVersion,
-    getForkVersionMetaData,
+    getForkVersionInfo,
   }
 }
