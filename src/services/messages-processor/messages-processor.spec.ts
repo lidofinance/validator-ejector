@@ -33,17 +33,49 @@ describe('messages processor', () => {
     expect(capellaVersion).toBe(CAPELLA_FORK_VERSION)
     expect(currentVersion).toBe(CAPELLA_FORK_VERSION)
 
-    const { added, invalidExitMessageFiles } =
-      await di.messagesProcessor.loadToMemoryStorage(di.messageStorage, {
+    const state = await di.messagesProcessor.loadToMemoryStorage(
+      di.messageStorage,
+      {
         isDencun,
         capellaVersion,
         currentVersion,
-      })
+      }
+    )
 
-    const invalidFiles = Array.from(invalidExitMessageFiles)
-    expect(added).toBe(1)
+    const invalidFiles = Array.from(state.invalidExitMessageFiles)
+
+    expect(state.added).toBe(1)
     expect(invalidFiles).toHaveLength(1)
     expect(invalidFiles[0]).toBe('bellatrix.json')
+    expect(
+      di.messageStorage.messagesMetadata.get(VALIDATOR_INDEX)?.meta.forkVersion
+    ).toBe(CAPELLA_FORK_VERSION)
+
+    di.changeForkState({
+      previous_version: CAPELLA_FORK_VERSION,
+      current_version: DENCUN_FORK_VERSION,
+      epoch: EPOCH,
+    })
+
+    const newForkVersionInfo = await di.forkVersionResolver.getForkVersionInfo()
+
+    expect(newForkVersionInfo.isDencun).toBeTruthy()
+    expect(newForkVersionInfo.capellaVersion).toBe(CAPELLA_FORK_VERSION)
+    expect(newForkVersionInfo.currentVersion).toBe(DENCUN_FORK_VERSION)
+
+    const newState = await di.messagesProcessor.loadToMemoryStorage(
+      di.messageStorage,
+      newForkVersionInfo
+    )
+
+    const newInvalidFiles = Array.from(newState.invalidExitMessageFiles)
+
+    expect(newState.added).toBe(1)
+    expect(newInvalidFiles).toHaveLength(1)
+    expect(newInvalidFiles[0]).toBe('bellatrix.json')
+    expect(
+      di.messageStorage.messagesMetadata.get(VALIDATOR_INDEX)?.meta.forkVersion
+    ).toBe(DENCUN_FORK_VERSION)
 
     di.restore()
   })

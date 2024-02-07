@@ -29,11 +29,11 @@ dotenv.config()
 const mockEthCLNode = (
   res: { url: string; method: string; result: any },
   clNode: string
-) => {
+): [string, () => boolean] => {
   const interceptor = nock(clNode).get(res.url)
   interceptor.reply(200, res.result).persist()
 
-  return () => nock.removeInterceptor(interceptor)
+  return [res.url, () => nock.removeInterceptor(interceptor)]
 }
 
 const metrics = makeMetrics({ PREFIX: `PROM_TEST` })
@@ -110,13 +110,28 @@ export const prepareDeps = (
 
   const messageStorage = new MessageStorage()
 
+  const restore = (url?: string) => {
+    serverMocks.map(([fnUrl, fn]) => {
+      if (!url) return fn()
+      if (fnUrl === url) return fn()
+    })
+  }
+
+  const changeForkState = (fork: {
+    previous_version: string
+    current_version: string
+    epoch: string
+  }) => {
+    restore('/eth/v1/beacon/states/finalized/fork')
+    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE)
+  }
+
   return {
     messagesProcessor,
     logger: infoLogger,
     forkVersionResolver,
     messageStorage,
-    restore() {
-      serverMocks.map((fn) => fn())
-    },
+    restore,
+    changeForkState,
   }
 }

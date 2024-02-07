@@ -20,7 +20,7 @@ export class MessageStorage {
     LAST_UPDATE
   >()
 
-  private messagesMetadata: Map<ValidatorIndex, ExitMessageWithMetadata> =
+  public messagesMetadata: Map<ValidatorIndex, ExitMessageWithMetadata> =
     new Map<ValidatorIndex, ExitMessageWithMetadata>()
 
   private addOrUpdateMessage(
