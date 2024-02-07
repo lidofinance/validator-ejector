@@ -47,6 +47,17 @@ export const makeMessageReloader = ({
 
     logger.debug('Uploaded Validators indexes', validatorIndexes)
 
+    if (forkInfo.isDencun && newMessagesStats.invalidExitMessageFiles.size) {
+      logger.warn('Invalid messages found')
+      logger.warn(
+        'If you see this error, you may have messages with the wrong version of fork'
+      )
+      logger.warn(
+        'Check that the messages in these files use CAPELLA_FORK_VERSION',
+        Array.from(newMessagesStats.invalidExitMessageFiles)
+      )
+    }
+
     logger.info(`Presigned messages updated`, {
       added: newMessagesStats.added,
       updated: newMessagesStats.updated,
