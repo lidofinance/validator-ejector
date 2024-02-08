@@ -1,10 +1,6 @@
-import dotenv from 'dotenv'
 import { makeLogger, makeRequest } from 'lido-nanolib'
 import { logger as loggerMiddleware, retry, abort, prom } from 'lido-nanolib'
-import {
-  makeConfig,
-  makeLoggerConfig,
-} from '../../../services/config/service.js'
+import { makeConfig } from '../../../services/config/service.js'
 import { makeConsensusApi } from '../../../services/consensus-api/service.js'
 import { makeMetrics } from '../../../services/prom/service.js'
 import { makeForkVersionResolver } from '../../../services/fork-version-resolver/service.js'
@@ -23,8 +19,7 @@ import {
   validatorInfoMock,
 } from './fixtures.js'
 import nock from 'nock'
-
-dotenv.config()
+import { defaultConfig } from '../../../test/config.js'
 
 const mockEthCLNode = (
   res: { url: string; method: string; result: any },
@@ -47,18 +42,19 @@ export const prepareDeps = (
     epoch: string
   }
 ) => {
-  const loggerConfig = makeLoggerConfig({ env: process.env })
-
   const logger = makeLogger({
     level: 'error',
-    format: loggerConfig.LOGGER_FORMAT,
+    format: 'simple',
     sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
+      secrets: [],
       replacer: '<secret>',
     },
   })
 
-  const config = makeConfig({ logger, env: process.env })
+  const config = makeConfig({
+    logger,
+    env: defaultConfig as unknown as NodeJS.ProcessEnv,
+  })
 
   const serverMocks = [
     mockEthCLNode(depositContractMock('17000'), config.CONSENSUS_NODE),
@@ -101,9 +97,9 @@ export const prepareDeps = (
 
   const infoLogger = makeLogger({
     level: 'info',
-    format: loggerConfig.LOGGER_FORMAT,
+    format: 'simple',
     sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
+      secrets: [],
       replacer: '<secret>',
     },
   })
