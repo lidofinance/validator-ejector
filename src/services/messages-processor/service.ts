@@ -252,18 +252,8 @@ export const makeMessagesProcessor = ({
         isValid = verifyFork(CAPELLA_FORK_VERSION)
       }
 
-      if (!isValid && !isDencun) {
+      if (!isValid) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
-        invalidExitMessageFiles.add(m.meta.filename)
-        continue
-      }
-
-      if (!isValid && isDencun) {
-        logger.error(
-          'Since the Dencun fork has occurred, CAPELLA_FORK_VERSION must now be specified in the signature'
-        )
-        logger.error(`Invalid signature for validator ${validatorIndex}`)
-
         invalidExitMessageFiles.add(m.meta.filename)
         continue
       }
