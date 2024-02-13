@@ -1,4 +1,4 @@
-import { obj, str, bool } from 'lido-nanolib'
+import { obj, str, bool, num } from 'lido-nanolib'
 
 export const syncingDTO = (json: unknown) =>
   obj(
@@ -50,6 +50,32 @@ export const stateDTO = (json: unknown) =>
       })),
     }),
     'Invalid state response'
+  )
+
+export const specDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      data: obj(json.data, (data) => ({
+        CAPELLA_FORK_VERSION: str(
+          data.CAPELLA_FORK_VERSION,
+          'Invalid CAPELLA_FORK_VERSION input'
+        ),
+      })),
+    }),
+    'Invalid spec response'
+  )
+
+export const depositContractDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      data: obj(json.data, (data) => ({
+        chain_id: num(data.chain_id, 'Invalid chain_id input'),
+        address: str(data.address, 'Invalid address input'),
+      })),
+    }),
+    'Invalid spec response'
   )
 
 export const validatorInfoDTO = (json: unknown) =>

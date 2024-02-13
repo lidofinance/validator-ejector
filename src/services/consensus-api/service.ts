@@ -1,5 +1,12 @@
 import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
-import { syncingDTO, genesisDTO, stateDTO, validatorInfoDTO } from './dto.js'
+import {
+  syncingDTO,
+  genesisDTO,
+  stateDTO,
+  validatorInfoDTO,
+  specDTO,
+  depositContractDTO,
+} from './dto.js'
 
 import { ConfigService } from 'services/config/service.js'
 
@@ -52,6 +59,15 @@ export const makeConsensusApi = (
     return data
   }
 
+  const spec = async () => {
+    const res = await request(`${normalizedUrl}/eth/v1/config/spec`, {
+      middlewares: [notOkError()],
+    })
+    const { data } = specDTO(await res.json())
+    logger.debug('fetched spec data')
+    return data
+  }
+
   const isExiting = async (validatorPubkey: string) => {
     return (await validatorInfo(validatorPubkey)).isExiting
   }
@@ -99,6 +115,23 @@ export const makeConsensusApi = (
       throw new Error(message)
     }
   }
+
+  const depositContract = async () => {
+    const res = await request(
+      `${normalizedUrl}/eth/v1/config/deposit_contract`,
+      {
+        middlewares: [notOkError()],
+      }
+    )
+    const { data } = depositContractDTO(await res.json())
+    logger.debug('fetched deposit contract data')
+    return data
+  }
+
+  const chainId = async () => {
+    return (await depositContract()).chain_id
+  }
+
   return {
     syncing,
     checkSync,
@@ -107,5 +140,8 @@ export const makeConsensusApi = (
     validatorInfo,
     exitRequest,
     isExiting,
+    spec,
+    depositContract,
+    chainId,
   }
 }

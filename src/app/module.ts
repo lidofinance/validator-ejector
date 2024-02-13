@@ -25,6 +25,7 @@ import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
 import { makeApp } from './service.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
+import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
 
 dotenv.config()
 
@@ -68,6 +69,8 @@ export const makeAppModule = async () => {
     config
   )
 
+  const forkVersionResolver = makeForkVersionResolver(consensusApi, logger)
+
   const localFileReader = makeLocalFileReader({ logger })
 
   const s3Service = makeS3Store({ logger })
@@ -93,6 +96,7 @@ export const makeAppModule = async () => {
     logger,
     config,
     messagesProcessor,
+    forkVersionResolver,
   })
 
   const jobProcessor = makeJobProcessor({
