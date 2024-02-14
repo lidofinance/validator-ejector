@@ -76,7 +76,11 @@ const run = async () => {
   const forkInfo = await forkVersionResolver.getForkVersionInfo()
 
   const { added, invalidExitMessageFiles } =
-    await messagesProcessor.loadToMemoryStorage(messageStorage, forkInfo)
+    await messagesProcessor.loadToMemoryStorage(messageStorage, {
+      ...forkInfo,
+      // set isDencun true to check the validity of the messages
+      isDencun: true,
+    })
 
   const total = added + invalidExitMessageFiles.size
 
