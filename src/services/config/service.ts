@@ -80,6 +80,18 @@ export const makeConfig = ({
   return config
 }
 
+export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const config = {
+    CONSENSUS_NODE: str(
+      env.CONSENSUS_NODE,
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+    ),
+    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
+    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
+  }
+  return config
+}
+
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',

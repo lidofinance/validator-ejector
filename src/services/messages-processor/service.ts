@@ -15,7 +15,6 @@ import type {
   MessageFile,
 } from '../local-file-reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
-import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
@@ -47,7 +46,7 @@ export const makeMessagesProcessor = ({
   gsService,
 }: {
   logger: LoggerService
-  config: ConfigService
+  config: { MESSAGES_LOCATION?: string | undefined; MESSAGES_PASSWORD?: string }
   localFileReader: LocalFileReaderService
   consensusApi: ConsensusApiService
   metrics: MetricsService

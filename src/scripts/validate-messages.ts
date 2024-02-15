@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
 import { makeLogger, makeRequest } from 'lido-nanolib'
 import { logger as loggerMiddleware, retry, abort, prom } from 'lido-nanolib'
-import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
+import { makeValidationConfig } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
@@ -14,20 +14,14 @@ import { MessageStorage } from '../services/job-processor/message-storage.js'
 dotenv.config()
 
 const prepareDeps = () => {
-  const loggerConfig = makeLoggerConfig({ env: process.env })
-
   const logger = makeLogger({
     level: 'error',
-    format: loggerConfig.LOGGER_FORMAT,
-    sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    },
+    format: 'simple',
   })
 
-  const config = makeConfig({ logger, env: process.env })
+  const config = makeValidationConfig({ env: process.env })
 
-  const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
+  const metrics = makeMetrics({ PREFIX: 'validation_script' })
   const consensusApi = makeConsensusApi(
     makeRequest([
       retry(3),
@@ -58,11 +52,7 @@ const prepareDeps = () => {
 
   const infoLogger = makeLogger({
     level: 'info',
-    format: loggerConfig.LOGGER_FORMAT,
-    sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    },
+    format: 'simple',
   })
 
   return { messagesProcessor, logger: infoLogger, forkVersionResolver }
