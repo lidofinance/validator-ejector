@@ -2,6 +2,7 @@ import type { LoggerService } from 'lido-nanolib'
 import type { ConfigService } from '../config/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'
+import type { ForkVersionResolverService } from '../fork-version-resolver/service.js'
 
 export type MessageReloader = ReturnType<typeof makeMessageReloader>
 
@@ -9,10 +10,12 @@ export const makeMessageReloader = ({
   logger,
   config,
   messagesProcessor,
+  forkVersionResolver,
 }: {
   logger: LoggerService
   config: ConfigService
   messagesProcessor: MessagesProcessorService
+  forkVersionResolver: ForkVersionResolverService
 }) => {
   /**
    * Appends new messages to messageStorage,
@@ -31,8 +34,11 @@ export const makeMessageReloader = ({
       existing: messagesStorage.size,
     })
 
+    const forkInfo = await forkVersionResolver.getForkVersionInfo()
+
     const newMessagesStats = await messagesProcessor.loadToMemoryStorage(
-      messagesStorage
+      messagesStorage,
+      forkInfo
     )
 
     const validatorIndexes = messagesStorage.messages.map(
@@ -40,6 +46,17 @@ export const makeMessageReloader = ({
     )
 
     logger.debug('Uploaded Validators indexes', validatorIndexes)
+
+    if (forkInfo.isDencun && newMessagesStats.invalidExitMessageFiles.size) {
+      logger.warn('Invalid messages found')
+      logger.warn(
+        'If you see this error, you may have messages with the wrong version of fork'
+      )
+      logger.warn(
+        'Check that the messages in these files use CAPELLA_FORK_VERSION',
+        Array.from(newMessagesStats.invalidExitMessageFiles)
+      )
+    }
 
     logger.info(`Presigned messages updated`, {
       added: newMessagesStats.added,

@@ -15,7 +15,6 @@ import type {
   MessageFile,
 } from '../local-file-reader/service.js'
 import type { ConsensusApiService } from '../consensus-api/service.js'
-import type { ConfigService } from '../config/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
@@ -47,7 +46,7 @@ export const makeMessagesProcessor = ({
   gsService,
 }: {
   logger: LoggerService
-  config: ConfigService
+  config: { MESSAGES_LOCATION?: string | undefined; MESSAGES_PASSWORD?: string }
   localFileReader: LocalFileReaderService
   consensusApi: ConsensusApiService
   metrics: MetricsService
@@ -56,7 +55,10 @@ export const makeMessagesProcessor = ({
 }) => {
   const invalidExitMessageFiles = new Set<string>()
 
-  const loadNewMessages = async (messagesStorage: MessageStorage) => {
+  const loadNewMessages = async (
+    messagesStorage: MessageStorage,
+    forkVersion: string
+  ) => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping loading messages in webhook mode')
       return []
@@ -71,7 +73,7 @@ export const makeMessagesProcessor = ({
     logger.info('Parsing loaded messages')
 
     for (const [ix, messageFile] of folder.entries()) {
-      logger.info(`${ix + 1}/${folder.length}`)
+      logger.debug(`${ix + 1}/${folder.length} 11`)
 
       // skipping empty files
       if (messageFile.content === '') {
@@ -124,7 +126,11 @@ export const makeMessagesProcessor = ({
       const message = 'exit' in validated ? validated.exit : validated
       messagesWithMetadata.push({
         data: message,
-        meta: { fileChecksum: fileChecksum, filename: messageFile.filename },
+        meta: {
+          fileChecksum: fileChecksum,
+          filename: messageFile.filename,
+          forkVersion,
+        },
       })
 
       // Unblock event loop for http server responses
@@ -158,7 +164,9 @@ export const makeMessagesProcessor = ({
   }
 
   const verify = async (
-    messages: ExitMessageWithMetadata[]
+    messages: ExitMessageWithMetadata[],
+    isDencun: boolean,
+    capellaForkVersion: string
   ): Promise<ExitMessageWithMetadata[]> => {
     if (!config.MESSAGES_LOCATION) {
       logger.debug('Skipping messages validation in webhook mode')
@@ -173,7 +181,7 @@ export const makeMessagesProcessor = ({
     const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
 
     for (const [ix, m] of messages.entries()) {
-      logger.info(`${ix + 1}/${messages.length}`)
+      logger.debug(`${ix + 1}/${messages.length}`)
 
       const { message, signature: rawSignature } = m.data
       const { validator_index: validatorIndex, epoch } = message
@@ -203,6 +211,7 @@ export const makeMessagesProcessor = ({
       const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
       const CURRENT_FORK = fromHex(state.current_version)
       const PREVIOUS_FORK = fromHex(state.previous_version)
+      const CAPELLA_FORK_VERSION = fromHex(capellaForkVersion)
 
       const verifyFork = (fork: Uint8Array) => {
         const domain = computeDomain(
@@ -235,8 +244,12 @@ export const makeMessagesProcessor = ({
 
       let isValid = false
 
-      isValid = verifyFork(CURRENT_FORK)
-      if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
+      if (!isDencun) {
+        isValid = verifyFork(CURRENT_FORK)
+        if (!isValid) isValid = verifyFork(PREVIOUS_FORK)
+      } else {
+        isValid = verifyFork(CAPELLA_FORK_VERSION)
+      }
 
       if (!isValid) {
         logger.error(`Invalid signature for validator ${validatorIndex}`)
@@ -291,19 +304,33 @@ export const makeMessagesProcessor = ({
   }
 
   const loadToMemoryStorage = async (
-    messagesStorage: MessageStorage
+    messagesStorage: MessageStorage,
+    forkInfo: {
+      currentVersion: string
+      capellaVersion: string
+      isDencun: boolean
+    }
   ): Promise<{
     updated: number
     added: number
     removed: number
+    invalidExitMessageFiles: Set<string>
   }> => {
     invalidExitMessageFiles.clear()
 
     messagesStorage.startUpdateCycle()
 
-    const newMessages = await loadNewMessages(messagesStorage)
+    const { isDencun, currentVersion, capellaVersion } = forkInfo
 
-    const verifiedNewMessages = await verify(newMessages)
+    messagesStorage.removeOldForkVersionMessages(currentVersion)
+
+    const newMessages = await loadNewMessages(messagesStorage, currentVersion)
+
+    const verifiedNewMessages = await verify(
+      newMessages,
+      isDencun,
+      capellaVersion
+    )
 
     const removed = messagesStorage.removeOldMessages()
 
@@ -314,7 +341,7 @@ export const makeMessagesProcessor = ({
     metrics.exitMessages.labels('true').inc(messagesStorage.size)
     metrics.exitMessages.labels('false').inc(invalidExitMessageFiles.size)
 
-    return { ...stats, removed }
+    return { ...stats, removed, invalidExitMessageFiles }
   }
 
   return { exit, loadToMemoryStorage }

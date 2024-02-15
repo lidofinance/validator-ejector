@@ -66,7 +66,7 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
       const files: MessageFile[] = []
 
       for (const [ix, fileName] of fileNames.entries()) {
-        logger.info(`${ix + 1}/${fileNames.length}`)
+        logger.debug(`${ix + 1}/${fileNames.length}`)
 
         const downloadCommand = new GetObjectCommand({
           Bucket: bucketName,

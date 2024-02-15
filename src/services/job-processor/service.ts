@@ -21,6 +21,7 @@ export type ExitMessageWithMetadata = {
   meta: {
     fileChecksum: string
     filename: string
+    forkVersion: string
   }
 }
 
@@ -80,7 +81,7 @@ export const makeJobProcessor = ({
     })
 
     for (const [ix, event] of eventsForEject.entries()) {
-      logger.info(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
+      logger.debug(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
 
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
