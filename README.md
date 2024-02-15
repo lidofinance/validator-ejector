@@ -71,6 +71,7 @@ Options are configured via environment variables.
 | LOGGER_FORMAT                  | No       | simple                | Simple or JSON log output: simple/json                                                                                                                                                                                                                  |
 | LOGGER_SECRETS                 | No       | ["MESSAGES_PASSWORD"] | JSON string array of either env var keys to sanitize in logs or exact values                                                                                                                                                                            |
 | DRY_RUN                        | No       | false                 | Run the service without actually sending out exit messages                                                                                                                                                                                              |
+| FORCE_DENCUN_FORK_MODE         | No       | false                 | Start the service in Dencun fork mode                                                                                                                                                                                                  |
 
 Messages can also be loaded from remote storages: AWS S3 and Google Cloud Storage.
 
