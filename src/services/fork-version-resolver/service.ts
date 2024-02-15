@@ -8,7 +8,8 @@ export type ForkVersionResolverService = ReturnType<
 
 export const makeForkVersionResolver = (
   consensusApi: ConsensusApiService,
-  logger: LoggerService
+  logger: LoggerService,
+  { FORCE_DENCUN_FORK_MODE }: { FORCE_DENCUN_FORK_MODE: boolean }
 ) => {
   let isDencunActivated = false
 
@@ -23,7 +24,8 @@ export const makeForkVersionResolver = (
 
     logger.info('Fork versions', { currentVersion, capellaVersion })
 
-    const isActivated = currentVersionNumber > capellaVersionNumber
+    const isActivated =
+      currentVersionNumber > capellaVersionNumber || FORCE_DENCUN_FORK_MODE
 
     if (isActivated) {
       isDencunActivated = isActivated

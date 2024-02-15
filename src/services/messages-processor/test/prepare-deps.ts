@@ -74,7 +74,11 @@ export const prepareDeps = (
     config
   )
 
-  const forkVersionResolver = makeForkVersionResolver(consensusApi, logger)
+  const forkVersionResolver = makeForkVersionResolver(
+    consensusApi,
+    logger,
+    config
+  )
 
   const localFileReader = makeLocalFileReader({ logger })
 
