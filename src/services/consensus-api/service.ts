@@ -8,8 +8,6 @@ import {
   depositContractDTO,
 } from './dto.js'
 
-import { ConfigService } from 'services/config/service.js'
-
 const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
@@ -17,7 +15,7 @@ export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 export const makeConsensusApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { CONSENSUS_NODE }: ConfigService
+  { CONSENSUS_NODE }: { CONSENSUS_NODE: string }
 ) => {
   const normalizedUrl = CONSENSUS_NODE.endsWith('/')
     ? CONSENSUS_NODE.slice(0, -1)
