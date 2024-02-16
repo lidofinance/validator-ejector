@@ -33,7 +33,9 @@ const prepareDeps = () => {
     config
   )
 
-  const forkVersionResolver = makeForkVersionResolver(consensusApi, logger)
+  const forkVersionResolver = makeForkVersionResolver(consensusApi, logger, {
+    FORCE_DENCUN_FORK_MODE: true,
+  })
 
   const localFileReader = makeLocalFileReader({ logger })
 
