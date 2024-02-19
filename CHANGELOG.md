@@ -1,3 +1,17 @@
+# [1.5.0](https://github.com/lidofinance/validator-ejector/compare/1.4.0...1.5.0) (2024-02-19)
+
+
+### Bug Fixes
+
+* add FORCE_DENCUN_FORK_MODE to docs ([5685986](https://github.com/lidofinance/validator-ejector/commit/5685986d3cba9bd4d6e048c44e63b7aacb649dc9))
+
+
+### Features
+
+* enabling dencun checks by env ([cf9192c](https://github.com/lidofinance/validator-ejector/commit/cf9192c17f4f6ae0a7e950f20de3659525812319))
+
+
+
 # [1.4.0](https://github.com/lidofinance/validator-ejector/compare/1.3.0...1.4.0) (2024-02-15)
 
 
