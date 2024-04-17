@@ -5,6 +5,7 @@ export const makeApp = ({
   config,
   logger,
   job,
+  metrics,
   httpHandler,
   executionApi,
   consensusApi,
@@ -18,6 +19,11 @@ export const makeApp = ({
     const version = await appInfoReader.getVersion()
     const mode = config.MESSAGES_LOCATION ? 'message' : 'webhook'
     logger.info(`Validator Ejector v${version} started in ${mode} mode`, config)
+
+    metrics.buildInfo.labels({
+      version,
+      mode,
+    }).inc()
 
     await executionApi.checkSync()
     await consensusApi.checkSync()

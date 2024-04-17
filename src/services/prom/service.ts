@@ -16,6 +16,13 @@ export const makeMetrics = ({
   })
   client.collectDefaultMetrics({ register })
 
+  const buildInfo = new client.Gauge({
+    name: PREFIX + 'build_info',
+    help: 'Build information',
+    labelNames: ['version', 'mode'] as const,
+  })
+  register.registerMetric(buildInfo)
+
   const exitMessages = new client.Counter({
     name: PREFIX + 'exit_messages',
     help: 'Exit messages and their validity: JSON parseability, structure and signature.',
@@ -110,6 +117,7 @@ export const makeMetrics = ({
   }
 
   return {
+    buildInfo,
     exitMessages,
     exitActions,
     eventSecurityVerification,
