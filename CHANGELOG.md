@@ -1,6 +1,6 @@
 # This file is no longer used by semantic-release
 
-For the latest release notes, please see the [GitHub releases page](https://github.com/lidofinance/lido-keys-api/releases).
+For the latest release notes, please see the [GitHub releases page](https://github.com/lidofinance/validator-ejector/releases).
 
 # [1.2.0](https://github.com/lidofinance/validator-ejector/compare/1.1.0...1.2.0) (2023-04-25)
 
