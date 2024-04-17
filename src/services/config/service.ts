@@ -113,6 +113,20 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   return config
 }
 
+export const makeWebhookProcessorConfig = ({
+  env,
+}: {
+  env: NodeJS.ProcessEnv
+}) => {
+  const config = {
+    WEBHOOK_ABORT_TIMEOUT_MS:
+      optional(() => num(env.WEBHOOK_ABORT_TIMEOUT_MS)) ?? 10_000,
+    WEBHOOK_MAX_RETRIES: optional(() => num(env.WEBHOOK_MAX_RETRIES)) ?? 0,
+  }
+
+  return config
+}
+
 const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (env[envName]) return env[envName]
 
