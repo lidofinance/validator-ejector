@@ -1,3 +1,20 @@
+# [1.6.0](https://github.com/lidofinance/validator-ejector/compare/1.5.0...1.6.0) (2024-04-17)
+
+
+### Bug Fixes
+
+* add webhook config description ([f27cc64](https://github.com/lidofinance/validator-ejector/commit/f27cc648afaf425e7666fa6d58a0df13e5d66dd9))
+* bump package json version ([c7590df](https://github.com/lidofinance/validator-ejector/commit/c7590df307c9fc6a0428eabf2c3069411c7136a7))
+* incorrect link to Releases GitHub page ([c2e1261](https://github.com/lidofinance/validator-ejector/commit/c2e1261a6743dc32e9fbd28de828564c98e5b409))
+* lint errors ([d6ef9de](https://github.com/lidofinance/validator-ejector/commit/d6ef9dedd02bce529af2ea1a540368dc1c1412c9))
+
+
+### Features
+
+* add new metric with package version ([3584591](https://github.com/lidofinance/validator-ejector/commit/3584591bb1bacd69f4b712157b1831a349885bf1))
+
+
+
 # [1.5.0](https://github.com/lidofinance/validator-ejector/compare/1.4.0...1.5.0) (2024-02-19)
 
 
