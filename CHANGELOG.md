@@ -1,8 +1,76 @@
-# This file is no longer used by semantic-release
+# [1.5.0](https://github.com/lidofinance/validator-ejector/compare/1.4.0...1.5.0) (2024-02-19)
 
-For the latest release notes, please see the [GitHub releases page](https://github.com/lidofinance/validator-ejector/releases).
 
-# [1.2.0](https://github.com/lidofinance/validator-ejector/compare/1.1.0...1.2.0) (2023-04-25)
+### Bug Fixes
+
+* add FORCE_DENCUN_FORK_MODE to docs ([5685986](https://github.com/lidofinance/validator-ejector/commit/5685986d3cba9bd4d6e048c44e63b7aacb649dc9))
+
+
+### Features
+
+* enabling dencun checks by env ([cf9192c](https://github.com/lidofinance/validator-ejector/commit/cf9192c17f4f6ae0a7e950f20de3659525812319))
+
+
+
+# [1.4.0](https://github.com/lidofinance/validator-ejector/compare/1.3.0...1.4.0) (2024-02-15)
+
+
+### Bug Fixes
+
+* deleted the unnecessary validation log ([99b005e](https://github.com/lidofinance/validator-ejector/commit/99b005ed3118af663cc282e8fd33ac58ace152ba))
+* enable validation for mainnet ([a5e3e12](https://github.com/lidofinance/validator-ejector/commit/a5e3e121d5aeff9746e4b0c4f8999810406f9a14))
+* move progress logs to the debug level ([5eb31e4](https://github.com/lidofinance/validator-ejector/commit/5eb31e44d66767169731cc5c287ac2579bfd806b))
+* nock spec ([297b266](https://github.com/lidofinance/validator-ejector/commit/297b2661a92bc12d569282af5b58f1060ba251ca))
+* remove unused fixture ([53f323b](https://github.com/lidofinance/validator-ejector/commit/53f323b74ed58efbf320984f204a6d2273960e29))
+* removed unnecessary env fields from the validation script configuration ([3adbf22](https://github.com/lidofinance/validator-ejector/commit/3adbf22ed07b2dec335e199709bc5fe437a39db0))
+* validation script better logs ([d0ee05f](https://github.com/lidofinance/validator-ejector/commit/d0ee05fea6fd123d20f1cccbc371aa1eb2430a3c))
+
+
+### Features
+
+* basic tests fork ([9b527e7](https://github.com/lidofinance/validator-ejector/commit/9b527e7df41ec580dbdc83c9a399bef59f7d1e6b))
+* capella fork version script generator for each network ([daf6669](https://github.com/lidofinance/validator-ejector/commit/daf6669b4c67896299ff753ff212e997d289c6bf))
+* dencun support ([2106901](https://github.com/lidofinance/validator-ejector/commit/210690129e2d6a2945b11e46eb177fc214703521))
+* detailed error message eip-7044 ([3ad868b](https://github.com/lidofinance/validator-ejector/commit/3ad868bc092705d3433335a727270870613e0053))
+* getting CAPELLA_FORK_VERSION from constant by chain_id ([26ca5e9](https://github.com/lidofinance/validator-ejector/commit/26ca5e93b071771c56a42144d05b0ec3bc28686f))
+* validation script ([19505da](https://github.com/lidofinance/validator-ejector/commit/19505da5a66eadc6a84a6c20a6a9fbcbcf471f78))
+
+
+
+# [1.3.0](https://github.com/lidofinance/validator-ejector/compare/1.2.0...1.3.0) (2023-12-07)
+
+
+### Bug Fixes
+
+* add docs for ARM64 issue ([09f6b43](https://github.com/lidofinance/validator-ejector/commit/09f6b43b252b895afd78aa8b05036646a2ba9781))
+* add enum for message reloading ([9eb47b9](https://github.com/lidofinance/validator-ejector/commit/9eb47b9b02a8e8682454b01f92e07a8903ea8590))
+* add message reloading ([ad490b8](https://github.com/lidofinance/validator-ejector/commit/ad490b83d66cd2bd55af04520b0787167c381a3e))
+* add separate job, add ENV variable to configure message reloader job, add metric for new job, update README ([a50a2ef](https://github.com/lidofinance/validator-ejector/commit/a50a2efb95852f27aa5ec5596ddf181e3ddbc645))
+* app spec ([97c815d](https://github.com/lidofinance/validator-ejector/commit/97c815d6813c2a950dcbf23032e5a3421f149588))
+* cleaned-up logs ([70d6b52](https://github.com/lidofinance/validator-ejector/commit/70d6b52a1f457b16428e608d32e2380e1215c2c9))
+* collect default metrics ([195cc78](https://github.com/lidofinance/validator-ejector/commit/195cc78648ffd8dfa2c2bf0ea39b15a531788c4d))
+* fix for message reload job ([8395042](https://github.com/lidofinance/validator-ejector/commit/839504213a6e54f629efa6afe1004b22210fcfef))
+* fix for msg removal ([8d9a3e6](https://github.com/lidofinance/validator-ejector/commit/8d9a3e667f417af1ea893dcc2117a06245e8912b))
+* improve message reloading ([5e5921a](https://github.com/lidofinance/validator-ejector/commit/5e5921ac2cd0d7698d561d9e1820c1f6cffc5654))
+* names fix ([e621a73](https://github.com/lidofinance/validator-ejector/commit/e621a73bc647c08ce4324f36f37b3f0a3f71a77e))
+* rename msg load function ([f391c6b](https://github.com/lidofinance/validator-ejector/commit/f391c6bd3507c2b8f78fb1eee36d8ae79ae0611a))
+* rollback default metrics handler ([7de4ef6](https://github.com/lidofinance/validator-ejector/commit/7de4ef6ae56770473703c814cc0a469c0eb75c2e))
+* simplify expression for message storage ([bcde68e](https://github.com/lidofinance/validator-ejector/commit/bcde68e52896fd9bf087d773becd599a166847ef))
+* timer ([8506a05](https://github.com/lidofinance/validator-ejector/commit/8506a052620672af2bff5334ff74552bf5cb1495))
+
+
+### Features
+
+* add debug log instead of comment ([edbacab](https://github.com/lidofinance/validator-ejector/commit/edbacab7b1564b04336ee482d72057846b42091b))
+* app start tests ([37fcfd2](https://github.com/lidofinance/validator-ejector/commit/37fcfd269f83bc4e1b7b22ca6d3a170683538f07))
+* cl test ([144a200](https://github.com/lidofinance/validator-ejector/commit/144a200657af08816af2368a42babe9e79432f92))
+* link to lido fi ([f24353d](https://github.com/lidofinance/validator-ejector/commit/f24353d5f178242b55d212a5c483d7b570d489a6))
+* move to vitetest ([84a362c](https://github.com/lidofinance/validator-ejector/commit/84a362cbb93a14000286491df7889e36ad68fe9c))
+* reload messages in each iteration ([daf7ed6](https://github.com/lidofinance/validator-ejector/commit/daf7ed610451f9a8f1d543a7a20bce06b2b6552c))
+
+
+
+# [1.2.0](https://github.com/lidofinance/validator-ejector/compare/1.1.0...1.2.0) (2023-04-26)
 
 
 ### Bug Fixes
