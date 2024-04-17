@@ -34,6 +34,12 @@ const mockConfig = async (config) => {
           format: 'simple',
         }
       },
+      makeWebhookProcessorConfig() {
+        return {
+          WEBHOOK_ABORT_TIMEOUT_MS: 10_000,
+          WEBHOOK_MAX_RETRIES: 0,
+        }
+      },
     }
   })
 }
