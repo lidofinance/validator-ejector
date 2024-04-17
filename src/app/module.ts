@@ -11,7 +11,11 @@ import { makeJobRunner } from 'lido-nanolib'
 
 import dotenv from 'dotenv'
 
-import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
+import {
+  makeConfig,
+  makeLoggerConfig,
+  makeWebhookProcessorConfig,
+} from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
@@ -90,11 +94,9 @@ export const makeAppModule = async () => {
     gsService,
   })
 
-  const webhookProcessor = makeWebhookProcessor(
-    makeRequest([loggerMiddleware(logger), notOkError(), abort(10_000)]),
-    logger,
-    metrics
-  )
+  const webhookConfig = makeWebhookProcessorConfig({ env: process.env })
+
+  const webhookProcessor = makeWebhookProcessor(webhookConfig, logger, metrics)
 
   const messageReloader = makeMessageReloader({
     logger,
