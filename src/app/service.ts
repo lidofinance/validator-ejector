@@ -11,7 +11,13 @@ export const makeApp = ({
   consensusApi,
   appInfoReader,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, BLOCKS_LOOP, JOB_INTERVAL } = config
+  const {
+    OPERATOR_ID,
+    BLOCKS_PRELOAD,
+    BLOCKS_LOOP,
+    JOB_INTERVAL,
+    OPERATOR_IDENTIFIERS,
+  } = config
 
   let ejectorCycleTimer: NodeJS.Timer | null = null
 
@@ -35,7 +41,9 @@ export const makeApp = ({
     const messageStorage = new MessageStorage()
 
     logger.info(
-      `Starting, searching only for requests for operator ${OPERATOR_ID}`
+      `Starting, searching only for requests for operators ${
+        OPERATOR_ID ?? OPERATOR_IDENTIFIERS
+      }`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)

@@ -81,11 +81,13 @@ export const makeConfig = ({
       })
       .parse(env.STAKING_MODULE_ID),
 
-    OPERATOR_ID: z
-      .string({
-        required_error: 'Please, setup OPERATOR_ID id. Example: 123',
-      })
-      .parse(env.OPERATOR_ID),
+    // Optional operator identification - one of them must be set
+    OPERATOR_ID: z.coerce.number().optional().parse(env.OPERATOR_ID),
+
+    OPERATOR_IDENTIFIERS: parseJsonArray(z.string())
+      .pipe(z.array(z.number()))
+      .optional()
+      .parse(env.OPERATOR_IDENTIFIERS ?? '[]'),
 
     ORACLE_ADDRESSES_ALLOWLIST: parseJsonArray(
       z.string({
@@ -167,6 +169,16 @@ export const makeConfig = ({
   if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
     throw new Error(
       'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+    )
+  }
+
+  // Validate that at least one operator identification is provided
+  if (
+    !config.OPERATOR_ID &&
+    (!config.OPERATOR_IDENTIFIERS || config.OPERATOR_IDENTIFIERS.length === 0)
+  ) {
+    throw new Error(
+      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided. OPERATOR_IDENTIFIERS must have at least one value if used.'
     )
   }
 

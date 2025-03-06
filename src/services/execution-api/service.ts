@@ -157,7 +157,11 @@ export const makeExecutionApi = (
     return found.transactionHash
   }
 
-  const logs = async (fromBlock: number, toBlock: number) => {
+  const logs = async (
+    fromBlock: number,
+    toBlock: number,
+    operatorId: number
+  ) => {
     const event = ethers.utils.Fragment.from(
       'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
@@ -186,7 +190,7 @@ export const makeExecutionApi = (
                 32
               ),
               ethers.utils.hexZeroPad(
-                ethers.BigNumber.from(OPERATOR_ID).toHexString(),
+                ethers.BigNumber.from(operatorId).toHexString(),
                 32
               ),
             ],
@@ -445,14 +449,14 @@ export const makeExecutionApi = (
     }
   }
 
-  const lastRequestedValidatorIndex = async () => {
+  const lastRequestedValidatorIndex = async (operatorId: number) => {
     const func = ethers.utils.Fragment.from(
       'function getLastRequestedValidatorIndices(uint256 moduleId, uint256[] nodeOpIds) view returns (int256[])'
     )
     const iface = new ethers.utils.Interface([func])
     const sig = iface.encodeFunctionData(func.name, [
       STAKING_MODULE_ID,
-      [OPERATOR_ID],
+      [operatorId],
     ])
 
     try {
