@@ -53,7 +53,7 @@ export const specDTO = createSchemaParser(specSchema, 'Invalid spec response')
 
 const depositContractSchema = z.object({
   data: z.object({
-    chain_id: z.number({
+    chain_id: z.string({
       invalid_type_error: 'Invalid chain_id input',
     }),
     address: z.string().nonempty('Invalid address input'),
