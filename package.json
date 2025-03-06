@@ -24,7 +24,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "node --loader ts-node/esm --disable-warning=ExperimentalWarning src/index.ts",
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "lint": "eslint --ext ts .",
