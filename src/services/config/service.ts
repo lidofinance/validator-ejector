@@ -1,133 +1,28 @@
-import {
-  bool,
-  level_attr,
-  makeLogger,
-  num,
-  str,
-  optional,
-  log_format,
-  json_arr,
-} from 'lido-nanolib'
+import { z } from 'zod'
+import { makeLogger } from 'lido-nanolib'
 import { readFileSync } from 'fs'
 
-export type ConfigService = ReturnType<typeof makeConfig>
+// Schema definitions
+const stringSchema = z.string()
+const booleanSchema = z.union([
+  z.boolean(),
+  z.string().transform((val) => val.toLowerCase() === 'true'),
+])
+const logLevelSchema = z.enum([
+  'trace',
+  'debug',
+  'info',
+  'warn',
+  'error',
+  'fatal',
+])
+const logFormatSchema = z.enum(['json', 'simple'])
 
-export const makeConfig = ({
-  env,
-}: {
-  logger: ReturnType<typeof makeLogger>
-  env: NodeJS.ProcessEnv
-}) => {
-  const config = {
-    EXECUTION_NODE: str(
-      env.EXECUTION_NODE,
-      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
-    ),
-    CONSENSUS_NODE: str(
-      env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
-    ),
-    LOCATOR_ADDRESS: str(
-      env.LOCATOR_ADDRESS,
-      'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-    ),
-    STAKING_MODULE_ID: str(
-      env.STAKING_MODULE_ID,
-      'Please, setup STAKING_MODULE_ID id. Example: 123'
-    ),
-    OPERATOR_ID: str(
-      env.OPERATOR_ID,
-      'Please, setup OPERATOR_ID id. Example: 123'
-    ),
-    ORACLE_ADDRESSES_ALLOWLIST: json_arr(
-      env.ORACLE_ADDRESSES_ALLOWLIST,
-      (oracles) => oracles.map(str),
-      'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
-    ),
-
-    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
-    VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
-
-    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
-
-    BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
-    BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 900, // 3 hours of blocks
-    JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
-
-    HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
-    RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
-    RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? true,
-
-    DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
-      optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
-      false,
-    PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
-
-    FORCE_DENCUN_FORK_MODE:
-      optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
-  }
-
-  if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
-    throw new Error(
-      'Both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined. Ensure only one is set.'
-    )
-  }
-
-  if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
-    throw new Error(
-      'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
-    )
-  }
-
-  return config
-}
-
-export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
-  const config = {
-    CONSENSUS_NODE: str(
-      env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
-    ),
-    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
-    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
-  }
-  return config
-}
-
-export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
-  const config = {
-    LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
-    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
-    LOGGER_SECRETS:
-      optional(() =>
-        json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
-      ) ?? [],
-  }
-
-  // Resolve the value of an env var if such exists
-  config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
-    (envVar) => envOrFile(env, envVar) ?? envVar
-  )
-
-  return config
-}
-
-export const makeWebhookProcessorConfig = ({
-  env,
-}: {
-  env: NodeJS.ProcessEnv
-}) => {
-  const config = {
-    WEBHOOK_ABORT_TIMEOUT_MS:
-      optional(() => num(env.WEBHOOK_ABORT_TIMEOUT_MS)) ?? 10_000,
-    WEBHOOK_MAX_RETRIES: optional(() => num(env.WEBHOOK_MAX_RETRIES)) ?? 0,
-  }
-
-  return config
-}
-
-const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
+// Helper function to read from file
+const envOrFile = (
+  env: NodeJS.ProcessEnv,
+  envName: string
+): string | undefined => {
   if (env[envName]) return env[envName]
 
   const extendedName = `${envName}_FILE`
@@ -141,4 +36,209 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   }
 
   return undefined
+}
+
+// Parse with error message
+const parseWithMessage = <T extends z.ZodTypeAny>(
+  schema: T,
+  value: unknown,
+  message: string
+): z.infer<T> => {
+  const result = schema.safeParse(value)
+  if (!result.success) {
+    throw new Error(message)
+  }
+  return result.data
+}
+
+// Type-safe schema for Oracle addresses array
+const jsonArraySchema = <T extends z.ZodTypeAny>(schema: T) =>
+  z
+    .string()
+    .transform((str, ctx) => {
+      try {
+        return JSON.parse(str)
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Invalid JSON: ${(e as Error).message}`,
+        })
+        return z.NEVER
+      }
+    })
+    .pipe(schema)
+
+const oracleAddressesSchema = jsonArraySchema(z.array(z.string()))
+type OracleAddresses = z.infer<typeof oracleAddressesSchema>
+
+export type ConfigService = ReturnType<typeof makeConfig>
+
+export const makeConfig = ({
+  env,
+}: {
+  logger: ReturnType<typeof makeLogger>
+  env: NodeJS.ProcessEnv
+}) => {
+  // Define required fields with custom error messages
+  const EXECUTION_NODE = parseWithMessage(
+    stringSchema,
+    env.EXECUTION_NODE,
+    'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
+  )
+
+  const CONSENSUS_NODE = parseWithMessage(
+    stringSchema,
+    env.CONSENSUS_NODE,
+    'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+  )
+
+  const LOCATOR_ADDRESS = parseWithMessage(
+    stringSchema,
+    env.LOCATOR_ADDRESS,
+    'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+  )
+
+  const STAKING_MODULE_ID = parseWithMessage(
+    stringSchema,
+    env.STAKING_MODULE_ID,
+    'Please, setup STAKING_MODULE_ID id. Example: 123'
+  )
+
+  const OPERATOR_ID = parseWithMessage(
+    stringSchema,
+    env.OPERATOR_ID,
+    'Please, setup OPERATOR_ID id. Example: 123'
+  )
+
+  const ORACLE_ADDRESSES_ALLOWLIST = parseWithMessage(
+    oracleAddressesSchema,
+    env.ORACLE_ADDRESSES_ALLOWLIST,
+    'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
+  )
+
+  // Optional fields
+  const MESSAGES_LOCATION = z.string().optional().parse(env.MESSAGES_LOCATION)
+  const VALIDATOR_EXIT_WEBHOOK = z
+    .string()
+    .optional()
+    .parse(env.VALIDATOR_EXIT_WEBHOOK)
+  const MESSAGES_PASSWORD = z
+    .string()
+    .optional()
+    .parse(envOrFile(env, 'MESSAGES_PASSWORD'))
+
+  const BLOCKS_PRELOAD =
+    z.coerce.number().optional().parse(env.BLOCKS_PRELOAD) ?? 50000 // 7 days of blocks
+  const BLOCKS_LOOP = z.coerce.number().optional().parse(env.BLOCKS_LOOP) ?? 900 // 3 hours of blocks
+  const JOB_INTERVAL =
+    z.coerce.number().optional().parse(env.JOB_INTERVAL) ?? 384000 // 1 epoch
+
+  const HTTP_PORT = z.coerce.number().optional().parse(env.HTTP_PORT) ?? 8989
+  const RUN_METRICS = booleanSchema.optional().parse(env.RUN_METRICS) ?? false
+  const RUN_HEALTH_CHECK =
+    booleanSchema.optional().parse(env.RUN_HEALTH_CHECK) ?? true
+
+  const DRY_RUN = booleanSchema.optional().parse(env.DRY_RUN) ?? false
+  const DISABLE_SECURITY_DONT_USE_IN_PRODUCTION =
+    booleanSchema
+      .optional()
+      .parse(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) ?? false
+
+  const PROM_PREFIX = z.string().optional().parse(env.PROM_PREFIX)
+  const FORCE_DENCUN_FORK_MODE =
+    booleanSchema.optional().parse(env.FORCE_DENCUN_FORK_MODE) ?? false
+
+  // Config validation
+  if (MESSAGES_LOCATION && VALIDATOR_EXIT_WEBHOOK) {
+    throw new Error(
+      'Both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined. Ensure only one is set.'
+    )
+  }
+
+  if (!MESSAGES_LOCATION && !VALIDATOR_EXIT_WEBHOOK) {
+    throw new Error(
+      'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+    )
+  }
+
+  return {
+    EXECUTION_NODE,
+    CONSENSUS_NODE,
+    LOCATOR_ADDRESS,
+    STAKING_MODULE_ID,
+    OPERATOR_ID,
+    ORACLE_ADDRESSES_ALLOWLIST,
+    MESSAGES_LOCATION,
+    VALIDATOR_EXIT_WEBHOOK,
+    MESSAGES_PASSWORD,
+    BLOCKS_PRELOAD,
+    BLOCKS_LOOP,
+    JOB_INTERVAL,
+    HTTP_PORT,
+    RUN_METRICS,
+    RUN_HEALTH_CHECK,
+    DRY_RUN,
+    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    PROM_PREFIX,
+    FORCE_DENCUN_FORK_MODE,
+  }
+}
+
+export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const CONSENSUS_NODE = parseWithMessage(
+    stringSchema,
+    env.CONSENSUS_NODE,
+    'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+  )
+
+  const MESSAGES_LOCATION = z.string().optional().parse(env.MESSAGES_LOCATION)
+  const MESSAGES_PASSWORD = z
+    .string()
+    .optional()
+    .parse(envOrFile(env, 'MESSAGES_PASSWORD'))
+
+  return {
+    CONSENSUS_NODE,
+    MESSAGES_LOCATION,
+    MESSAGES_PASSWORD,
+  }
+}
+
+export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const LOGGER_LEVEL =
+    logLevelSchema.optional().parse(env.LOGGER_LEVEL) ?? 'info'
+  const LOGGER_FORMAT =
+    logFormatSchema.optional().parse(env.LOGGER_FORMAT) ?? 'simple'
+
+  // Define the schema for logger secrets array
+  const secretsArraySchema = jsonArraySchema(z.array(z.string()))
+  let LOGGER_SECRETS =
+    secretsArraySchema.optional().parse(env.LOGGER_SECRETS) ?? []
+
+  // Resolve the value of an env var if such exists
+  LOGGER_SECRETS = LOGGER_SECRETS.map(
+    (envVar) => envOrFile(env, envVar) ?? envVar
+  )
+
+  return {
+    LOGGER_LEVEL,
+    LOGGER_FORMAT,
+    LOGGER_SECRETS,
+  }
+}
+
+export const makeWebhookProcessorConfig = ({
+  env,
+}: {
+  env: NodeJS.ProcessEnv
+}) => {
+  const WEBHOOK_ABORT_TIMEOUT_MS =
+    z.coerce.number().optional().parse(env.WEBHOOK_ABORT_TIMEOUT_MS) ?? 10_000
+  const WEBHOOK_MAX_RETRIES =
+    z.coerce.number().optional().parse(env.WEBHOOK_MAX_RETRIES) ?? 0
+
+  return {
+    WEBHOOK_ABORT_TIMEOUT_MS,
+    WEBHOOK_MAX_RETRIES,
+  }
 }
