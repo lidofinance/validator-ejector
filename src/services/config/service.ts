@@ -12,7 +12,8 @@ const envOrFile = (
   const fileEnvName = `${envName}_FILE`
   if (env[fileEnvName]) {
     try {
-      return readFileSync(env[fileEnvName], 'utf-8')
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return readFileSync(env[fileEnvName]!, 'utf-8')
     } catch (e) {
       throw new Error(`Unable to load ${fileEnvName}`, { cause: e })
     }
@@ -190,7 +191,7 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL:
       z
-        .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
+        .enum(['debug', 'info', 'warn', 'error'])
         .optional()
         .parse(env.LOGGER_LEVEL) ?? 'info',
     LOGGER_FORMAT:
