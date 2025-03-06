@@ -83,7 +83,7 @@ const run = async () => {
 
     const remoteChainId = await provider.chainId()
 
-    if (!remoteChainId || chainId !== remoteChainId)
+    if (!remoteChainId || chainId !== Number(remoteChainId))
       throw new Error(
         `chain id should be same for each network, check config for ${chainId} (${networkData.name}) chain`
       )
