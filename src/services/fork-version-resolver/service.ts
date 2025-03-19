@@ -39,10 +39,9 @@ export const makeForkVersionResolver = (
   }
 
   const getCapellaForkVersion = async (): Promise<string> => {
-    if (CAPELLA_FORK_VERSION) return CAPELLA_FORK_VERSION
-
     const chainId = await consensusApi.chainId()
-    const capellaForkVersion = CAPELLA_FORK_VERSIONS[chainId]
+    const capellaForkVersion =
+      CAPELLA_FORK_VERSION ?? CAPELLA_FORK_VERSIONS[chainId]
 
     if (!capellaForkVersion) {
       throw new Error(
