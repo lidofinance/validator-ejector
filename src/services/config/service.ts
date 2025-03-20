@@ -66,6 +66,8 @@ export const makeConfig = ({
 
     FORCE_DENCUN_FORK_MODE:
       optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
+
+    CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {

@@ -74,6 +74,7 @@ Options are configured via environment variables.
 | FORCE_DENCUN_FORK_MODE         | No       | false                 | Start the service in Dencun fork mode                                                                                                                                                                                                  |
 | WEBHOOK_ABORT_TIMEOUT_MS         | No       | 10_000                 | Timeout for webhook response                                                                                                                                                                                                  |
 | WEBHOOK_MAX_RETRIES         | No       | 0                 | Maximum retries for webhook                                                                                                                                                                                                  |
+| CAPELLA_FORK_VERSION        | No       | 0x03000000        | Optional parameter to specify Capella fork version                                                                                                                                                                           |
 
 Messages can also be loaded from remote storages: AWS S3 and Google Cloud Storage.
 
