@@ -1,3 +1,18 @@
+# [1.7.0](https://github.com/lidofinance/validator-ejector/compare/1.6.0...1.7.0) (2025-03-20)
+
+
+### Bug Fixes
+
+* Capella fork version retrieval logic ([0dc6173](https://github.com/lidofinance/validator-ejector/commit/0dc617320cbca9539695418a85441bf739ef0917))
+
+
+### Features
+
+* add CAPELLA_FORK_VERSION configuration option and validation ([01bb8d9](https://github.com/lidofinance/validator-ejector/commit/01bb8d952d7f8c7b81ecab5acbfa17b2a9936a1c))
+* add HOODI chain and Capella fork version ([2bfeda0](https://github.com/lidofinance/validator-ejector/commit/2bfeda019a34aa51fac82ac23ac1d86898d3ce7b))
+
+
+
 # [1.6.0](https://github.com/lidofinance/validator-ejector/compare/1.5.0...1.6.0) (2024-04-17)
 
 
