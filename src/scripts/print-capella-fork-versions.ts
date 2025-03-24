@@ -1,7 +1,7 @@
 import dotenv from 'dotenv'
-import { makeLogger, str } from 'lido-nanolib'
-import { makeRequest } from 'lido-nanolib'
-import { logger as loggerMiddleware, retry, abort, prom } from 'lido-nanolib'
+import { makeLogger, str } from '../lib/index.js'
+import { makeRequest } from '../lib/index.js'
+import { logger as loggerMiddleware, retry, abort, prom } from '../lib/index.js'
 import { makeConfig, makeLoggerConfig } from '../services/config/service.js'
 import {
   ConsensusApiService,

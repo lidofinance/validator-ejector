@@ -1,5 +1,5 @@
-import { makeLogger } from 'lido-nanolib'
-import { makeRequest } from 'lido-nanolib'
+import { makeLogger } from '../../lib/index.js'
+import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 

@@ -1,6 +1,6 @@
 import { Storage, File } from '@google-cloud/storage'
 
-import { LoggerService } from 'lido-nanolib'
+import { LoggerService } from '../../lib/index.js'
 import type { MessageFile } from '../local-file-reader/service.js'
 
 export type GsStoreService = ReturnType<typeof makeGsStore>

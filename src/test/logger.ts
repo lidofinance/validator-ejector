@@ -1,4 +1,4 @@
-import { LOG_LEVELS, LoggerService } from 'lido-nanolib'
+import { LOG_LEVELS, LoggerService } from '../lib/index.js'
 
 export const mockLogger = () =>
   LOG_LEVELS.reduce((acc, level) => {
