@@ -9,7 +9,10 @@ export type ForkVersionResolverService = ReturnType<
 export const makeForkVersionResolver = (
   consensusApi: ConsensusApiService,
   logger: LoggerService,
-  { FORCE_DENCUN_FORK_MODE }: { FORCE_DENCUN_FORK_MODE: boolean }
+  {
+    FORCE_DENCUN_FORK_MODE,
+    CAPELLA_FORK_VERSION,
+  }: { FORCE_DENCUN_FORK_MODE: boolean; CAPELLA_FORK_VERSION?: string }
 ) => {
   let isDencunActivated = false
 
@@ -37,11 +40,18 @@ export const makeForkVersionResolver = (
 
   const getCapellaForkVersion = async (): Promise<string> => {
     const chainId = await consensusApi.chainId()
-    const capellaForkVersion = CAPELLA_FORK_VERSIONS[chainId]
+    const capellaForkVersion =
+      CAPELLA_FORK_VERSION ?? CAPELLA_FORK_VERSIONS[chainId]
 
     if (!capellaForkVersion) {
       throw new Error(
         `Could not find CAPELLA_FORK_VERSION for network with chain_id ${chainId}`
+      )
+    }
+
+    if (!capellaForkVersion.startsWith('0x')) {
+      throw new Error(
+        `Invalid CAPELLA_FORK_VERSION for network with chain_id ${chainId}, should start with '0x'`
       )
     }
 
