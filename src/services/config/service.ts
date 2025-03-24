@@ -7,7 +7,7 @@ import {
   optional,
   log_format,
   json_arr,
-} from 'lido-nanolib'
+} from '../../lib/index.js'
 import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
@@ -35,7 +35,7 @@ export const makeConfig = ({
       env.STAKING_MODULE_ID,
       'Please, setup STAKING_MODULE_ID id. Example: 123'
     ),
-    OPERATOR_ID: str(
+    OPERATOR_ID: num(
       env.OPERATOR_ID,
       'Please, setup OPERATOR_ID id. Example: 123'
     ),
@@ -68,6 +68,12 @@ export const makeConfig = ({
       optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
+
+    OPERATOR_IDENTIFIERS: json_arr(
+      env.ORACLE_ADDRESSES_ALLOWLIST,
+      (oracles) => oracles.map(num),
+      'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
+    ),
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {

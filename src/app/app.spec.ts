@@ -1,4 +1,4 @@
-import { makeLogger } from 'lido-nanolib'
+import { makeLogger } from '../lib/index.js'
 import nock from 'nock'
 import { makeConfig as mC } from '../services/config/service.js'
 import { mockEthServer } from '../test/mock-eth-server.js'

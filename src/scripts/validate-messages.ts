@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
-import { makeLogger, makeRequest } from 'lido-nanolib'
-import { logger as loggerMiddleware, retry, abort, prom } from 'lido-nanolib'
+import { makeLogger, makeRequest } from '../lib/index.js'
+import { logger as loggerMiddleware, retry, abort, prom } from '../lib/index.js'
 import { makeValidationConfig } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeMetrics } from '../services/prom/service.js'

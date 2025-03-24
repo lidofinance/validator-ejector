@@ -1,4 +1,4 @@
-import type { JobRunnerService, LoggerService } from 'lido-nanolib'
+import type { JobRunnerService, LoggerService } from '../lib/index.js'
 import type { ConfigService } from '../services/config/service.js'
 import type { MetricsService } from '../services/prom/service.js'
 import type { HttpHandlerService } from '../services/http-handler/service.js'

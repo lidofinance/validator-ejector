@@ -1,5 +1,5 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
-import { LoggerService, RequestService, makeRequest } from 'lido-nanolib'
+import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import { funcMock, lastBlockNumberMock, syncingMock } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'

@@ -1,4 +1,4 @@
-import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
+import { makeLogger, makeRequest, notOkError } from '../../lib/index.js'
 import {
   syncingDTO,
   genesisDTO,

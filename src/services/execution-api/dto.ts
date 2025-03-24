@@ -1,4 +1,4 @@
-import { arr, obj, str, bool } from 'lido-nanolib'
+import { arr, obj, str, bool } from '../../lib/index.js'
 
 export const syncingDTO = (json: unknown) =>
   obj(

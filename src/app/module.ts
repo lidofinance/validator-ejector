@@ -1,13 +1,13 @@
-import { makeLogger } from 'lido-nanolib'
-import { makeRequest } from 'lido-nanolib'
+import { makeLogger } from '../lib/index.js'
+import { makeRequest } from '../lib/index.js'
 import {
   logger as loggerMiddleware,
   notOkError,
   retry,
   abort,
   prom,
-} from 'lido-nanolib'
-import { makeJobRunner } from 'lido-nanolib'
+} from '../lib/index.js'
+import { makeJobRunner } from '../lib/index.js'
 
 import dotenv from 'dotenv'
 

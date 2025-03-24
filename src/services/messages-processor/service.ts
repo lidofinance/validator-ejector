@@ -9,7 +9,7 @@ import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
 
 import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
 
-import type { LoggerService } from 'lido-nanolib'
+import type { LoggerService } from '../../lib/index.js'
 import type {
   LocalFileReaderService,
   MessageFile,

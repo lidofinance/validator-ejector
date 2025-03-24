@@ -1,4 +1,12 @@
-import { obj, str, or, wrap, num, optional, literal_str } from 'lido-nanolib'
+import {
+  obj,
+  str,
+  or,
+  wrap,
+  num,
+  optional,
+  literal_str,
+} from '../../lib/index.js'
 
 export const encryptedMessageDTO = (input: unknown) =>
   obj(input, (json) => ({

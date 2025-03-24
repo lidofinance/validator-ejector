@@ -1,5 +1,5 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
-import { LoggerService, RequestService, makeRequest } from 'lido-nanolib'
+import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import {
   logsMock,
   txFirstVerificationMock,
