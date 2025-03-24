@@ -497,6 +497,18 @@ export const makeExecutionApi = (
   }
 
   return {
+    get exitBusAddress() {
+      if (!exitBusAddress) {
+        throw new Error('Exit Bus address is not resolved yet')
+      }
+      return exitBusAddress
+    },
+    get consensusAddress() {
+      if (!consensusAddress) {
+        throw new Error('Consensus address is not resolved yet')
+      }
+      return consensusAddress
+    },
     syncing,
     checkSync,
     latestBlockNumber,
