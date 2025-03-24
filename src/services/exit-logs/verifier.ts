@@ -3,8 +3,6 @@ import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { ConfigService } from 'services/config/service.js'
-
 import { logsDTO, funcDTO, txDTO } from './dto.js'
 
 const ORACLE_FRAME_BLOCKS = 7200

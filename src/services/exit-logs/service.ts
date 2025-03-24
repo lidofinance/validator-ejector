@@ -51,6 +51,7 @@ export const makeExitLogsService = (
   )
 
   return {
+    verifier,
     fetcher,
   }
 }

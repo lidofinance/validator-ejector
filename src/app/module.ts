@@ -30,6 +30,7 @@ import { makeGsStore } from '../services/gs-store/service.js'
 import { makeApp } from './service.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
+import { makeExitLogsService } from '../services/exit-logs/service.js'
 
 dotenv.config()
 
@@ -49,15 +50,20 @@ export const makeAppModule = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
-  const executionApi = makeExecutionApi(
-    makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      prom(metrics.executionRequestDurationSeconds),
-      notOkError(),
-      abort(30_000),
-    ]),
+  const executionHttp = makeRequest([
+    retry(3),
+    loggerMiddleware(logger),
+    prom(metrics.executionRequestDurationSeconds),
+    notOkError(),
+    abort(30_000),
+  ])
+
+  const executionApi = makeExecutionApi(executionHttp, logger, config)
+
+  const exitLogs = makeExitLogsService(
+    executionHttp,
     logger,
+    executionApi,
     config,
     metrics
   )
@@ -110,6 +116,7 @@ export const makeAppModule = async () => {
     config,
     messageReloader,
     executionApi,
+    exitLogs,
     consensusApi,
     messagesProcessor,
     webhookProcessor,

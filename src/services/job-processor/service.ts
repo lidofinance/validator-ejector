@@ -7,6 +7,7 @@ import type { WebhookProcessorService } from '../webhook-caller/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { MessageStorage } from './message-storage.js'
 import type { MessageReloader } from '../message-reloader/message-reloader.js'
+import { ExitLogsService } from 'services/exit-logs/service.js'
 
 export type ExitMessage = {
   message: {
@@ -32,6 +33,7 @@ export const makeJobProcessor = ({
   config,
   messageReloader,
   executionApi,
+  exitLogs,
   consensusApi,
   messagesProcessor,
   webhookProcessor,
@@ -41,6 +43,7 @@ export const makeJobProcessor = ({
   config: ConfigService
   messageReloader: MessageReloader
   executionApi: ExecutionApiService
+  exitLogs: ExitLogsService
   consensusApi: ConsensusApiService
   messagesProcessor: MessagesProcessorService
   webhookProcessor: WebhookProcessorService
@@ -79,11 +82,9 @@ export const makeJobProcessor = ({
         toBlock,
       })
 
-      const eventsForEject = await executionApi.logs(
-        fromBlock,
-        toBlock,
-        operatorId
-      )
+      const eventsForEject = await exitLogs.fetcher.logs(fromBlock, toBlock, [
+        operatorId,
+      ])
 
       logger.info('Handling ejection requests', {
         amount: eventsForEject.length,
@@ -117,7 +118,7 @@ export const makeJobProcessor = ({
       logger.info('Updating exit messages left metrics from contract state')
       try {
         const lastRequestedValIx =
-          await executionApi.lastRequestedValidatorIndex(operatorId)
+          await exitLogs.verifier.lastRequestedValidatorIndex(operatorId)
         metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
       } catch {
         logger.error(

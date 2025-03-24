@@ -26,7 +26,7 @@ describe('makeConsensusApi logs', () => {
   } as unknown as MetricsService
 
   const mockService = () => {
-    const executionApi = makeExecutionApi(request, logger, config, metrics)
+    const executionApi = makeExecutionApi(request, logger, config)
 
     Object.defineProperty(executionApi, 'exitBusAddress', {
       get: vi.fn(() => '0x0'),
