@@ -1,47 +1,14 @@
-import { z } from 'zod'
-import { makeLogger } from 'lido-nanolib'
+import {
+  bool,
+  level_attr,
+  makeLogger,
+  num,
+  str,
+  optional,
+  log_format,
+  json_arr,
+} from 'lido-nanolib'
 import { readFileSync } from 'fs'
-
-// Helper function to read from file
-const envOrFile = (
-  env: NodeJS.ProcessEnv,
-  envName: string
-): string | undefined => {
-  if (env[envName]) return env[envName]
-
-  const fileEnvName = `${envName}_FILE`
-  if (env[fileEnvName]) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return readFileSync(env[fileEnvName]!, 'utf-8')
-    } catch (e) {
-      throw new Error(`Unable to load ${fileEnvName}`, { cause: e })
-    }
-  }
-  return undefined
-}
-
-// JSON array parser
-const parseJsonArray = <T extends z.ZodTypeAny>(base: T) =>
-  base.transform((val, ctx) => {
-    try {
-      const parsed = JSON.parse(val)
-      if (!Array.isArray(parsed)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Expected a JSON array',
-        })
-        return z.NEVER
-      }
-      return parsed
-    } catch (e) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Invalid JSON: ${(e as Error).message}`,
-      })
-      return z.NEVER
-    }
-  })
 
 export type ConfigService = ReturnType<typeof makeConfig>
 
@@ -51,115 +18,58 @@ export const makeConfig = ({
   logger: ReturnType<typeof makeLogger>
   env: NodeJS.ProcessEnv
 }) => {
-  // Config object with validation
   const config = {
-    // Required fields
-    EXECUTION_NODE: z
-      .string({
-        required_error:
-          'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545',
-      })
-      .parse(env.EXECUTION_NODE),
+    EXECUTION_NODE: str(
+      env.EXECUTION_NODE,
+      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
+    ),
+    CONSENSUS_NODE: str(
+      env.CONSENSUS_NODE,
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+    ),
+    LOCATOR_ADDRESS: str(
+      env.LOCATOR_ADDRESS,
+      'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    ),
+    STAKING_MODULE_ID: str(
+      env.STAKING_MODULE_ID,
+      'Please, setup STAKING_MODULE_ID id. Example: 123'
+    ),
+    OPERATOR_ID: str(
+      env.OPERATOR_ID,
+      'Please, setup OPERATOR_ID id. Example: 123'
+    ),
+    ORACLE_ADDRESSES_ALLOWLIST: json_arr(
+      env.ORACLE_ADDRESSES_ALLOWLIST,
+      (oracles) => oracles.map(str),
+      'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
+    ),
 
-    CONSENSUS_NODE: z
-      .string({
-        required_error:
-          'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051',
-      })
-      .parse(env.CONSENSUS_NODE),
+    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
+    VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 
-    LOCATOR_ADDRESS: z
-      .string({
-        required_error:
-          'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-      })
-      .parse(env.LOCATOR_ADDRESS),
+    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
-    STAKING_MODULE_ID: z
-      .string({
-        required_error: 'Please, setup STAKING_MODULE_ID id. Example: 123',
-      })
-      .parse(env.STAKING_MODULE_ID),
+    BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 900, // 3 hours of blocks
+    JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
-    // Optional operator identification - one of them must be set
-    OPERATOR_ID: z.coerce.number().optional().parse(env.OPERATOR_ID),
+    HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
+    RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
+    RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? true,
 
-    OPERATOR_IDENTIFIERS: parseJsonArray(z.string())
-      .pipe(z.array(z.number()))
-      .optional()
-      .parse(env.OPERATOR_IDENTIFIERS ?? '[]'),
-
-    ORACLE_ADDRESSES_ALLOWLIST: parseJsonArray(
-      z.string({
-        required_error:
-          'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]',
-      })
-    )
-      .pipe(z.array(z.string()))
-      .parse(env.ORACLE_ADDRESSES_ALLOWLIST),
-
-    // Optional fields
-    MESSAGES_LOCATION: z.string().optional().parse(env.MESSAGES_LOCATION),
-    VALIDATOR_EXIT_WEBHOOK: z
-      .string()
-      .optional()
-      .parse(env.VALIDATOR_EXIT_WEBHOOK),
-    MESSAGES_PASSWORD: z
-      .string()
-      .optional()
-      .parse(envOrFile(env, 'MESSAGES_PASSWORD')),
-
-    // Optional with defaults
-    BLOCKS_PRELOAD:
-      z.coerce.number().optional().parse(env.BLOCKS_PRELOAD) ?? 50000,
-    BLOCKS_LOOP: z.coerce.number().optional().parse(env.BLOCKS_LOOP) ?? 900,
-    JOB_INTERVAL:
-      z.coerce.number().optional().parse(env.JOB_INTERVAL) ?? 384000,
-    HTTP_PORT: z.coerce.number().optional().parse(env.HTTP_PORT) ?? 8989,
-    RUN_METRICS:
-      z
-        .union([
-          z.boolean(),
-          z.string().transform((v) => v.toLowerCase() === 'true'),
-        ])
-        .optional()
-        .parse(env.RUN_METRICS) ?? false,
-    RUN_HEALTH_CHECK:
-      z
-        .union([
-          z.boolean(),
-          z.string().transform((v) => v.toLowerCase() === 'true'),
-        ])
-        .optional()
-        .parse(env.RUN_HEALTH_CHECK) ?? true,
-    DRY_RUN:
-      z
-        .union([
-          z.boolean(),
-          z.string().transform((v) => v.toLowerCase() === 'true'),
-        ])
-        .optional()
-        .parse(env.DRY_RUN) ?? false,
+    DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
-      z
-        .union([
-          z.boolean(),
-          z.string().transform((v) => v.toLowerCase() === 'true'),
-        ])
-        .optional()
-        .parse(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) ?? false,
-    PROM_PREFIX: z.string().optional().parse(env.PROM_PREFIX),
+      optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
+      false,
+    PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
+
     FORCE_DENCUN_FORK_MODE:
-      z
-        .union([
-          z.boolean(),
-          z.string().transform((v) => v.toLowerCase() === 'true'),
-        ])
-        .optional()
-        .parse(env.FORCE_DENCUN_FORK_MODE) ?? false,
+      optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
+
+    CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
   }
 
-  // Config validation
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
     throw new Error(
       'Both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined. Ensure only one is set.'
@@ -172,51 +82,32 @@ export const makeConfig = ({
     )
   }
 
-  // Validate that at least one operator identification is provided
-  if (
-    !config.OPERATOR_ID &&
-    (!config.OPERATOR_IDENTIFIERS || config.OPERATOR_IDENTIFIERS.length === 0)
-  ) {
-    throw new Error(
-      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided. OPERATOR_IDENTIFIERS must have at least one value if used.'
-    )
-  }
-
   return config
 }
 
-export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => ({
-  CONSENSUS_NODE: z
-    .string({
-      required_error:
-        'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051',
-    })
-    .parse(env.CONSENSUS_NODE),
-  MESSAGES_LOCATION: z.string().optional().parse(env.MESSAGES_LOCATION),
-  MESSAGES_PASSWORD: z
-    .string()
-    .optional()
-    .parse(envOrFile(env, 'MESSAGES_PASSWORD')),
-})
+export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
+  const config = {
+    CONSENSUS_NODE: str(
+      env.CONSENSUS_NODE,
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+    ),
+    MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
+    MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
+  }
+  return config
+}
 
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
-    LOGGER_LEVEL:
-      z
-        .enum(['debug', 'info', 'warn', 'error'])
-        .optional()
-        .parse(env.LOGGER_LEVEL) ?? 'info',
-    LOGGER_FORMAT:
-      z.enum(['json', 'simple']).optional().parse(env.LOGGER_FORMAT) ??
-      'simple',
+    LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
+    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
     LOGGER_SECRETS:
-      parseJsonArray(z.string())
-        .pipe(z.array(z.string()))
-        .optional()
-        .parse(env.LOGGER_SECRETS) ?? [],
+      optional(() =>
+        json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+      ) ?? [],
   }
 
-  // Resolve env vars in secrets
+  // Resolve the value of an env var if such exists
   config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
     (envVar) => envOrFile(env, envVar) ?? envVar
   )
@@ -228,9 +119,28 @@ export const makeWebhookProcessorConfig = ({
   env,
 }: {
   env: NodeJS.ProcessEnv
-}) => ({
-  WEBHOOK_ABORT_TIMEOUT_MS:
-    z.coerce.number().optional().parse(env.WEBHOOK_ABORT_TIMEOUT_MS) ?? 10_000,
-  WEBHOOK_MAX_RETRIES:
-    z.coerce.number().optional().parse(env.WEBHOOK_MAX_RETRIES) ?? 0,
-})
+}) => {
+  const config = {
+    WEBHOOK_ABORT_TIMEOUT_MS:
+      optional(() => num(env.WEBHOOK_ABORT_TIMEOUT_MS)) ?? 10_000,
+    WEBHOOK_MAX_RETRIES: optional(() => num(env.WEBHOOK_MAX_RETRIES)) ?? 0,
+  }
+
+  return config
+}
+
+const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
+  if (env[envName]) return env[envName]
+
+  const extendedName = `${envName}_FILE`
+  const extendedNameValue = env[extendedName]
+  if (extendedNameValue) {
+    try {
+      return readFileSync(extendedNameValue, 'utf-8')
+    } catch (e) {
+      throw new Error(`Unable to load ${extendedName}`, { cause: e })
+    }
+  }
+
+  return undefined
+}
