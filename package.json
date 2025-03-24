@@ -1,6 +1,7 @@
 {
   "name": "validator-ejector",
   "version": "1.7.0",
+  "private": true,
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
@@ -23,7 +24,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "ts-node src/index.ts",
+    "dev": "node --loader ts-node/esm --disable-warning=ExperimentalWarning src/index.ts",
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "lint": "eslint --ext ts .",
@@ -41,8 +42,8 @@
     "nock": "^13.3.1",
     "prettier": "2.8.0",
     "ts-node": "10.9.1",
-    "vite": "^4.3.3",
-    "vitest": "^0.30.1"
+    "vite": "6.2.0",
+    "vitest": "3.0.7"
   },
   "jest": {
     "extensionsToTreatAsEsm": [
@@ -63,5 +64,6 @@
       "dotenv/config"
     ],
     "testEnvironment": "node"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

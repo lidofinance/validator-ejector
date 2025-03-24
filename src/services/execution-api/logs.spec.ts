@@ -39,7 +39,7 @@ describe('makeConsensusApi logs', () => {
     config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
     api = makeExecutionApi(request, logger, config, metrics)
 
-    const res = await api.logs(123, 123)
+    const res = await api.logs(123, 123, 1)
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -60,7 +60,7 @@ describe('makeConsensusApi logs', () => {
     ]
     api = makeExecutionApi(request, logger, config, metrics)
 
-    const res = await api.logs(123, 123)
+    const res = await api.logs(123, 123, 1)
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')

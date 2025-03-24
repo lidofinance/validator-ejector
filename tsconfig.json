@@ -15,5 +15,9 @@
     "types": ["vitest/globals"]
   },
   "exclude": ["node_modules"],
-  "ts-node": { "esm": true }
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "transpileOnly": true,
+    "esm": true,
+  },
 }
