@@ -28,7 +28,7 @@ describe('Logger', () => {
     const testingDate = Number(new Date('2022-01-01T13:58:22.854Z')) / 1000
     const dateStr = dateFormat(testingDate)
 
-    expect(dateStr).toMatchInlineSnapshot(`"2022-01-01 14:58:22"`)
+    expect(dateStr).toMatchInlineSnapshot(`"2022-01-01 13:58:22"`)
   })
 
   test.todo('json output')

@@ -15,9 +15,9 @@ const on = (l: number) => String(l).padStart(2, '0')
 
 export const dateFormat = (ts: number) => {
   const d = new Date(ts * 1000)
-  return `${d.getFullYear()}-${on(d.getMonth() + 1)}-${on(d.getDate())} ${on(
-    d.getHours()
-  )}:${on(d.getMinutes())}:${on(d.getSeconds())}`
+  return `${d.getUTCFullYear()}-${on(d.getUTCMonth() + 1)}-${on(
+    d.getUTCDate()
+  )} ${on(d.getUTCHours())}:${on(d.getUTCMinutes())}:${on(d.getUTCSeconds())}`
 }
 
 export const printer = {
