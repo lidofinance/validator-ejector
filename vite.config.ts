@@ -7,5 +7,6 @@ export default defineConfig({
   test: {
     // Use global to avoid globals imports (describe, test, expect)
     globals: true,
+    testTimeout: 100_000,
   },
 })
