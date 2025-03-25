@@ -56,9 +56,10 @@ export const makeJobProcessor = ({
     eventsNumber: number
     messageStorage: MessageStorage
   }) => {
-    const operatorIds = config.OPERATOR_ID
-      ? [config.OPERATOR_ID]
-      : [...(config.OPERATOR_IDENTIFIERS ?? [])]
+    const operatorIds = config.OPERATOR_IDENTIFIERS
+      ? [...(config.OPERATOR_IDENTIFIERS ?? [])]
+      : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        [config.OPERATOR_ID!]
 
     logger.info('Job started', {
       operatorIds,
@@ -71,7 +72,9 @@ export const makeJobProcessor = ({
     await executionApi.resolveExitBusAddress()
     await executionApi.resolveConsensusAddress()
 
-    const eventsForEject = await exitLogs.getLogs(operatorIds)
+    const lastBlockNumber = await executionApi.latestBlockNumber()
+
+    const eventsForEject = await exitLogs.getLogs(operatorIds, lastBlockNumber)
 
     logger.info('Handling ejection requests', {
       amount: eventsForEject.length,
@@ -87,7 +90,9 @@ export const makeJobProcessor = ({
 
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
-          logger.info('Validator is already exiting(ed), skipping')
+          logger.info('Validator is already exiting(ed), skipping', {
+            validatorIndex: event.validatorIndex,
+          })
           // Acknowledge the event to avoid processing it again
           // TODO: check on finalized state
           event.ack()

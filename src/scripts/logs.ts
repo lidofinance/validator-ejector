@@ -29,6 +29,11 @@ const run = async () => {
 
   const config = makeConfig({ logger, env: process.env })
 
+  const operatorIds = config.OPERATOR_IDENTIFIERS
+    ? [...(config.OPERATOR_IDENTIFIERS ?? [])]
+    : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      [config.OPERATOR_ID!]
+
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
   const executionHttp = makeRequest([
@@ -46,7 +51,9 @@ const run = async () => {
   await executionApi.resolveExitBusAddress()
   await executionApi.resolveConsensusAddress()
   const fetchTimeStart = performance.now()
-  const logs = await exitLogs.getLogs([0, 1, 2])
+  const lastBlockNumber = await executionApi.latestBlockNumber()
+
+  const logs = await exitLogs.getLogs(operatorIds, lastBlockNumber)
 
   logger.info('logs fetched', { count: logs.length })
 

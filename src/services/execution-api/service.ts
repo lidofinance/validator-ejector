@@ -69,7 +69,7 @@ export const makeExecutionApi = (
     const {
       result: { number },
     } = lastBlockNumberDTO(json)
-    logger.debug('fetched latest block number')
+    logger.debug('fetched latest block number', json)
     return ethers.BigNumber.from(number).toNumber()
   }
 
