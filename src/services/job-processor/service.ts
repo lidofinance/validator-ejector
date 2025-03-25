@@ -50,7 +50,6 @@ export const makeJobProcessor = ({
   metrics: MetricsService
 }) => {
   const handleJob = async ({
-    eventsNumber,
     messageStorage,
   }: {
     eventsNumber: number
@@ -94,8 +93,11 @@ export const makeJobProcessor = ({
             validatorIndex: event.validatorIndex,
           })
           // Acknowledge the event to avoid processing it again
-          // TODO: check on finalized state
-          event.ack()
+          if (
+            await consensusApi.isExiting(event.validatorPubkey, 'finalized')
+          ) {
+            event.ack()
+          }
           continue
         }
 

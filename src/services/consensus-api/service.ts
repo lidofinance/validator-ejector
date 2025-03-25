@@ -66,13 +66,19 @@ export const makeConsensusApi = (
     return data
   }
 
-  const isExiting = async (validatorPubkey: string) => {
-    return (await validatorInfo(validatorPubkey)).isExiting
+  const isExiting = async (
+    validatorPubkey: string,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
+    return (await validatorInfo(validatorPubkey, tag)).isExiting
   }
 
-  const validatorInfo = async (id: string) => {
+  const validatorInfo = async (
+    id: string,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
     const req = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/head/validators/${id}`
+      `${normalizedUrl}/eth/v1/beacon/states/${tag}/validators/${id}`
     )
 
     if (!req.ok) {
