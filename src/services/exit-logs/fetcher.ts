@@ -60,10 +60,12 @@ export const makeExitLogsFetcherService = (
 
       const parsedLog = iface.parseLog(log)
 
-      const { validatorIndex, validatorPubkey } = parsedLog.args as unknown as {
-        validatorIndex: ethers.BigNumber
-        validatorPubkey: string
-      }
+      const { validatorIndex, validatorPubkey, nodeOperatorId } =
+        parsedLog.args as unknown as {
+          validatorIndex: ethers.BigNumber
+          validatorPubkey: string
+          nodeOperatorId: ethers.BigNumber
+        }
 
       if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
         try {
@@ -90,6 +92,11 @@ export const makeExitLogsFetcherService = (
         validatorIndex: validatorIndex.toString(),
         validatorPubkey,
         blockNumber: ethers.BigNumber.from(log.blockNumber).toNumber(),
+        nodeOperatorId: nodeOperatorId.toNumber(),
+        acknowledged: false,
+        ack() {
+          this.acknowledged = true
+        },
       })
     }
 

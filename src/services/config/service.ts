@@ -70,7 +70,7 @@ export const makeConfig = ({
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
 
     OPERATOR_IDENTIFIERS: json_arr(
-      env.ORACLE_ADDRESSES_ALLOWLIST,
+      env.OPERATOR_IDENTIFIERS,
       (oracles) => oracles.map(num),
       'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
     ),

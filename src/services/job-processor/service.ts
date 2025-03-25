@@ -71,54 +71,50 @@ export const makeJobProcessor = ({
     await executionApi.resolveExitBusAddress()
     await executionApi.resolveConsensusAddress()
 
-    const toBlock = await executionApi.latestBlockNumber()
-    const fromBlock = toBlock - eventsNumber
-    logger.info('Fetched the latest block from EL', { latestBlock: toBlock })
+    const eventsForEject = await exitLogs.getLogs(operatorIds)
 
-    for (const operatorId of operatorIds) {
-      logger.info('Fetching request events from the Exit Bus', {
-        eventsNumber,
-        fromBlock,
-        toBlock,
-      })
+    logger.info('Handling ejection requests', {
+      amount: eventsForEject.length,
+    })
 
-      const eventsForEject = await exitLogs.fetcher.logs(fromBlock, toBlock, [
-        operatorId,
-      ])
+    for (const [ix, event] of eventsForEject.entries()) {
+      logger.debug(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
 
-      logger.info('Handling ejection requests', {
-        amount: eventsForEject.length,
-      })
+      if (event.acknowledged) {
+        logger.debug('Event already acknowledged, skipping')
+        continue
+      }
 
-      for (const [ix, event] of eventsForEject.entries()) {
-        logger.debug(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
-
-        try {
-          if (await consensusApi.isExiting(event.validatorPubkey)) {
-            logger.info('Validator is already exiting(ed), skipping')
-            continue
-          }
-
-          if (config.DRY_RUN) {
-            logger.info('Not initiating an exit in dry run mode')
-            continue
-          }
-
-          if (config.VALIDATOR_EXIT_WEBHOOK) {
-            await webhookProcessor.send(config.VALIDATOR_EXIT_WEBHOOK, event)
-          } else {
-            await messagesProcessor.exit(messageStorage, event)
-          }
-        } catch (e) {
-          logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
-          metrics.exitActions.inc({ result: 'error' })
+      try {
+        if (await consensusApi.isExiting(event.validatorPubkey)) {
+          logger.info('Validator is already exiting(ed), skipping')
+          // Acknowledge the event to avoid processing it again
+          // TODO: check on finalized state
+          event.ack()
+          continue
         }
+
+        if (config.DRY_RUN) {
+          logger.info('Not initiating an exit in dry run mode')
+          continue
+        }
+
+        if (config.VALIDATOR_EXIT_WEBHOOK) {
+          await webhookProcessor.send(config.VALIDATOR_EXIT_WEBHOOK, event)
+        } else {
+          await messagesProcessor.exit(messageStorage, event)
+        }
+      } catch (e) {
+        logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
+        metrics.exitActions.inc({ result: 'error' })
       }
 
       logger.info('Updating exit messages left metrics from contract state')
       try {
         const lastRequestedValIx =
-          await exitLogs.verifier.lastRequestedValidatorIndex(operatorId)
+          await exitLogs.verifier.lastRequestedValidatorIndex(
+            event.nodeOperatorId
+          )
         metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
       } catch {
         logger.error(
