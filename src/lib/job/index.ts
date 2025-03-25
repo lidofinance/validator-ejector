@@ -42,12 +42,12 @@ export const makeJobRunner = <Initial>(
     }
   }
 
-  const pooling = (handlerValue: Initial) => {
+  const loop = (handlerValue: Initial) => {
     return setInterval(() => once(handlerValue), config.JOB_INTERVAL)
   }
 
   return {
     once,
-    pooling,
+    loop,
   }
 }

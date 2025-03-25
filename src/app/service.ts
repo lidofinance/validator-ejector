@@ -48,7 +48,6 @@ export const makeApp = ({
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
     await job.once({
-      eventsNumber: BLOCKS_PRELOAD,
       messageStorage: messageStorage,
     })
 
@@ -58,8 +57,7 @@ export const makeApp = ({
       } seconds polling for ${BLOCKS_LOOP} last blocks`
     )
 
-    ejectorCycleTimer = job.pooling({
-      eventsNumber: BLOCKS_LOOP,
+    ejectorCycleTimer = job.loop({
       messageStorage: messageStorage,
     })
   }
