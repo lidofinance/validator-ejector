@@ -1,4 +1,4 @@
-import { makeLogger } from '../../lib/index.js'
+import { LRUCache, makeLogger } from '../../lib/index.js'
 import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
@@ -12,10 +12,7 @@ export type VerifierService = ReturnType<typeof makeVerifier>
 export const makeVerifier = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  {
-    consensusAddress,
-    exitBusAddress,
-  }: { consensusAddress: string; exitBusAddress: string },
+  el: { consensusAddress: string; exitBusAddress: string },
   {
     EXECUTION_NODE,
     STAKING_MODULE_ID,
@@ -30,7 +27,18 @@ export const makeVerifier = (
     ? EXECUTION_NODE.slice(0, -1)
     : EXECUTION_NODE
 
+  const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>(
+    5000
+  )
+
+  const lruConsensusReachedLogsCache = new LRUCache<string, string>(5000)
+
   const getTransaction = async (transactionHash: string) => {
+    if (lruTransactionCache.has(transactionHash)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return lruTransactionCache.get(transactionHash)!.result!
+    }
+
     const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,7 +53,7 @@ export const makeVerifier = (
     const json = await res.json()
 
     const { result } = txDTO(json)
-
+    lruTransactionCache.set(result.hash, { result })
     return result
   }
 
@@ -54,12 +62,19 @@ export const makeVerifier = (
     refSlot: string,
     hash: string
   ) => {
+    const key = `${toBlock}-${refSlot}-${hash}`
+    if (lruConsensusReachedLogsCache.has(key)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return lruConsensusReachedLogsCache.get(key)!
+    }
     const event = ethers.utils.Fragment.from(
       'event ConsensusReached(uint256 indexed refSlot, bytes32 report, uint256 support)'
     )
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
 
+    const from = toBlock - ORACLE_FRAME_BLOCKS
+    // move this kind of code to el api service
     const res = await request(normalizedUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,12 +84,12 @@ export const makeVerifier = (
         params: [
           {
             fromBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(toBlock - ORACLE_FRAME_BLOCKS).toHexString()
+              ethers.BigNumber.from(from).toHexString()
             ),
             toBlock: ethers.utils.hexStripZeros(
               ethers.BigNumber.from(toBlock).toHexString()
             ),
-            address: consensusAddress,
+            address: el.consensusAddress,
             topics: [
               eventTopic,
               ethers.utils.hexZeroPad(
@@ -102,7 +117,7 @@ export const makeVerifier = (
     const found = decoded.find((event) => event.args.report === hash)
 
     if (!found) throw new Error('Failed to find transaction by report hash')
-
+    lruConsensusReachedLogsCache.set(key, found.transactionHash)
     return found.transactionHash
   }
 
@@ -230,7 +245,7 @@ export const makeVerifier = (
           params: [
             {
               from: null,
-              to: exitBusAddress,
+              to: el.exitBusAddress,
               data: sig,
             },
             'finalized',

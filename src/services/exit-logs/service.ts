@@ -7,8 +7,11 @@ import { MetricsService } from '../prom/service'
 import { makeVerifier } from './verifier.js'
 import { ExecutionApiService } from '../execution-api/service.js'
 import { makeExitLogsFetcherService } from './fetcher.js'
+import { makeExitLogsCacheService } from './cache.js'
 
 export type ExitLogsService = ReturnType<typeof makeExitLogsService>
+
+const LOAD_LOGS_STEP = 10000
 
 export const makeExitLogsService = (
   request: ReturnType<typeof makeRequest>,
@@ -19,6 +22,7 @@ export const makeExitLogsService = (
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    BLOCKS_PRELOAD,
   }: ConfigService,
   metrics: MetricsService
 ) => {
@@ -26,14 +30,11 @@ export const makeExitLogsService = (
     ? EXECUTION_NODE.slice(0, -1)
     : EXECUTION_NODE
 
-  const { exitBusAddress, consensusAddress } = el
-
-  const verifier = makeVerifier(
-    request,
-    logger,
-    { exitBusAddress, consensusAddress },
-    { EXECUTION_NODE, STAKING_MODULE_ID, ORACLE_ADDRESSES_ALLOWLIST }
-  )
+  const verifier = makeVerifier(request, logger, el, {
+    EXECUTION_NODE,
+    STAKING_MODULE_ID,
+    ORACLE_ADDRESSES_ALLOWLIST,
+  })
 
   const fetcher = makeExitLogsFetcherService(
     request,
@@ -41,8 +42,8 @@ export const makeExitLogsService = (
     verifier,
     {
       normalizedUrl,
-      exitBusAddress,
     },
+    el,
     {
       STAKING_MODULE_ID,
       DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
@@ -50,7 +51,44 @@ export const makeExitLogsService = (
     metrics
   )
 
+  const cache = makeExitLogsCacheService()
+
+  const getLogs = async (operatorIds: number[]) => {
+    const header = cache.getHeader()
+    const remoteLastBlock = await el.latestBlockNumber()
+
+    const initialBlockFrom = Math.max(0, remoteLastBlock - BLOCKS_PRELOAD)
+
+    // If data is already fully cached up to the latest block, return cached data
+    if (header.endBlock && header.endBlock === remoteLastBlock) {
+      logger.info(`Using cached logs up to block ${header.endBlock}`)
+      return cache.getAll()
+    }
+
+    const blockFrom = header.endBlock ? header.endBlock + 1 : initialBlockFrom
+    const blockTo = remoteLastBlock
+
+    logger.info(
+      header.endBlock
+        ? `Loading new logs from ${blockFrom} to ${blockTo}`
+        : `Initial load from ${blockFrom} to ${blockTo}`
+    )
+
+    for (let block = blockFrom; block <= blockTo; block += LOAD_LOGS_STEP) {
+      const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
+      logger.info(`Fetching logs from block ${block} to ${currentBlockTo}`)
+
+      const logs = await fetcher.logs(block, currentBlockTo, operatorIds)
+      logs.forEach((log) => cache.push(log))
+
+      cache.setHeader(block, currentBlockTo)
+    }
+
+    return cache.getAll()
+  }
+
   return {
+    getLogs,
     verifier,
     fetcher,
   }
