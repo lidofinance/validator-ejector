@@ -41,25 +41,19 @@ const run = async () => {
 
   const executionApi = makeExecutionApi(executionHttp, logger, config)
 
-  const exitLogs = makeExitLogsService(
-    executionHttp,
-    logger,
-    executionApi,
-    config,
-    metrics
-  )
+  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
 
   await executionApi.resolveExitBusAddress()
   await executionApi.resolveConsensusAddress()
   const fetchTimeStart = performance.now()
-  const logs = await exitLogs.getLogs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+  const logs = await exitLogs.getLogs([0, 1, 2])
 
-  console.log(logs.length, 'logs fetched')
+  logger.info('logs fetched', { count: logs.length })
 
   const fetchTimeEnd = performance.now()
   const fetchTime = Math.ceil(fetchTimeEnd - fetchTimeStart) / 1000
 
-  console.log(`Logs fetched in ${fetchTime} seconds`)
+  logger.info(`Logs fetched in ${fetchTime} seconds`)
 }
 
 run().catch(console.error)

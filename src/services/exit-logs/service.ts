@@ -1,5 +1,4 @@
 import { makeLogger } from '../../lib/index.js'
-import { makeRequest } from '../../lib/index.js'
 
 import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
@@ -14,11 +13,9 @@ export type ExitLogsService = ReturnType<typeof makeExitLogsService>
 const LOAD_LOGS_STEP = 10000
 
 export const makeExitLogsService = (
-  request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
   {
-    EXECUTION_NODE,
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
@@ -26,8 +23,7 @@ export const makeExitLogsService = (
   }: ConfigService,
   metrics: MetricsService
 ) => {
-  const verifier = makeVerifier(request, logger, el, {
-    EXECUTION_NODE,
+  const verifier = makeVerifier(logger, el, {
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
   })

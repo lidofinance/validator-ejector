@@ -36,7 +36,7 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0'),
     })
 
-    api = makeExitLogsService(request, logger, executionApi, config, metrics)
+    api = makeExitLogsService(logger, executionApi, config, metrics)
   }
 
   beforeEach(() => {

@@ -60,13 +60,7 @@ export const makeAppModule = async () => {
 
   const executionApi = makeExecutionApi(executionHttp, logger, config)
 
-  const exitLogs = makeExitLogsService(
-    executionHttp,
-    logger,
-    executionApi,
-    config,
-    metrics
-  )
+  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
 
   const consensusApi = makeConsensusApi(
     makeRequest([

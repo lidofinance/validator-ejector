@@ -1,4 +1,4 @@
-import { makeLogger } from '../../lib/index.js'
+import { makeLogger, safelyParseJsonResponse } from '../../lib/index.js'
 import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
@@ -12,6 +12,7 @@ import {
   genericArrayOfStringsDTO,
   logsDTO,
 } from './dto.js'
+import { RequestConfig } from '../../lib/request/types.js'
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
@@ -27,8 +28,13 @@ export const makeExecutionApi = (
   let exitBusAddress: string
   let consensusAddress: string
 
+  const elRequest = async (requestConfig: RequestConfig) => {
+    const res = await request(normalizedUrl, requestConfig)
+    return await safelyParseJsonResponse(res, logger)
+  }
+
   const syncing = async () => {
-    const res = await request(normalizedUrl, {
+    const json = await elRequest({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -38,7 +44,6 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
-    const json = await res.json()
     const { result } = syncingDTO(json)
     logger.debug('fetched syncing status')
     return result
@@ -51,7 +56,7 @@ export const makeExecutionApi = (
   }
 
   const latestBlockNumber = async () => {
-    const res = await request(normalizedUrl, {
+    const json = await elRequest({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -61,7 +66,6 @@ export const makeExecutionApi = (
         id: 1,
       }),
     })
-    const json = await res.json()
     const {
       result: { number },
     } = lastBlockNumberDTO(json)
@@ -77,7 +81,7 @@ export const makeExecutionApi = (
     const sig = iface.encodeFunctionData(func.name)
 
     try {
-      const res = await request(normalizedUrl, {
+      const json = await elRequest({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,8 +98,6 @@ export const makeExecutionApi = (
           id: 1,
         }),
       })
-
-      const json = await res.json()
 
       const { result } = funcDTO(json)
 
@@ -124,7 +126,7 @@ export const makeExecutionApi = (
     const sig = iface.encodeFunctionData(func.name)
 
     try {
-      const res = await request(normalizedUrl, {
+      const json = await elRequest({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,8 +143,6 @@ export const makeExecutionApi = (
           id: 1,
         }),
       })
-
-      const json = await res.json()
 
       const { result } = funcDTO(json)
 
@@ -167,7 +167,7 @@ export const makeExecutionApi = (
     address: string,
     topics: (string | string[])[]
   ) => {
-    const res = await request(normalizedUrl, {
+    const json = await elRequest({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -189,12 +189,11 @@ export const makeExecutionApi = (
       }),
     })
 
-    const json = await res.json()
-
     return logsDTO(json)
   }
 
   return {
+    elRequest,
     logs,
     get exitBusAddress() {
       if (!exitBusAddress) {

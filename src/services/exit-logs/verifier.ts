@@ -1,5 +1,4 @@
 import { LRUCache, makeLogger } from '../../lib/index.js'
-import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
@@ -11,23 +10,16 @@ const ORACLE_FRAME_BLOCKS = 7200
 export type VerifierService = ReturnType<typeof makeVerifier>
 
 export const makeVerifier = (
-  request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
   {
-    EXECUTION_NODE,
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
   }: {
-    EXECUTION_NODE: string
     STAKING_MODULE_ID: string
     ORACLE_ADDRESSES_ALLOWLIST: string[]
   }
 ) => {
-  const normalizedUrl = EXECUTION_NODE.endsWith('/')
-    ? EXECUTION_NODE.slice(0, -1)
-    : EXECUTION_NODE
-
   const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>(
     5000
   )
@@ -40,7 +32,7 @@ export const makeVerifier = (
       return lruTransactionCache.get(transactionHash)!.result!
     }
 
-    const res = await request(normalizedUrl, {
+    const json = await el.elRequest({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -50,8 +42,6 @@ export const makeVerifier = (
         id: 1,
       }),
     })
-
-    const json = await res.json()
 
     const { result } = txDTO(json)
     lruTransactionCache.set(result.hash, { result })
@@ -210,7 +200,7 @@ export const makeVerifier = (
     ])
 
     try {
-      const res = await request(normalizedUrl, {
+      const json = await el.elRequest({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -227,8 +217,6 @@ export const makeVerifier = (
           id: 1,
         }),
       })
-
-      const json = await res.json()
 
       const { result } = funcDTO(json)
 

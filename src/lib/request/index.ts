@@ -1,3 +1,4 @@
+import { LoggerService } from '../logger/index.js'
 import { HttpException } from './errors.js'
 import type {
   InternalConfig,
@@ -75,5 +76,35 @@ export const makeRequest = (initMiddlewares: Middleware[]) => {
     }
 
     return chain(internalConfig, middleware)
+  }
+}
+
+// Helper function to safely parse JSON responses
+export const safelyParseJsonResponse = async (
+  response: Response,
+  logger: LoggerService
+) => {
+  try {
+    const text = await response.text()
+    try {
+      return JSON.parse(text)
+    } catch (jsonError) {
+      // If it starts with < it's likely HTML/XML, otherwise it's some other non-JSON format
+      const isMarkup = text.trim().startsWith('<')
+      const content = `${text.substring(0, 200)}${
+        text.length > 200 ? '...' : ''
+      }`
+      const errorMessage = isMarkup
+        ? `Received markup (HTML/XML) response instead of JSON. Status: ${response.status} ${response.statusText}`
+        : `Invalid JSON response. Status: ${response.status}`
+
+      logger.error(errorMessage, { content })
+      throw new Error(errorMessage)
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(`Failed to process response: ${response.statusText}`)
   }
 }
