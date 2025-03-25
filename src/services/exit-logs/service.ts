@@ -26,10 +26,6 @@ export const makeExitLogsService = (
   }: ConfigService,
   metrics: MetricsService
 ) => {
-  const normalizedUrl = EXECUTION_NODE.endsWith('/')
-    ? EXECUTION_NODE.slice(0, -1)
-    : EXECUTION_NODE
-
   const verifier = makeVerifier(request, logger, el, {
     EXECUTION_NODE,
     STAKING_MODULE_ID,
@@ -37,12 +33,8 @@ export const makeExitLogsService = (
   })
 
   const fetcher = makeExitLogsFetcherService(
-    request,
     logger,
     verifier,
-    {
-      normalizedUrl,
-    },
     el,
     {
       STAKING_MODULE_ID,

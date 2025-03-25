@@ -3,13 +3,14 @@ import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { ConfigService } from 'services/config/service.js'
+import { ConfigService } from '../../services/config/service.js'
 
 import {
   syncingDTO,
   lastBlockNumberDTO,
   funcDTO,
   genericArrayOfStringsDTO,
+  logsDTO,
 } from './dto.js'
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
@@ -160,7 +161,41 @@ export const makeExecutionApi = (
     }
   }
 
+  const logs = async (
+    fromBlock: number,
+    toBlock: number,
+    address: string,
+    topics: (string | string[])[]
+  ) => {
+    const res = await request(normalizedUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_getLogs',
+        params: [
+          {
+            fromBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(fromBlock).toHexString()
+            ),
+            toBlock: ethers.utils.hexStripZeros(
+              ethers.BigNumber.from(toBlock).toHexString()
+            ),
+            address,
+            topics,
+          },
+        ],
+        id: 1,
+      }),
+    })
+
+    const json = await res.json()
+
+    return logsDTO(json)
+  }
+
   return {
+    logs,
     get exitBusAddress() {
       if (!exitBusAddress) {
         throw new Error('Exit Bus address is not resolved yet')

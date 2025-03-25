@@ -3,7 +3,8 @@ import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { logsDTO, funcDTO, txDTO } from './dto.js'
+import { funcDTO, txDTO } from './dto.js'
+import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 const ORACLE_FRAME_BLOCKS = 7200
 
@@ -12,7 +13,7 @@ export type VerifierService = ReturnType<typeof makeVerifier>
 export const makeVerifier = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  el: { consensusAddress: string; exitBusAddress: string },
+  el: ExecutionApiService,
   {
     EXECUTION_NODE,
     STAKING_MODULE_ID,
@@ -74,38 +75,11 @@ export const makeVerifier = (
     const eventTopic = iface.getEventTopic(event.name)
 
     const from = toBlock - ORACLE_FRAME_BLOCKS
-    // move this kind of code to el api service
-    const res = await request(normalizedUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getLogs',
-        params: [
-          {
-            fromBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(from).toHexString()
-            ),
-            toBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(toBlock).toHexString()
-            ),
-            address: el.consensusAddress,
-            topics: [
-              eventTopic,
-              ethers.utils.hexZeroPad(
-                ethers.BigNumber.from(refSlot).toHexString(),
-                32
-              ),
-            ],
-          },
-        ],
-        id: 1,
-      }),
-    })
 
-    const json = await res.json()
-
-    const { result } = logsDTO(json)
+    const { result } = await el.logs(from, toBlock, el.consensusAddress, [
+      eventTopic,
+      ethers.utils.hexZeroPad(ethers.BigNumber.from(refSlot).toHexString(), 32),
+    ])
 
     logger.debug('Loaded ConsensusReached events', { amount: result.length })
 
