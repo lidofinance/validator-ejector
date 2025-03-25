@@ -35,9 +35,15 @@ export const makeConfig = ({
       env.STAKING_MODULE_ID,
       'Please, setup STAKING_MODULE_ID id. Example: 123'
     ),
-    OPERATOR_ID: num(
-      env.OPERATOR_ID,
-      'Please, setup OPERATOR_ID id. Example: 123'
+    OPERATOR_ID: optional(() =>
+      num(env.OPERATOR_ID, 'Please, setup OPERATOR_ID id. Example: 123')
+    ),
+    OPERATOR_IDENTIFIERS: optional(() =>
+      json_arr(
+        env.OPERATOR_IDENTIFIERS,
+        (oracles) => oracles.map(num),
+        'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
+      )
     ),
     ORACLE_ADDRESSES_ALLOWLIST: json_arr(
       env.ORACLE_ADDRESSES_ALLOWLIST,
@@ -68,12 +74,6 @@ export const makeConfig = ({
       optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
-
-    OPERATOR_IDENTIFIERS: json_arr(
-      env.OPERATOR_IDENTIFIERS,
-      (oracles) => oracles.map(num),
-      'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
-    ),
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -85,6 +85,16 @@ export const makeConfig = ({
   if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
     throw new Error(
       'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+    )
+  }
+
+  // Validate that at least one operator identification is provided
+  if (
+    !config.OPERATOR_ID &&
+    (!config.OPERATOR_IDENTIFIERS || config.OPERATOR_IDENTIFIERS.length === 0)
+  ) {
+    throw new Error(
+      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided. OPERATOR_IDENTIFIERS must have at least one value if used.'
     )
   }
 
