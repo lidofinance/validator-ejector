@@ -21,8 +21,8 @@ import {
 } from '../execution-api/service.js'
 
 dotenv.config()
-// TOOD: enable this test in CI
-describe.skip('exitLogs e2e', () => {
+
+describe('exitLogs e2e', () => {
   let api: ExitLogsService
   let executionApi: ExecutionApiService
   let request: RequestService
@@ -41,15 +41,15 @@ describe.skip('exitLogs e2e', () => {
     api = makeExitLogsService(logger, executionApi, config, metrics)
   }
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     request = makeRequest([retry(3), notOkError(), abort(30_000)])
     logger = makeLogger({
       level: 'info',
       format: 'simple',
     })
     config = mockConfig(logger, {
-      EXECUTION_NODE: process.env.EXECUTION_NODE,
-      CONSENSUS_NODE: process.env.CONSENSUS_NODE,
+      EXECUTION_NODE: 'https://ethereum-rpc.publicnode.com',
+      CONSENSUS_NODE: 'https://ethereum-beacon-api.publicnode.com',
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify([
         '0x140Bd8FbDc884f48dA7cb1c09bE8A2fAdfea776E',
         '0xA7410857ABbf75043d61ea54e07D57A6EB6EF186',
@@ -89,5 +89,26 @@ describe.skip('exitLogs e2e', () => {
     const frame2 = await api.getLogs([0], frame2Block)
 
     expect(frame2.length).toBe(42)
+  })
+
+  it('should fetch and parse exit logs correctly from multiple blocks and multiple operators', async () => {
+    const startBlock = 22024255
+    const frame1Block = 22044254
+    const frame2Block = 22064254
+
+    config.BLOCKS_PRELOAD = frame1Block - startBlock
+
+    loadServices()
+
+    await executionApi.resolveExitBusAddress()
+    await executionApi.resolveConsensusAddress()
+
+    const frame1 = await api.getLogs([0, 1, 2], frame1Block)
+
+    expect(frame1.length).toBe(40)
+
+    const frame2 = await api.getLogs([0, 1], frame2Block)
+
+    expect(frame2.length).toBe(62)
   })
 })
