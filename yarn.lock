@@ -3300,11 +3300,6 @@ levn@^0.4.1:
     prelude-ls "^1.2.1"
     type-check "~0.4.0"
 
-lido-nanolib@1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/lido-nanolib/-/lido-nanolib-1.4.0.tgz#c00b0f13886c05104a5466d27d11feda023f005d"
-  integrity sha512-rdj5H5qWBcbCSJsTXrg7Vz7FpZtpy4V+J63oUtH5+ZNXyQzA5HrMYNExNsIP6UL8/9QqvfoJRVwgFx6m9ot6zA==
-
 locate-path@^6.0.0:
   version "6.0.0"
   resolved "https://registry.npmjs.org/locate-path/-/locate-path-6.0.0.tgz"
