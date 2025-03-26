@@ -26,6 +26,8 @@ export type ExitMessageWithMetadata = {
   }
 }
 
+const FINALIZED_BLOCK_EQUIVALENT = 120
+
 export type JobProcessorService = ReturnType<typeof makeJobProcessor>
 
 export const makeJobProcessor = ({
@@ -96,7 +98,8 @@ export const makeJobProcessor = ({
           // We do an additional check, because if we didn't check for finalized,
           // we might miss the reorganization.
           if (
-            await consensusApi.isExiting(event.validatorPubkey, 'finalized')
+            lastBlockNumber - event.blockNumber > FINALIZED_BLOCK_EQUIVALENT ||
+            (await consensusApi.isExiting(event.validatorPubkey, 'finalized'))
           ) {
             event.ack()
           }
