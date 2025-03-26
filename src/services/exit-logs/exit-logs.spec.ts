@@ -48,7 +48,7 @@ describe('exitLogs e2e', () => {
       format: 'simple',
     })
     config = mockConfig(logger, {
-      EXECUTION_NODE: 'https://ethereum-rpc.publicnode.com',
+      EXECUTION_NODE: 'https://eth.drpc.org',
       CONSENSUS_NODE: 'https://ethereum-beacon-api.publicnode.com',
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify([
         '0x140Bd8FbDc884f48dA7cb1c09bE8A2fAdfea776E',
