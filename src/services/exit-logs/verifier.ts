@@ -20,11 +20,8 @@ export const makeVerifier = (
     ORACLE_ADDRESSES_ALLOWLIST: string[]
   }
 ) => {
-  const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>(
-    5000
-  )
-
-  const lruConsensusReachedLogsCache = new LRUCache<string, string>(5000)
+  const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>(50)
+  const lruConsensusReachedLogsCache = new LRUCache<string, string>(50)
 
   const getTransaction = async (transactionHash: string) => {
     if (lruTransactionCache.has(transactionHash)) {

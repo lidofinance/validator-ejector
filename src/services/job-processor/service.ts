@@ -93,6 +93,8 @@ export const makeJobProcessor = ({
             validatorIndex: event.validatorIndex,
           })
           // Acknowledge the event to avoid processing it again
+          // We do an additional check, because if we didn't check for finalized,
+          // we might miss the reorganization.
           if (
             await consensusApi.isExiting(event.validatorPubkey, 'finalized')
           ) {
