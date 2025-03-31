@@ -95,10 +95,13 @@ export const safelyParseJsonResponse = async (
         text.length > 200 ? '...' : ''
       }`
       const errorMessage = isMarkup
-        ? `Received markup (HTML/XML) response instead of JSON. Status: ${response.status} ${response.statusText}`
-        : `Invalid JSON response. Status: ${response.status}`
+        ? `Received markup (HTML/XML) response instead of JSON. Status:`
+        : `Invalid JSON response. Status:`
 
-      logger.error(errorMessage, { content })
+      logger.error(
+        `${errorMessage} ${response.status} ${response.statusText}`,
+        { content }
+      )
       throw new Error(errorMessage)
     }
   } catch (error) {

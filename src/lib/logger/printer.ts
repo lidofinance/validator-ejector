@@ -2,7 +2,7 @@ import { stringify, sanitize } from './sanitizer.js'
 import { Sanitizer } from './types.js'
 
 const colorTable = {
-  debug: '\x1b[34m', // green
+  debug: '\x1b[34m', // blue
   info: '\x1b[32m', // green
   log: '\x1b[36m', // cyan
   warn: '\x1b[33m', // yellow
