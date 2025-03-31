@@ -10,9 +10,6 @@ export const makeExitLogsCacheService = () => {
     getAll() {
       return cache
     },
-    getLastFromCache(): ValidatorsToEject | undefined {
-      return cache[cache.length - 1]
-    },
     push(message: ValidatorsToEject) {
       cache.push(message)
     },
