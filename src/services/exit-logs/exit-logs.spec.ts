@@ -42,14 +42,26 @@ describe('exitLogs e2e', () => {
   }
 
   beforeEach(async () => {
+    const nodes = {
+      EXECUTION_NODE: process.env.EXECUTION_NODE ?? 'https://eth.drpc.org',
+      CONSENSUS_NODE:
+        process.env.CONSENSUS_NODE ??
+        'https://ethereum-beacon-api.publicnode.com',
+    }
+
+    const secrets = Object.values(nodes)
+
     request = makeRequest([retry(3), notOkError(), abort(30_000)])
     logger = makeLogger({
       level: 'info',
       format: 'simple',
+      sanitizer: {
+        secrets: secrets,
+        replacer: '<secret>',
+      },
     })
     config = mockConfig(logger, {
-      EXECUTION_NODE: 'https://eth.drpc.org',
-      CONSENSUS_NODE: 'https://ethereum-beacon-api.publicnode.com',
+      ...nodes,
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify([
         '0x140Bd8FbDc884f48dA7cb1c09bE8A2fAdfea776E',
         '0xA7410857ABbf75043d61ea54e07D57A6EB6EF186',
