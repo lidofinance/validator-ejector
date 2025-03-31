@@ -5,6 +5,8 @@ import { ethers } from 'ethers'
 import { funcDTO, txDTO } from './dto.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
+// This is the number of blocks to look back when searching for
+// the ConsensusReached event. It should be more than the VEBO frame
 const ORACLE_FRAME_BLOCKS = 7200
 
 export type VerifierService = ReturnType<typeof makeVerifier>
