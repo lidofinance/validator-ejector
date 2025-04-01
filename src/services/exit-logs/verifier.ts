@@ -1,4 +1,5 @@
-import { LRUCache, makeLogger } from '../../lib/index.js'
+import { LRUCache } from 'lru-cache'
+import { makeLogger } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
@@ -8,6 +9,7 @@ import { ExecutionApiService } from '../../services/execution-api/service.js'
 // This is the number of blocks to look back when searching for
 // the ConsensusReached event. It should be more than the VEBO frame
 const ORACLE_FRAME_BLOCKS = 7200
+const LRU_CACHE_MAX_SIZE = 50
 
 export type VerifierService = ReturnType<typeof makeVerifier>
 
@@ -22,14 +24,16 @@ export const makeVerifier = (
     ORACLE_ADDRESSES_ALLOWLIST: string[]
   }
 ) => {
-  const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>(50)
-  const lruConsensusReachedLogsCache = new LRUCache<string, string>(50)
+  const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>({
+    max: LRU_CACHE_MAX_SIZE,
+  })
+  const lruConsensusReachedLogsCache = new LRUCache<string, string>({
+    max: LRU_CACHE_MAX_SIZE,
+  })
 
   const getTransaction = async (transactionHash: string) => {
-    if (lruTransactionCache.has(transactionHash)) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return lruTransactionCache.get(transactionHash)!.result!
-    }
+    const cachedResult = lruTransactionCache.get(transactionHash)
+    if (cachedResult?.result) return cachedResult.result
 
     const json = await el.elRequest({
       method: 'POST',
@@ -53,10 +57,9 @@ export const makeVerifier = (
     hash: string
   ) => {
     const key = `${toBlock}-${refSlot}-${hash}`
-    if (lruConsensusReachedLogsCache.has(key)) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return lruConsensusReachedLogsCache.get(key)!
-    }
+    const cachedResult = lruConsensusReachedLogsCache.get(key)
+    if (cachedResult) return cachedResult
+
     const event = ethers.utils.Fragment.from(
       'event ConsensusReached(uint256 indexed refSlot, bytes32 report, uint256 support)'
     )
