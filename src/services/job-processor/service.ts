@@ -57,10 +57,7 @@ export const makeJobProcessor = ({
     eventsNumber: number
     messageStorage: MessageStorage
   }) => {
-    const operatorIds = config.OPERATOR_IDENTIFIERS
-      ? [...(config.OPERATOR_IDENTIFIERS ?? [])]
-      : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        [config.OPERATOR_ID!]
+    const operatorIds = config.OPERATOR_IDS
 
     logger.info('Job started', {
       operatorIds,

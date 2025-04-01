@@ -64,6 +64,9 @@ describe('config module', () => {
         makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
       expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([123])
     })
 
     test('should not throw when only OPERATOR_IDENTIFIERS with values is provided', () => {
@@ -79,6 +82,28 @@ describe('config module', () => {
         makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
       expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([1, 2, 3])
+    })
+
+    test('if both values are set, OPERATOR_IDENTIFIERS must be selected', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { OPERATOR_ID, ...configWithoutOperatorId } = configBase
+      const config = {
+        ...configWithoutOperatorId,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        OPERATOR_IDENTIFIERS: '[1, 2, 3]',
+        OPERATOR_ID: '2222',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([1, 2, 3])
     })
 
     test('should throw when OPERATOR_IDENTIFIERS is empty array', () => {

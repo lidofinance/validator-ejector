@@ -29,10 +29,7 @@ const run = async () => {
 
   const config = makeConfig({ logger, env: process.env })
 
-  const operatorIds = config.OPERATOR_IDENTIFIERS
-    ? [...(config.OPERATOR_IDENTIFIERS ?? [])]
-    : // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      [config.OPERATOR_ID!]
+  const operatorIds = config.OPERATOR_IDS
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 

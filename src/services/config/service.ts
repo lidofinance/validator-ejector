@@ -73,6 +73,8 @@ export const makeConfig = ({
       optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
+
+    OPERATOR_IDS: [] as number[],
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -87,13 +89,19 @@ export const makeConfig = ({
     )
   }
 
-  // Validate that at least one operator identification is provided
-  if (
-    !config.OPERATOR_ID &&
-    (!config.OPERATOR_IDENTIFIERS || config.OPERATOR_IDENTIFIERS.length === 0)
-  ) {
+  // Populate OPERATOR_IDS from OPERATOR_IDENTIFIERS if available
+  if (config.OPERATOR_IDENTIFIERS?.length)
+    config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
+
+  // Fall back to OPERATOR_ID if OPERATOR_IDS is still empty
+  if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
+    config.OPERATOR_IDS = [config.OPERATOR_ID]
+  }
+
+  // Validate that we have at least one operator ID configured
+  if (!config.OPERATOR_IDS?.length) {
     throw new Error(
-      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided. OPERATOR_IDENTIFIERS must have at least one value if used.'
+      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
     )
   }
 
