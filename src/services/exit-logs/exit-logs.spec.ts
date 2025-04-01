@@ -21,7 +21,19 @@ import {
 } from '../execution-api/service.js'
 
 dotenv.config()
+// mainnet block numbers
+const startBlock = 22024255
+const frame1Block = 22044254
+const frame2Block = 22064254
 
+/**
+ * This test suite is designed to validate the functionality of the `ExitLogsService`
+ * by fetching and parsing exit logs from multiple blocks. The block numbers used
+ * in these tests are specific to the Ethereum mainnet and are hardcoded for this purpose.
+ *
+ * **Note:** These tests are tailored to work exclusively with mainnet data and may not
+ * function correctly with data from other networks or environments.
+ */
 describe('exitLogs e2e', () => {
   let api: ExitLogsService
   let executionApi: ExecutionApiService
@@ -83,10 +95,6 @@ describe('exitLogs e2e', () => {
   })
 
   it('should fetch and parse exit logs correctly from multiple blocks', async () => {
-    const startBlock = 22024255
-    const frame1Block = 22044254
-    const frame2Block = 22064254
-
     config.BLOCKS_PRELOAD = frame1Block - startBlock
 
     loadServices()
@@ -104,10 +112,6 @@ describe('exitLogs e2e', () => {
   })
 
   it('should fetch and parse exit logs correctly from multiple blocks and multiple operators', async () => {
-    const startBlock = 22024255
-    const frame1Block = 22044254
-    const frame2Block = 22064254
-
     config.BLOCKS_PRELOAD = frame1Block - startBlock
 
     loadServices()
