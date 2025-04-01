@@ -8,7 +8,7 @@ import { ExecutionApiService } from '../execution-api/service.js'
 
 // Create mock instances that we can configure per test
 const mockCache = {
-  getHeader: vi.fn(),
+  getHeader: vi.fn(() => ({ startBlock: 0, endBlock: -1 })),
   getAll: vi.fn(),
   push: vi.fn(),
   setHeader: vi.fn(),
@@ -83,7 +83,7 @@ describe('ExitLogsService - getLogs', () => {
       { validatorIndex: '2', validatorPubkey: '0x456' },
     ]
 
-    mockCache.getHeader.mockReturnValue({ endBlock: 100 })
+    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: 100 })
     mockCache.getAll.mockReturnValue(cachedLogs)
 
     // Call getLogs with the same lastBlockNumber as cached
@@ -100,12 +100,11 @@ describe('ExitLogsService - getLogs', () => {
 
   it('should fetch new logs when cache is empty', async () => {
     // Setup mocks for empty cache
-    mockCache.getHeader.mockReturnValue({})
+    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: -1 })
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
-    console.log('service.getLogs', service)
     const lastBlockNumber = 100
     await service.getLogs([1], lastBlockNumber)
 
@@ -124,7 +123,7 @@ describe('ExitLogsService - getLogs', () => {
 
     makeTestingService()
 
-    mockCache.getHeader.mockReturnValue({})
+    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: -1 })
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
@@ -144,12 +143,11 @@ describe('ExitLogsService - getLogs', () => {
 
   it('should fetch only new logs when cache is partially updated', async () => {
     // Setup mocks for partially updated cache
-    mockCache.getHeader.mockReturnValue({ endBlock: 50 })
+    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: 50 })
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
-    console.log(service)
     await service.getLogs([1], 100)
 
     // Should fetch only logs from block 51 to 100

@@ -4,8 +4,10 @@ export type ExitLogsCache = ReturnType<typeof makeExitLogsCacheService>
 
 export const makeExitLogsCacheService = () => {
   const cache: ValidatorsToEjectCache = []
-
-  let header = { startBlock: 0, endBlock: 0 }
+  // Set endBlock to -1 to indicate an empty initial state.
+  // This ensures logs are fetched from the beginning.
+  // endBlock is incremented by 1 with each fetch.
+  let header = { startBlock: 0, endBlock: -1 }
   return {
     getAll() {
       return cache

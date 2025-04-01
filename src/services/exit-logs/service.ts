@@ -43,16 +43,17 @@ export const makeExitLogsService = (
 
   const getLogs = async (operatorIds: number[], lastBlockNumber: number) => {
     const header = cache.getHeader()
-
-    const initialBlockFrom = Math.max(0, lastBlockNumber - BLOCKS_PRELOAD)
-
     // If data is already fully cached up to the latest block, return cached data
     if (header.endBlock && header.endBlock === lastBlockNumber) {
       logger.info(`Using cached logs up to block ${header.endBlock}`)
       return cache.getAll()
     }
 
-    const blockFrom = header.endBlock ? header.endBlock + 1 : initialBlockFrom
+    const blockFrom = Math.max(
+      header.endBlock + 1,
+      lastBlockNumber - BLOCKS_PRELOAD
+    )
+
     const blockTo = lastBlockNumber
 
     logger.info(
