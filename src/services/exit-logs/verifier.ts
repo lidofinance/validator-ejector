@@ -79,7 +79,14 @@ export const makeVerifier = (
 
     const found = decoded.find((event) => event.args.report === hash)
 
-    if (!found) throw new Error('Failed to find transaction by report hash')
+    if (!found) {
+      logger.error('Failed to find transaction by report hash', {
+        toBlock,
+        refSlot,
+        hash,
+      })
+      throw new Error('Failed to find transaction by report hash')
+    }
     lruConsensusReachedLogsCache.set(key, found.transactionHash)
     return found.transactionHash
   }
@@ -146,10 +153,18 @@ export const makeVerifier = (
       originTx.input
     )
 
-    if (submitReportDecoded.report !== dataHash)
+    if (submitReportDecoded.report !== dataHash) {
+      logger.error(
+        'Report data hash mismatch detected between the original report and finalized event',
+        {
+          finalizedHash: dataHash,
+          originHash: submitReportDecoded.report,
+        }
+      )
       throw new Error(
         'Report data hash mismatch detected between the original report and finalized event'
       )
+    }
 
     const expandedSig = {
       r: originTx.r,
