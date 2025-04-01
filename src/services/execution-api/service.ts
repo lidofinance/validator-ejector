@@ -161,7 +161,7 @@ export const makeExecutionApi = (
     }
   }
 
-  const logs = async (
+  const getLogs = async (
     fromBlock: number,
     toBlock: number,
     address: string,
@@ -194,7 +194,7 @@ export const makeExecutionApi = (
 
   return {
     elRequest,
-    logs,
+    getLogs,
     get exitBusAddress() {
       if (!exitBusAddress) {
         throw new Error('Exit Bus address is not resolved yet')

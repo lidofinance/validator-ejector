@@ -15,7 +15,7 @@ const mockCache = {
 }
 
 const mockFetcher = {
-  logs: vi.fn(),
+  getLogs: vi.fn(),
 }
 
 // Mock cache implementation
@@ -92,7 +92,7 @@ describe('ExitLogsService - getLogs', () => {
     // Verify that we just returned cached data without fetching
     expect(result).toBe(cachedLogs)
     expect(mockCache.getAll).toHaveBeenCalledTimes(1)
-    expect(mockFetcher.logs).not.toHaveBeenCalled()
+    expect(mockFetcher.getLogs).not.toHaveBeenCalled()
     expect(logger.info).toHaveBeenCalledWith(
       'Using cached logs up to block 100'
     )
@@ -104,12 +104,12 @@ describe('ExitLogsService - getLogs', () => {
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
-    mockFetcher.logs.mockResolvedValue(fetchedLogs)
-
+    mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
+    console.log('service.getLogs', service)
     const lastBlockNumber = 100
     await service.getLogs([1], lastBlockNumber)
 
-    expect(mockFetcher.logs).toHaveBeenCalledWith(0, lastBlockNumber, [1])
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(0, lastBlockNumber, [1])
     expect(mockCache.push).toHaveBeenCalled()
     expect(mockCache.setHeader).toHaveBeenCalled()
   })
@@ -128,7 +128,7 @@ describe('ExitLogsService - getLogs', () => {
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
-    mockFetcher.logs.mockResolvedValue(fetchedLogs)
+    mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
 
     await service.getLogs([1], endBlock)
 
@@ -136,10 +136,10 @@ describe('ExitLogsService - getLogs', () => {
     // 1. 5000 to 14999
     // 2. 15000 to 24999
     // 3. 25000 to 25001
-    expect(mockFetcher.logs).toHaveBeenCalledTimes(3)
-    expect(mockFetcher.logs).toHaveBeenNthCalledWith(1, 5000, 14999, [1])
-    expect(mockFetcher.logs).toHaveBeenNthCalledWith(2, 15000, 24999, [1])
-    expect(mockFetcher.logs).toHaveBeenNthCalledWith(3, 25000, 25001, [1])
+    expect(mockFetcher.getLogs).toHaveBeenCalledTimes(3)
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(1, 5000, 14999, [1])
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(2, 15000, 24999, [1])
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(3, 25000, 25001, [1])
   })
 
   it('should fetch only new logs when cache is partially updated', async () => {
@@ -148,12 +148,12 @@ describe('ExitLogsService - getLogs', () => {
     mockCache.getAll.mockReturnValue([])
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
-    mockFetcher.logs.mockResolvedValue(fetchedLogs)
-
+    mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
+    console.log(service)
     await service.getLogs([1], 100)
 
     // Should fetch only logs from block 51 to 100
-    expect(mockFetcher.logs).toHaveBeenCalledWith(51, 100, [1])
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(51, 100, [1])
     expect(logger.info).toHaveBeenCalledWith('Loading new logs from 51 to 100')
   })
 })

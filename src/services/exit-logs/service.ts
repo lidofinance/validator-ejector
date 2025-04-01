@@ -65,7 +65,7 @@ export const makeExitLogsService = (
       const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
       logger.info(`Fetching logs from block ${block} to ${currentBlockTo}`)
 
-      const logs = await fetcher.logs(block, currentBlockTo, operatorIds)
+      const logs = await fetcher.getLogs(block, currentBlockTo, operatorIds)
       logs.forEach((log) => cache.push(log))
 
       cache.setHeader(block, currentBlockTo)

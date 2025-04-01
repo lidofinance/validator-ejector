@@ -68,7 +68,7 @@ export const makeVerifier = (
 
     const from = toBlock - ORACLE_FRAME_BLOCKS
 
-    const { result } = await el.logs(from, toBlock, el.consensusAddress, [
+    const { result } = await el.getLogs(from, toBlock, el.consensusAddress, [
       eventTopic,
       ethers.utils.hexZeroPad(ethers.BigNumber.from(refSlot).toHexString(), 32),
     ])

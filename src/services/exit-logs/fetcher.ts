@@ -25,7 +25,7 @@ export const makeExitLogsFetcherService = (
   },
   { eventSecurityVerification }: MetricsService
 ) => {
-  const logs = async (
+  const getLogs = async (
     fromBlock: number,
     toBlock: number,
     operatorIds: number[]
@@ -36,7 +36,7 @@ export const makeExitLogsFetcherService = (
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
 
-    const { result } = await el.logs(fromBlock, toBlock, el.exitBusAddress, [
+    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
       eventTopic,
       ethers.utils.hexZeroPad(
         ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
@@ -104,6 +104,6 @@ export const makeExitLogsFetcherService = (
   }
 
   return {
-    logs,
+    getLogs,
   }
 }

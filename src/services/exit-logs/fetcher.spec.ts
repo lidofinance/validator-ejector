@@ -54,7 +54,7 @@ describe('makeConsensusApi logs', () => {
     config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
     mockService()
 
-    const res = await api.fetcher.logs(123, 123, [1])
+    const res = await api.fetcher.getLogs(123, 123, [1])
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -75,7 +75,7 @@ describe('makeConsensusApi logs', () => {
     ]
     mockService()
 
-    const res = await api.fetcher.logs(123, 123, [1])
+    const res = await api.fetcher.getLogs(123, 123, [1])
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
