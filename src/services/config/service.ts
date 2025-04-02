@@ -35,9 +35,15 @@ export const makeConfig = ({
       env.STAKING_MODULE_ID,
       'Please, setup STAKING_MODULE_ID id. Example: 123'
     ),
-    OPERATOR_ID: num(
-      env.OPERATOR_ID,
-      'Please, setup OPERATOR_ID id. Example: 123'
+    OPERATOR_ID: optional(() =>
+      num(env.OPERATOR_ID, 'Please, setup OPERATOR_ID id. Example: 123')
+    ),
+    OPERATOR_IDENTIFIERS: optional(() =>
+      json_arr(
+        env.OPERATOR_IDENTIFIERS,
+        (oracles) => oracles.map(num),
+        'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
+      )
     ),
     ORACLE_ADDRESSES_ALLOWLIST: json_arr(
       env.ORACLE_ADDRESSES_ALLOWLIST,
@@ -51,7 +57,6 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
-    BLOCKS_LOOP: optional(() => num(env.BLOCKS_LOOP)) ?? 900, // 3 hours of blocks
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
@@ -69,11 +74,7 @@ export const makeConfig = ({
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
 
-    OPERATOR_IDENTIFIERS: json_arr(
-      env.ORACLE_ADDRESSES_ALLOWLIST,
-      (oracles) => oracles.map(num),
-      'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
-    ),
+    OPERATOR_IDS: [] as number[],
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -85,6 +86,22 @@ export const makeConfig = ({
   if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
     throw new Error(
       'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+    )
+  }
+
+  // Populate OPERATOR_IDS from OPERATOR_IDENTIFIERS if available
+  if (config.OPERATOR_IDENTIFIERS?.length)
+    config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
+
+  // Fall back to OPERATOR_ID if OPERATOR_IDS is still empty
+  if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
+    config.OPERATOR_IDS = [config.OPERATOR_ID]
+  }
+
+  // Validate that we have at least one operator ID configured
+  if (!config.OPERATOR_IDS?.length) {
+    throw new Error(
+      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
     )
   }
 

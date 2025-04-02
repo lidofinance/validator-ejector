@@ -31,9 +31,44 @@ describe('Logger', () => {
     expect(dateStr).toMatchInlineSnapshot(`"2022-01-01 13:58:22"`)
   })
 
-  test.todo('json output')
+  test('json output', () => {
+    const { restore, log } = mockConsole()
+    const logger = makeLogger({ format: 'json', level: 'info' })
+    const testMessage = 'test message'
+    const testData = { foo: 'bar', num: 42 }
 
-  test.todo('test simple output')
+    logger.info(testMessage, testData)
+
+    expect(log.info).toHaveBeenCalledTimes(1)
+    const loggedJson = JSON.parse(log.info.mock.calls[0][0])
+
+    expect(loggedJson).toHaveProperty('timestamp')
+    expect(loggedJson).toHaveProperty('level', 'info')
+    expect(loggedJson).toHaveProperty('message', testMessage)
+    expect(loggedJson).toHaveProperty('details')
+    expect(loggedJson.details).toEqual(testData)
+
+    restore()
+  })
+
+  test('test simple output', () => {
+    const { restore, log } = mockConsole()
+    const logger = makeLogger({ format: 'simple', level: 'warn' })
+    const testMessage = 'warning message'
+
+    logger.warn(testMessage)
+
+    expect(log.warn).toHaveBeenCalledTimes(1)
+    const loggedString = log.warn.mock.calls[0][0]
+
+    expect(typeof loggedString).toBe('string')
+    expect(loggedString).toContain(testMessage)
+    expect(loggedString).toContain('warn')
+    // Check for timestamp-like content (numbers and colons)
+    expect(loggedString).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
+
+    restore()
+  })
 
   describe('print level', () => {
     test('debug enabled: debug logs should be printing', () => {

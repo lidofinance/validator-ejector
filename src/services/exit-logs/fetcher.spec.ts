@@ -1,4 +1,4 @@
-import { ExecutionApiService, makeExecutionApi } from './service.js'
+import { ExitLogsService, makeExitLogsService } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import {
   logsMock,
@@ -11,9 +11,10 @@ import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
 import { MetricsService } from 'services/prom/service.js'
+import { makeExecutionApi } from '../execution-api/service.js'
 
 describe('makeConsensusApi logs', () => {
-  let api: ExecutionApiService
+  let api: ExitLogsService
   let request: RequestService
   let logger: LoggerService
   let config: ConfigService
@@ -24,22 +25,36 @@ describe('makeConsensusApi logs', () => {
     },
   } as unknown as MetricsService
 
+  const mockService = () => {
+    const executionApi = makeExecutionApi(request, logger, config)
+
+    Object.defineProperty(executionApi, 'exitBusAddress', {
+      get: vi.fn(() => '0x0'),
+    })
+
+    Object.defineProperty(executionApi, 'consensusAddress', {
+      get: vi.fn(() => '0x0'),
+    })
+
+    api = makeExitLogsService(logger, executionApi, config, metrics)
+  }
+
   beforeEach(() => {
     request = makeRequest([])
     logger = mockLogger()
     config = mockConfig(logger, {
       EXECUTION_NODE: 'http://localhost:4455',
     })
-    api = makeExecutionApi(request, logger, config, metrics)
+    mockService()
   })
 
   it('should fetch and parse logs without security', async () => {
     mockEthServer(logsMock(), config.EXECUTION_NODE)
 
     config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
-    api = makeExecutionApi(request, logger, config, metrics)
+    mockService()
 
-    const res = await api.logs(123, 123, 1)
+    const res = await api.fetcher.getLogs(123, 123, [1])
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -58,9 +73,9 @@ describe('makeConsensusApi logs', () => {
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
     ]
-    api = makeExecutionApi(request, logger, config, metrics)
+    mockService()
 
-    const res = await api.logs(123, 123, 1)
+    const res = await api.fetcher.getLogs(123, 123, [1])
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
