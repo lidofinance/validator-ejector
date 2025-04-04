@@ -5,6 +5,7 @@ import { ethers } from 'ethers'
 
 import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
+import { JwtService } from '../utils/jwt.js'
 
 import {
   syncingDTO,
@@ -29,8 +30,10 @@ export const makeExecutionApi = (
     OPERATOR_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    JWT_SECRET_PATH,
   }: ConfigService,
-  { eventSecurityVerification }: MetricsService
+  { eventSecurityVerification }: MetricsService,
+  jwtService?: JwtService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
     ? EXECUTION_NODE.slice(0, -1)
@@ -39,10 +42,21 @@ export const makeExecutionApi = (
   let exitBusAddress: string
   let consensusAddress: string
 
+  const createRequestHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    
+    if (JWT_SECRET_PATH && jwtService) {
+      const token = jwtService.generateToken()
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    
+    return headers
+  }
+
   const syncing = async () => {
     const res = await request(normalizedUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_syncing',
@@ -65,7 +79,7 @@ export const makeExecutionApi = (
   const latestBlockNumber = async () => {
     const res = await request(normalizedUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getBlockByNumber',
@@ -84,7 +98,7 @@ export const makeExecutionApi = (
   const getTransaction = async (transactionHash: string) => {
     const res = await request(normalizedUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getTransactionByHash',
@@ -113,7 +127,7 @@ export const makeExecutionApi = (
 
     const res = await request(normalizedUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getLogs',
@@ -166,7 +180,7 @@ export const makeExecutionApi = (
 
     const res = await request(normalizedUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getLogs',
@@ -363,7 +377,7 @@ export const makeExecutionApi = (
     try {
       const res = await request(normalizedUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createRequestHeaders(),
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -410,7 +424,7 @@ export const makeExecutionApi = (
     try {
       const res = await request(normalizedUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createRequestHeaders(),
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -458,7 +472,7 @@ export const makeExecutionApi = (
     try {
       const res = await request(normalizedUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: createRequestHeaders(),
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -503,3 +517,4 @@ export const makeExecutionApi = (
     lastRequestedValidatorIndex,
   }
 }
+

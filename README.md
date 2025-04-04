@@ -53,6 +53,7 @@ Options are configured via environment variables.
 |--------------------------------| -------- | --------------------- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | EXECUTION_NODE                 | Yes      | http://1.2.3.4:8545   | Ethereum Execution Node endpoint                                                                                                                                                                                                                        |
 | CONSENSUS_NODE                 | Yes      | http://1.2.3.4:5051   | Ethereum Consensus Node endpoint                                                                                                                                                                                                                        |
+| JWT_SECRET_PATH                | No       | /data/neth/jwt.hex    | Path to JWT secret hex file for Nethermind RPC authentication. If provided, will generate a new JWT token for each execution node request                                                                                                                |
 | LOCATOR_ADDRESS                | Yes      | 0x123                 | Address of the Locator contract [Goerli](https://docs.lido.fi/deployed-contracts/goerli/) / [Mainnet](https://docs.lido.fi/deployed-contracts/)                                                                                                         |
 | STAKING_MODULE_ID              | Yes      | 123                   | Staking Module ID for which operator ID is set, currently only one exists - ([NodeOperatorsRegistry](https://github.com/lidofinance/lido-dao#contracts)) with id `1`                                                                                    |
 | OPERATOR_ID                    | Yes      | 123                   | Operator ID in the Node Operators registry, easiest to get from Operators UI: [Goerli](https://operators.testnet.fi)/[Mainnet](https://operators.lido.fi)                                                                                               |
@@ -168,3 +169,4 @@ ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
 ```
 
 More info here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566
+
