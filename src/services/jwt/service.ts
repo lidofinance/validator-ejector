@@ -8,9 +8,8 @@ export const makeJwtService = (
   logger: ReturnType<typeof makeLogger>,
   { JWT_SECRET_PATH }: { JWT_SECRET_PATH: string }
 ) => {
-  // Store loaded secret and token
+  // Store loaded secret
   let secretBuffer: Buffer | null = null
-  let token: string | null = null
 
   // Initialize function, called at application startup
   const initialize = async () => {
@@ -24,26 +23,30 @@ export const makeJwtService = (
       const hexSecret = await fs.readFile(JWT_SECRET_PATH, 'utf8')
       // Convert hex to buffer
       secretBuffer = Buffer.from(hexSecret.trim(), 'hex')
-      // Create payload with current timestamp
-      const payload = { iat: Math.floor(Date.now() / 1000) }
-      // Sign using buffer
-      token = jwt.sign(payload, secretBuffer, { algorithm: 'HS256' })
       
-      logger.info('JWT token initialized successfully')
+      logger.info('JWT secret loaded successfully')
       return true
     } catch (error) {
-      logger.error('Failed to initialize JWT token', error)
-      throw new Error('Unable to initialize JWT token, ensure JWT_SECRET_PATH is configured correctly')
+      logger.error('Failed to load JWT secret', error)
+      throw new Error('Unable to load JWT secret, ensure JWT_SECRET_PATH is configured correctly')
     }
   }
 
-  // Get token, returns null if not initialized
-  const getToken = () => {
-    return token
+  // Generate a new token for each request with current timestamp
+  const generateToken = () => {
+    if (!secretBuffer) {
+      logger.warn('JWT secret not initialized, unable to generate token')
+      return null
+    }
+    
+    // Create payload with current timestamp
+    const payload = { iat: Math.floor(Date.now() / 1000) }
+    // Sign using buffer
+    return jwt.sign(payload, secretBuffer, { algorithm: 'HS256' })
   }
 
   return {
     initialize,
-    getToken
+    generateToken
   }
 } 

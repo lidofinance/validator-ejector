@@ -46,7 +46,7 @@ export const makeExecutionApi = (
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     
     if (JWT_SECRET_PATH && jwtService) {
-      const token = jwtService.getToken()
+      const token = jwtService.generateToken()
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
