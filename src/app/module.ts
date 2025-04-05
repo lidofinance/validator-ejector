@@ -18,6 +18,7 @@ import {
 } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
+import { makeJwtService } from '../services/jwt/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
 import { makeLocalFileReader } from '../services/local-file-reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
@@ -49,6 +50,12 @@ export const makeAppModule = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
+  const jwtService = makeJwtService(logger, { JWT_SECRET_PATH: config.JWT_SECRET_PATH || '' })
+
+  if (config.JWT_SECRET_PATH) {
+    await jwtService.initialize()
+  }
+
   const executionApi = makeExecutionApi(
     makeRequest([
       retry(3),
@@ -59,7 +66,8 @@ export const makeAppModule = async () => {
     ]),
     logger,
     config,
-    metrics
+    metrics,
+    jwtService
   )
 
   const consensusApi = makeConsensusApi(
@@ -148,3 +156,4 @@ export const makeAppModule = async () => {
     },
   }
 }
+
