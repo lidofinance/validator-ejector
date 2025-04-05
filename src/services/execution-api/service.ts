@@ -5,7 +5,7 @@ import { ethers } from 'ethers'
 
 import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
-import { JwtService } from '../utils/jwt.js'
+import { JwtService } from '../jwt/service.js'
 
 import {
   syncingDTO,
@@ -46,8 +46,10 @@ export const makeExecutionApi = (
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     
     if (JWT_SECRET_PATH && jwtService) {
-      const token = jwtService.generateToken()
-      headers['Authorization'] = `Bearer ${token}`
+      const token = jwtService.getToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
     }
     
     return headers
