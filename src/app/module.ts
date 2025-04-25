@@ -50,7 +50,9 @@ export const makeAppModule = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
-  const jwtService = makeJwtService(logger, { JWT_SECRET_PATH: config.JWT_SECRET_PATH || '' })
+  const jwtService = makeJwtService(logger, {
+    JWT_SECRET_PATH: config.JWT_SECRET_PATH || '',
+  })
 
   if (config.JWT_SECRET_PATH) {
     await jwtService.initialize()
@@ -156,4 +158,3 @@ export const makeAppModule = async () => {
     },
   }
 }
-

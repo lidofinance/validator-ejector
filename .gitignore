@@ -6,3 +6,4 @@ dist
 .jest
 jwt.hex
 /.idea
+artifacts

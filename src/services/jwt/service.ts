@@ -15,20 +15,24 @@ export const makeJwtService = (
   const initialize = async () => {
     try {
       if (!JWT_SECRET_PATH) {
-        logger.info('JWT_SECRET_PATH not configured, skipping JWT initialization')
+        logger.info(
+          'JWT_SECRET_PATH not configured, skipping JWT initialization'
+        )
         return false
       }
-      
+
       // Read hex format secret
       const hexSecret = await fs.readFile(JWT_SECRET_PATH, 'utf8')
       // Convert hex to buffer
       secretBuffer = Buffer.from(hexSecret.trim(), 'hex')
-      
+
       logger.info('JWT secret loaded successfully')
       return true
     } catch (error) {
       logger.error('Failed to load JWT secret', error)
-      throw new Error('Unable to load JWT secret, ensure JWT_SECRET_PATH is configured correctly')
+      throw new Error(
+        'Unable to load JWT secret, ensure JWT_SECRET_PATH is configured correctly'
+      )
     }
   }
 
@@ -38,7 +42,7 @@ export const makeJwtService = (
       logger.warn('JWT secret not initialized, unable to generate token')
       return null
     }
-    
+
     // Create payload with current timestamp
     const payload = { iat: Math.floor(Date.now() / 1000) }
     // Sign using buffer
@@ -47,6 +51,6 @@ export const makeJwtService = (
 
   return {
     initialize,
-    generateToken
+    generateToken,
   }
-} 
+}
