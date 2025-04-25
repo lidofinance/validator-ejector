@@ -1,40 +1,4 @@
-import { arr, obj, str, bool } from '../../lib/index.js'
-
-export const syncingDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      result: bool(json.result),
-    }),
-    'Invalid syncing response'
-  )
-
-export const lastBlockNumberDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      result: obj(json.result, (result) => ({
-        number: str(result.number, 'Invalid latest block number'),
-      })),
-    }),
-    'Invalid LastBlockNumber response'
-  )
-
-export const funcDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      result: str(json.result),
-    }),
-    'Invalid function call response'
-  )
-
-export const genericArrayOfStringsDTO = (json: unknown) =>
-  arr(
-    json,
-    (json) => json.map((address) => str(address)),
-    'Decoded generic function return format is not an array of strings'
-  )
+import { arr, obj, str } from '../../lib/index.js'
 
 export const logsDTO = (json: unknown) =>
   obj(
@@ -52,6 +16,15 @@ export const logsDTO = (json: unknown) =>
       ),
     }),
     'Empty or invalid data for events'
+  )
+
+export const funcDTO = (json: unknown) =>
+  obj(
+    json,
+    (json) => ({
+      result: str(json.result),
+    }),
+    'Invalid function call response'
   )
 
 export const txDTO = (json: unknown) =>
@@ -77,4 +50,11 @@ export const txDTO = (json: unknown) =>
       })),
     }),
     'Invalid return for a transaction data call'
+  )
+
+export const genericArrayOfStringsDTO = (json: unknown) =>
+  arr(
+    json,
+    (json) => json.map((address) => str(address)),
+    'Decoded generic function return format is not an array of strings'
   )
