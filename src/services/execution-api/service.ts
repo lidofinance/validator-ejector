@@ -44,15 +44,16 @@ export const makeExecutionApi = (
 
     return headers
   }
+
   const elRequest = async (requestConfig: RequestConfig) => {
-    const res = await request(normalizedUrl, requestConfig)
+    const headers = createRequestHeaders()
+    const res = await request(normalizedUrl, { ...requestConfig, headers })
     return await safelyParseJsonResponse(res, logger)
   }
 
   const syncing = async () => {
     const json = await elRequest({
       method: 'POST',
-      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_syncing',
@@ -74,7 +75,6 @@ export const makeExecutionApi = (
   const latestBlockNumber = async () => {
     const json = await elRequest({
       method: 'POST',
-      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getBlockByNumber',
@@ -99,7 +99,6 @@ export const makeExecutionApi = (
     try {
       const json = await elRequest({
         method: 'POST',
-        headers: createRequestHeaders(),
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -144,7 +143,6 @@ export const makeExecutionApi = (
     try {
       const json = await elRequest({
         method: 'POST',
-        headers: createRequestHeaders(),
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -185,7 +183,6 @@ export const makeExecutionApi = (
   ) => {
     const json = await elRequest({
       method: 'POST',
-      headers: createRequestHeaders(),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getLogs',

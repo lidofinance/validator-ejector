@@ -1,11 +1,11 @@
 import fs from 'fs/promises'
 import jwt from 'jsonwebtoken'
-import { makeLogger } from 'lido-nanolib'
+import { LoggerService } from '../../lib/index.js'
 
 export type JwtService = ReturnType<typeof makeJwtService>
 
 export const makeJwtService = (
-  logger: ReturnType<typeof makeLogger>,
+  logger: LoggerService,
   { JWT_SECRET_PATH }: { JWT_SECRET_PATH: string }
 ) => {
   // Store loaded secret
