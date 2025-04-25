@@ -1,4 +1,4 @@
-import type { LoggerService } from 'lido-nanolib'
+import type { LoggerService } from '../../lib/index.js'
 import type { ConfigService } from '../config/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'

@@ -1,4 +1,9 @@
-import { makeLogger, makeRequest, notOkError } from 'lido-nanolib'
+import {
+  makeLogger,
+  makeRequest,
+  notOkError,
+  safelyParseJsonResponse,
+} from '../../lib/index.js'
 import {
   syncingDTO,
   genesisDTO,
@@ -25,7 +30,7 @@ export const makeConsensusApi = (
     const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
       middlewares: [notOkError()],
     })
-    const { data } = syncingDTO(await res.json())
+    const { data } = syncingDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched syncing status')
     return data.is_syncing
   }
@@ -40,7 +45,7 @@ export const makeConsensusApi = (
     const res = await request(`${normalizedUrl}/eth/v1/beacon/genesis`, {
       middlewares: [notOkError()],
     })
-    const { data } = genesisDTO(await res.json())
+    const { data } = genesisDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched genesis data')
     return data
   }
@@ -52,7 +57,7 @@ export const makeConsensusApi = (
         middlewares: [notOkError()],
       }
     )
-    const { data } = stateDTO(await res.json())
+    const { data } = stateDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched state data')
     return data
   }
@@ -61,26 +66,37 @@ export const makeConsensusApi = (
     const res = await request(`${normalizedUrl}/eth/v1/config/spec`, {
       middlewares: [notOkError()],
     })
-    const { data } = specDTO(await res.json())
+    const { data } = specDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched spec data')
     return data
   }
 
-  const isExiting = async (validatorPubkey: string) => {
-    return (await validatorInfo(validatorPubkey)).isExiting
+  const isExiting = async (
+    validatorPubkey: string,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
+    return (await validatorInfo(validatorPubkey, tag)).isExiting
   }
 
-  const validatorInfo = async (id: string) => {
-    const req = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/head/validators/${id}`
+  const validatorInfo = async (
+    id: string,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
+    const res = await request(
+      `${normalizedUrl}/eth/v1/beacon/states/${tag}/validators/${id}`
     )
 
-    if (!req.ok) {
-      const { message } = (await req.json()) as { message: string }
+    if (!res.ok) {
+      const { message } = (await await safelyParseJsonResponse(
+        res,
+        logger
+      )) as {
+        message: string
+      }
       throw new Error(message)
     }
 
-    const result = validatorInfoDTO(await req.json())
+    const result = validatorInfoDTO(await safelyParseJsonResponse(res, logger))
 
     const { index, validator, status } = result.data
     const pubKey = validator.pubkey
@@ -99,7 +115,7 @@ export const makeConsensusApi = (
     }
     signature: string
   }) => {
-    const req = await request(
+    const res = await request(
       `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
       {
         method: 'POST',
@@ -108,8 +124,10 @@ export const makeConsensusApi = (
       }
     )
 
-    if (!req.ok) {
-      const { message } = (await req.json()) as { message: string }
+    if (!res.ok) {
+      const { message } = (await safelyParseJsonResponse(res, logger)) as {
+        message: string
+      }
       throw new Error(message)
     }
   }

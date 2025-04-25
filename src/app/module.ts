@@ -1,13 +1,13 @@
-import { makeLogger } from 'lido-nanolib'
-import { makeRequest } from 'lido-nanolib'
+import { makeLogger } from '../lib/index.js'
+import { makeRequest } from '../lib/index.js'
 import {
   logger as loggerMiddleware,
   notOkError,
   retry,
   abort,
   prom,
-} from 'lido-nanolib'
-import { makeJobRunner } from 'lido-nanolib'
+} from '../lib/index.js'
+import { makeJobRunner } from '../lib/index.js'
 
 import dotenv from 'dotenv'
 
@@ -31,6 +31,7 @@ import { makeGsStore } from '../services/gs-store/service.js'
 import { makeApp } from './service.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
+import { makeExitLogsService } from '../services/exit-logs/service.js'
 
 dotenv.config()
 
@@ -58,19 +59,22 @@ export const makeAppModule = async () => {
     await jwtService.initialize()
   }
 
+  const executionHttp = makeRequest([
+    retry(3),
+    loggerMiddleware(logger),
+    prom(metrics.executionRequestDurationSeconds),
+    notOkError(),
+    abort(30_000),
+  ])
+
   const executionApi = makeExecutionApi(
-    makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      prom(metrics.executionRequestDurationSeconds),
-      notOkError(),
-      abort(30_000),
-    ]),
+    executionHttp,
     logger,
     config,
-    metrics,
     jwtService
   )
+
+  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
 
   const consensusApi = makeConsensusApi(
     makeRequest([
@@ -120,6 +124,7 @@ export const makeAppModule = async () => {
     config,
     messageReloader,
     executionApi,
+    exitLogs,
     consensusApi,
     messagesProcessor,
     webhookProcessor,
