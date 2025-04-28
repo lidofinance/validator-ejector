@@ -37,7 +37,6 @@ export const makeVerifier = (
 
     const json = await el.elRequest({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getTransactionByHash',
@@ -219,7 +218,6 @@ export const makeVerifier = (
     try {
       const json = await el.elRequest({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',

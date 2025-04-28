@@ -4,6 +4,7 @@ import { makeRequest } from '../../lib/index.js'
 import { ethers } from 'ethers'
 
 import { ConfigService } from '../../services/config/service.js'
+import { JwtService } from '../jwt/service.js'
 
 import {
   syncingDTO,
@@ -19,7 +20,8 @@ export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { EXECUTION_NODE, LOCATOR_ADDRESS }: ConfigService
+  { EXECUTION_NODE, LOCATOR_ADDRESS, JWT_SECRET_PATH }: ConfigService,
+  jwtService?: JwtService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
     ? EXECUTION_NODE.slice(0, -1)
@@ -28,15 +30,30 @@ export const makeExecutionApi = (
   let exitBusAddress: string
   let consensusAddress: string
 
+  const createRequestHeaders = () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+
+    if (JWT_SECRET_PATH && jwtService) {
+      const token = jwtService.generateToken()
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+    }
+
+    return headers
+  }
+
   const elRequest = async (requestConfig: RequestConfig) => {
-    const res = await request(normalizedUrl, requestConfig)
+    const headers = createRequestHeaders()
+    const res = await request(normalizedUrl, { ...requestConfig, headers })
     return await safelyParseJsonResponse(res, logger)
   }
 
   const syncing = async () => {
     const json = await elRequest({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_syncing',
@@ -58,7 +75,6 @@ export const makeExecutionApi = (
   const latestBlockNumber = async () => {
     const json = await elRequest({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getBlockByNumber',
@@ -83,7 +99,6 @@ export const makeExecutionApi = (
     try {
       const json = await elRequest({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -128,7 +143,6 @@ export const makeExecutionApi = (
     try {
       const json = await elRequest({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
           method: 'eth_call',
@@ -169,7 +183,6 @@ export const makeExecutionApi = (
   ) => {
     const json = await elRequest({
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_getLogs',

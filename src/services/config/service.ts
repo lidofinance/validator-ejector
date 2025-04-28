@@ -27,6 +27,7 @@ export const makeConfig = ({
       env.CONSENSUS_NODE,
       'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
     ),
+    JWT_SECRET_PATH: optional(() => str(env.JWT_SECRET_PATH)),
     LOCATOR_ADDRESS: str(
       env.LOCATOR_ADDRESS,
       'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
