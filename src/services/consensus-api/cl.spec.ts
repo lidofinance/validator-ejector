@@ -1,5 +1,5 @@
 import { ConsensusApiService, makeConsensusApi } from './service.js'
-import { LoggerService, RequestService, makeRequest } from 'lido-nanolib'
+import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import {
   exitRequestMock,
   genesisMock,

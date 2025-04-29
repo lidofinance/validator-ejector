@@ -1,13 +1,13 @@
-import { makeLogger } from 'lido-nanolib'
-import { makeRequest } from 'lido-nanolib'
+import { makeLogger } from '../lib/index.js'
+import { makeRequest } from '../lib/index.js'
 import {
   logger as loggerMiddleware,
   notOkError,
   retry,
   abort,
   prom,
-} from 'lido-nanolib'
-import { makeJobRunner } from 'lido-nanolib'
+} from '../lib/index.js'
+import { makeJobRunner } from '../lib/index.js'
 
 import dotenv from 'dotenv'
 
@@ -18,6 +18,7 @@ import {
 } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
+import { makeJwtService } from '../services/jwt/service.js'
 import { makeMetrics, register } from '../services/prom/service.js'
 import { makeLocalFileReader } from '../services/local-file-reader/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
@@ -30,6 +31,7 @@ import { makeGsStore } from '../services/gs-store/service.js'
 import { makeApp } from './service.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
+import { makeExitLogsService } from '../services/exit-logs/service.js'
 
 dotenv.config()
 
@@ -49,18 +51,30 @@ export const makeAppModule = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
+  const jwtService = makeJwtService(logger, {
+    JWT_SECRET_PATH: config.JWT_SECRET_PATH || '',
+  })
+
+  if (config.JWT_SECRET_PATH) {
+    await jwtService.initialize()
+  }
+
+  const executionHttp = makeRequest([
+    retry(3),
+    loggerMiddleware(logger),
+    prom(metrics.executionRequestDurationSeconds),
+    notOkError(),
+    abort(30_000),
+  ])
+
   const executionApi = makeExecutionApi(
-    makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      prom(metrics.executionRequestDurationSeconds),
-      notOkError(),
-      abort(30_000),
-    ]),
+    executionHttp,
     logger,
     config,
-    metrics
+    jwtService
   )
+
+  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
 
   const consensusApi = makeConsensusApi(
     makeRequest([
@@ -110,6 +124,7 @@ export const makeAppModule = async () => {
     config,
     messageReloader,
     executionApi,
+    exitLogs,
     consensusApi,
     messagesProcessor,
     webhookProcessor,

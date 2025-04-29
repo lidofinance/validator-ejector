@@ -1,4 +1,4 @@
-import type { LoggerService } from 'lido-nanolib'
+import type { LoggerService } from '../../lib/index.js'
 import type { ExecutionApiService } from '../execution-api/service.js'
 import type { ConfigService } from '../config/service.js'
 import type { MessagesProcessorService } from '../messages-processor/service.js'
@@ -7,6 +7,7 @@ import type { WebhookProcessorService } from '../webhook-caller/service.js'
 import type { MetricsService } from '../prom/service.js'
 import type { MessageStorage } from './message-storage.js'
 import type { MessageReloader } from '../message-reloader/message-reloader.js'
+import { ExitLogsService } from 'services/exit-logs/service.js'
 
 export type ExitMessage = {
   message: {
@@ -25,6 +26,8 @@ export type ExitMessageWithMetadata = {
   }
 }
 
+const FINALIZED_BLOCK_EQUIVALENT = 120
+
 export type JobProcessorService = ReturnType<typeof makeJobProcessor>
 
 export const makeJobProcessor = ({
@@ -32,6 +35,7 @@ export const makeJobProcessor = ({
   config,
   messageReloader,
   executionApi,
+  exitLogs,
   consensusApi,
   messagesProcessor,
   webhookProcessor,
@@ -41,20 +45,22 @@ export const makeJobProcessor = ({
   config: ConfigService
   messageReloader: MessageReloader
   executionApi: ExecutionApiService
+  exitLogs: ExitLogsService
   consensusApi: ConsensusApiService
   messagesProcessor: MessagesProcessorService
   webhookProcessor: WebhookProcessorService
   metrics: MetricsService
 }) => {
   const handleJob = async ({
-    eventsNumber,
     messageStorage,
   }: {
     eventsNumber: number
     messageStorage: MessageStorage
   }) => {
+    const operatorIds = config.OPERATOR_IDS
+
     logger.info('Job started', {
-      operatorId: config.OPERATOR_ID,
+      operatorIds,
       stakingModuleId: config.STAKING_MODULE_ID,
     })
 
@@ -64,17 +70,9 @@ export const makeJobProcessor = ({
     await executionApi.resolveExitBusAddress()
     await executionApi.resolveConsensusAddress()
 
-    const toBlock = await executionApi.latestBlockNumber()
-    const fromBlock = toBlock - eventsNumber
-    logger.info('Fetched the latest block from EL', { latestBlock: toBlock })
+    const lastBlockNumber = await executionApi.latestBlockNumber()
 
-    logger.info('Fetching request events from the Exit Bus', {
-      eventsNumber,
-      fromBlock,
-      toBlock,
-    })
-
-    const eventsForEject = await executionApi.logs(fromBlock, toBlock)
+    const eventsForEject = await exitLogs.getLogs(operatorIds, lastBlockNumber)
 
     logger.info('Handling ejection requests', {
       amount: eventsForEject.length,
@@ -83,9 +81,25 @@ export const makeJobProcessor = ({
     for (const [ix, event] of eventsForEject.entries()) {
       logger.debug(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
 
+      if (event.acknowledged) {
+        logger.debug('Event already acknowledged, skipping')
+        continue
+      }
+
       try {
         if (await consensusApi.isExiting(event.validatorPubkey)) {
-          logger.info('Validator is already exiting(ed), skipping')
+          logger.info('Validator is already exiting(ed), skipping', {
+            validatorIndex: event.validatorIndex,
+          })
+          // Acknowledge the event to avoid processing it again
+          // We do an additional check, because if we didn't check for finalized,
+          // we might miss the reorganization.
+          if (
+            lastBlockNumber - event.blockNumber > FINALIZED_BLOCK_EQUIVALENT ||
+            (await consensusApi.isExiting(event.validatorPubkey, 'finalized'))
+          ) {
+            event.ack()
+          }
           continue
         }
 
@@ -103,17 +117,19 @@ export const makeJobProcessor = ({
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
         metrics.exitActions.inc({ result: 'error' })
       }
-    }
 
-    logger.info('Updating exit messages left metrics from contract state')
-    try {
-      const lastRequestedValIx =
-        await executionApi.lastRequestedValidatorIndex()
-      metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
-    } catch {
-      logger.error(
-        'Unable to update exit messages left metrics from contract state'
-      )
+      logger.info('Updating exit messages left metrics from contract state')
+      try {
+        const lastRequestedValIx =
+          await exitLogs.verifier.lastRequestedValidatorIndex(
+            event.nodeOperatorId
+          )
+        metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
+      } catch {
+        logger.error(
+          'Unable to update exit messages left metrics from contract state'
+        )
+      }
     }
 
     logger.info('Job finished')

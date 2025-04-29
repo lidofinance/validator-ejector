@@ -5,7 +5,7 @@ import {
   abort,
   notOkError,
   retry,
-} from 'lido-nanolib'
+} from '../../lib/index.js'
 import { MetricsService } from '../prom/service.js'
 
 export type WebhookProcessorService = ReturnType<typeof makeWebhookProcessor>

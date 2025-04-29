@@ -4,7 +4,7 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 
-import { LoggerService } from 'lido-nanolib'
+import { LoggerService } from '../../lib/index.js'
 import type { MessageFile } from '../local-file-reader/service.js'
 
 export type S3StoreService = ReturnType<typeof makeS3Store>
