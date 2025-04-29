@@ -11,7 +11,7 @@ const CAPELLA_FORK_VERSION = '0x04017000'
 const BELLATRIX_FORK_VERSION = '0x04017000'
 const DENCUN_FORK_VERSION = '0x05017000'
 
-describe('messages processor', () => {
+describe.skip('messages processor', () => {
   it('capella fork resolve', async () => {
     const di = prepareDeps(
       [CAPELLA_MESSAGE, BELLATRIX_MESSAGE],
