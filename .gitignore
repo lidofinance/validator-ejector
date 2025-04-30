@@ -4,5 +4,6 @@ node_modules
 /messages
 dist
 .jest
-
+jwt.hex
 /.idea
+artifacts

@@ -1,4 +1,4 @@
-import { LoggerService } from 'lido-nanolib'
+import { LoggerService } from '../../lib/index.js'
 import { ConsensusApiService } from 'services/consensus-api/service.js'
 import { CAPELLA_FORK_VERSIONS } from './constants.js'
 

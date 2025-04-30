@@ -1,4 +1,4 @@
-import { obj, str } from 'lido-nanolib'
+import { obj, str } from '../../lib/index.js'
 
 export const versionDTO = (json: unknown) =>
   obj(

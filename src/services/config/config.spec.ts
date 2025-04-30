@@ -34,6 +34,94 @@ describe('config module', () => {
 
     expect(makeConf).not.toThrow()
   })
+
+  describe('operator identification validation', () => {
+    test('should throw when neither OPERATOR_ID nor OPERATOR_IDENTIFIERS are provided', () => {
+      // Remove operator IDs from the base config
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { OPERATOR_ID, ...configWithoutOperatorId } = configBase
+
+      const makeConf = () =>
+        makeConfig({
+          logger,
+          env: configWithoutOperatorId as unknown as NodeJS.ProcessEnv,
+        })
+
+      expect(makeConf).toThrow(
+        'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+      )
+    })
+
+    test('should not throw when only OPERATOR_ID is provided', () => {
+      const config = {
+        ...configBase,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        OPERATOR_ID: '123',
+        OPERATOR_IDENTIFIERS: undefined,
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([123])
+    })
+
+    test('should not throw when only OPERATOR_IDENTIFIERS with values is provided', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { OPERATOR_ID, ...configWithoutOperatorId } = configBase
+      const config = {
+        ...configWithoutOperatorId,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        OPERATOR_IDENTIFIERS: '[1, 2, 3]',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([1, 2, 3])
+    })
+
+    test('if both values are set, OPERATOR_IDENTIFIERS must be selected', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { OPERATOR_ID, ...configWithoutOperatorId } = configBase
+      const config = {
+        ...configWithoutOperatorId,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        OPERATOR_IDENTIFIERS: '[1, 2, 3]',
+        OPERATOR_ID: '2222',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.OPERATOR_IDS).toEqual([1, 2, 3])
+    })
+
+    test('should throw when OPERATOR_IDENTIFIERS is empty array', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { OPERATOR_ID, ...configWithoutOperatorId } = configBase
+      const config = {
+        ...configWithoutOperatorId,
+        OPERATOR_IDENTIFIERS: '[]',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).toThrow(
+        'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+      )
+    })
+  })
 })
 
 describe('logger config module', () => {

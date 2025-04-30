@@ -1,4 +1,4 @@
-import { LoggerService } from 'lido-nanolib'
+import { LoggerService } from '../lib/index.js'
 import { makeConfig } from '../services/config/service.js'
 
 export const configBase = {

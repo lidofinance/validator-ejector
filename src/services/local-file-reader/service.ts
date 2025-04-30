@@ -2,7 +2,7 @@ import { readFile, readdir, stat } from 'fs/promises'
 
 export type LocalFileReaderService = ReturnType<typeof makeLocalFileReader>
 
-import type { LoggerService } from 'lido-nanolib'
+import type { LoggerService } from '../../lib/index.js'
 
 export type MessageFile = {
   filename: string

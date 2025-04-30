@@ -1,4 +1,4 @@
-import { makeLogger } from 'lido-nanolib'
+import { makeLogger } from './lib/index.js'
 import { makeAppModule } from './app/module.js'
 
 const bootstrap = async () => {

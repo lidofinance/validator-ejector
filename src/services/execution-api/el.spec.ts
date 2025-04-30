@@ -1,11 +1,10 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
-import { LoggerService, RequestService, makeRequest } from 'lido-nanolib'
+import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import { funcMock, lastBlockNumberMock, syncingMock } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
-import { MetricsService } from 'services/prom/service.js'
 
 describe('makeConsensusApi', () => {
   let api: ExecutionApiService
@@ -13,17 +12,11 @@ describe('makeConsensusApi', () => {
   let logger: LoggerService
   let config: ConfigService
 
-  const metrics = {
-    eventSecurityVerification: {
-      inc: vi.fn(),
-    },
-  } as unknown as MetricsService
-
   beforeEach(() => {
     request = makeRequest([])
     logger = mockLogger()
     config = mockConfig(logger, { EXECUTION_NODE: 'http://localhost:4455' })
-    api = makeExecutionApi(request, logger, config, metrics)
+    api = makeExecutionApi(request, logger, config)
   })
 
   it('should fetch syncing status', async () => {
