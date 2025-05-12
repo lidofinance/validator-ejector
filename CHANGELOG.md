@@ -1,3 +1,63 @@
+# [1.8.0](https://github.com/lidofinance/validator-ejector/compare/1.7.0...1.8.0) (2025-05-12)
+
+
+### Bug Fixes
+
+* add comment for future use of baseUrl in the balancer mechanism ([b1c7c71](https://github.com/lidofinance/validator-ejector/commit/b1c7c7101e2a38e82d28d79cc20a31c8cd6bc617))
+* add comment to clarify the number of blocks for ConsensusReached event search ([1bbadbb](https://github.com/lidofinance/validator-ejector/commit/1bbadbb9e5415b39a8e41ee29b3ace56f8febc4f))
+* change chain_id type from number to string in depositContractSchema ([4e0d5cc](https://github.com/lidofinance/validator-ejector/commit/4e0d5ccdcc4b2cf4f36118923fdda4e1d068e32f))
+* correct date formatting to use UTC in logger ([7cbab24](https://github.com/lidofinance/validator-ejector/commit/7cbab24a408daba2e1aa1af810a670242b322238))
+* correct debug color comment and enhance error logging for JSON response parsing ([e3933ed](https://github.com/lidofinance/validator-ejector/commit/e3933ed32d24ecb07fe7feb2aefdfd16949a58fc))
+* correct typo in README for polling_last_blocks_duration_seconds metric description ([893db2d](https://github.com/lidofinance/validator-ejector/commit/893db2d1468cc2b6afd8803b5ace3535c6f7a675))
+* enhance error logging for transaction report hash lookup and data hash mismatch ([7853abb](https://github.com/lidofinance/validator-ejector/commit/7853abb7aff1a2b7dd8ad3f5b8273a771a216dec))
+* ensure remoteChainId is compared as a number in print-capella-fork-versions script ([d42b438](https://github.com/lidofinance/validator-ejector/commit/d42b438a589d3cecb50d1f297b292ceceec753b0))
+* increase test timeout to 10 minutes for improved test execution ([a82c731](https://github.com/lidofinance/validator-ejector/commit/a82c7314b9fe917a6979e04477867896c92372d5))
+* reduce LRU cache size for transaction and consensus logs to optimize memory usage ([3f06c9d](https://github.com/lidofinance/validator-ejector/commit/3f06c9daa486b12b3e53683bba94fd3ed2cb744d))
+* remove BLOCKS_LOOP configuration option from README and service ([cc50332](https://github.com/lidofinance/validator-ejector/commit/cc50332b83fb294286dc446c282e3fb3d9806608))
+* remove lido-nanolib dependency ([2ef1409](https://github.com/lidofinance/validator-ejector/commit/2ef14093f224b742e496edd06987952120b3f269))
+* remove unused getLastFromCache method from exit logs cache service ([f0e1c49](https://github.com/lidofinance/validator-ejector/commit/f0e1c492aee7f77c466a5bf8a3a406f9c4165210))
+* rename logs function to getLogs for clarity and consistency ([b33856e](https://github.com/lidofinance/validator-ejector/commit/b33856ec97db80639d9daf640f796e0a308cd317))
+* replace LRUCache implementation with lru-cache package and update usage ([3bff5b6](https://github.com/lidofinance/validator-ejector/commit/3bff5b637742a0ea8ee71d0f90c764d97c1e9f66))
+* rollback dockerfile changes ([f793d8d](https://github.com/lidofinance/validator-ejector/commit/f793d8d7070dce898df325625ca4302de5981bae))
+* set package as private and upgrade vite version to 6.2.0 ([4c462d3](https://github.com/lidofinance/validator-ejector/commit/4c462d348356ba9589dff639112758acd3433953))
+* simplify cached logs check by removing redundant condition ([96fbf0b](https://github.com/lidofinance/validator-ejector/commit/96fbf0bc8661a8a4110a68b0dc721989661caa84))
+* ts-node dev mode ([af34230](https://github.com/lidofinance/validator-ejector/commit/af3423077c04a9f7356d6bfbb74334667da7f099))
+* unify operator identification handling by replacing OPERATOR_IDENTIFIERS with OPERATOR_IDS ([1aa88db](https://github.com/lidofinance/validator-ejector/commit/1aa88dbedcb6a093152ca15bbd4a2400720e53ab))
+* update debug log color to blue in logger printer ([df3ec06](https://github.com/lidofinance/validator-ejector/commit/df3ec06afc8d4600ae7176d857203b22a45eb279))
+* update exit logs cache header initialization and adjust related tests for consistency ([e0715a0](https://github.com/lidofinance/validator-ejector/commit/e0715a0684baf8ccbe0ffc48e11a7fd6f12ef118))
+* update exit logs tests to use hardcoded mainnet block numbers with added documentation ([abeffc1](https://github.com/lidofinance/validator-ejector/commit/abeffc1ad652dc3c50b4944408da538506106199))
+* update exitLogs tests to use environment variables for node configuration and sanitize secrets ([9fb54a5](https://github.com/lidofinance/validator-ejector/commit/9fb54a5ee26281c1e2e57a878ee4d50531181a22))
+* update JWT implementation to generate new token per request ([e9a61b7](https://github.com/lidofinance/validator-ejector/commit/e9a61b75c1854e85f26989b8e646240e6e685c33))
+* update nock dependency version to remove caret for consistency ([d758912](https://github.com/lidofinance/validator-ejector/commit/d758912569c60bbf07661213cee2360ff92ddd63))
+* update public execution node URL ([bc3bf63](https://github.com/lidofinance/validator-ejector/commit/bc3bf63e6d00e7693a5e3f5cd50fd14a8c94b44b))
+* upgrade vitest version to 3.0.7 in package.json ([11f1d38](https://github.com/lidofinance/validator-ejector/commit/11f1d3880e0a2cbf7e4038bc2b00f0a25fa99b27))
+
+
+### Features
+
+* add base end-to-end tests for exit logs service and increase test timeout ([3a9c084](https://github.com/lidofinance/validator-ejector/commit/3a9c0847e3ec40a77bf6b2ac6fc1a4b1cfbc5690))
+* add support for multiple operator identifiers in configuration ([8e1f13a](https://github.com/lidofinance/validator-ejector/commit/8e1f13ab4520e5c4e81505c7351a9a3c37619beb))
+* enable exitLogs e2e tests and enhance test timeout for improved reliability ([037daec](https://github.com/lidofinance/validator-ejector/commit/037daec78b721f993bf1b225cdfcc07fe0d6c6e3))
+* enhance configuration validation for OPERATOR_ID and OPERATOR_IDENTIFIERS ([d515b7c](https://github.com/lidofinance/validator-ejector/commit/d515b7c080a8c9564bf56ae49c6c96574b5c1192))
+* enhance error handling by adding safelyParseJsonResponse for CL API responses ([2970441](https://github.com/lidofinance/validator-ejector/commit/2970441232dab7ea5672fd1c81f739ba26cc3950))
+* enhance exit logs processing by adding node operator ID and acknowledgment handling ([df4168d](https://github.com/lidofinance/validator-ejector/commit/df4168d8fef7ac89ad815fcc2b206c82c37d972d))
+* enhance logging with heap size limit and fetch time metrics in app service ([cb32e8e](https://github.com/lidofinance/validator-ejector/commit/cb32e8ebd6712dcf888666ffe6045bd1914abcf8))
+* implement exit logs caching and fetching service with types ([eb1d3a6](https://github.com/lidofinance/validator-ejector/commit/eb1d3a6b72bf3835c9c4054af00bff8d13e05c67))
+* implement exit logs service with fetcher and DTOs ([1662670](https://github.com/lidofinance/validator-ejector/commit/16626705e1d1a0ee9993610a44faed8a89a3dd75))
+* implement LRUCache class with basic operations and tests ([8a115e8](https://github.com/lidofinance/validator-ejector/commit/8a115e87f47d8c75d74d6ebc6179d6c80b76dbc2))
+* initial refactoring ([f1c13af](https://github.com/lidofinance/validator-ejector/commit/f1c13af744a63631059320272a6619442f8d1203))
+* integrate exit logs service into job processor and application module ([d7a3be4](https://github.com/lidofinance/validator-ejector/commit/d7a3be418c8b66e04d3f8eae3c12d7b0f89da051))
+* refactor config to zod ([dd3e8be](https://github.com/lidofinance/validator-ejector/commit/dd3e8bebd1514d3835ef3b1bedecdb6fd6ce63f5))
+* refactor dto ([d920dca](https://github.com/lidofinance/validator-ejector/commit/d920dcabff89ac6628f708d4a66ae407ceadc1a5))
+* refactor exit logs service and add logs fetching method in execution API ([6090312](https://github.com/lidofinance/validator-ejector/commit/60903128a4e07a4871cf9047e509875f720b2eaf))
+* rename pooling method to loop and update job execution logic ([e18c0f7](https://github.com/lidofinance/validator-ejector/commit/e18c0f7df43fc836c3a9a3d42192e6d740148200))
+* simplify exit logs service initialization and enhance JSON response handling ([e1caed4](https://github.com/lidofinance/validator-ejector/commit/e1caed48701d8307b5888ba609e03238dbbd9c3d))
+* update exit logs fetching to include last block number and improve operator ID handling ([f23d920](https://github.com/lidofinance/validator-ejector/commit/f23d920f20bb44ef771be6098a5441fecfa372a2))
+* update job processing logic to acknowledge events based on finalized state ([7a51d3d](https://github.com/lidofinance/validator-ejector/commit/7a51d3d148f09797107b6cf1eb9b55830900ae4a))
+* workflows for hoodi/holesky deployment ([4f9115b](https://github.com/lidofinance/validator-ejector/commit/4f9115bc914a715462dfb2916f7b9ceea8a59b36))
+
+
+
 # [1.7.0](https://github.com/lidofinance/validator-ejector/compare/1.6.0...1.7.0) (2025-03-20)
 
 
