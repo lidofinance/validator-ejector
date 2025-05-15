@@ -75,7 +75,7 @@ describe('exitLogs e2e', () => {
     config = mockConfig(logger, {
       ...nodes,
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify([
-        '0x140Bd8FbDc884f48dA7cb1c09bE8A2fAdfea776E',
+        '0x285f8537e1daeedaf617e96c742f2cf36d63ccfb',
         '0xA7410857ABbf75043d61ea54e07D57A6EB6EF186',
         '0x404335BcE530400a5814375E7Ec1FB55fAff3eA2',
         '0x946D3b081ed19173dC83Cd974fC69e1e760B7d78',
