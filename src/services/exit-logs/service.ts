@@ -20,11 +20,15 @@ export const makeExitLogsService = (
     ORACLE_ADDRESSES_ALLOWLIST,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
     BLOCKS_PRELOAD,
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+    VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST,
   }: ConfigService,
   metrics: MetricsService
 ) => {
   const verifier = makeVerifier(logger, el, {
     ORACLE_ADDRESSES_ALLOWLIST,
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+    VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST,
   })
 
   const fetcher = makeExitLogsFetcherService(

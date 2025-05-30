@@ -51,7 +51,23 @@ export const makeConfig = ({
       (oracles) => oracles.map(str),
       'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
     ),
-
+    EASY_TRACK_ADDRESS: str(
+      env.EASY_TRACK_ADDRESS,
+      'Please, setup EASY_TRACK_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+    ),
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST: json_arr(
+      env.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+      (addresses) => addresses.map(str),
+      'Please, setup EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST. Example: ["0x123","0x456"]'
+    ),
+    VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST:
+      optional(() =>
+        json_arr(
+          env.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST,
+          (txs) => txs.map(str),
+          'Please, setup VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST. Example: ["0x123abc","0x456def"]'
+        )
+      ) ?? [],
     MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
     VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
 

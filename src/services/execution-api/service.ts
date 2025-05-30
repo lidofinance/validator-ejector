@@ -20,7 +20,12 @@ export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { EXECUTION_NODE, LOCATOR_ADDRESS, JWT_SECRET_PATH }: ConfigService,
+  {
+    EXECUTION_NODE,
+    LOCATOR_ADDRESS,
+    JWT_SECRET_PATH,
+    EASY_TRACK_ADDRESS,
+  }: ConfigService,
   jwtService?: JwtService
 ) => {
   const normalizedUrl = EXECUTION_NODE.endsWith('/')
@@ -219,6 +224,12 @@ export const makeExecutionApi = (
         throw new Error('Consensus address is not resolved yet')
       }
       return consensusAddress
+    },
+    get easyTrackAddress() {
+      if (!EASY_TRACK_ADDRESS) {
+        throw new Error('Easy Track address is not defined in configuration')
+      }
+      return EASY_TRACK_ADDRESS
     },
     syncing,
     checkSync,

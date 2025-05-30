@@ -25,6 +25,87 @@ export const makeExitLogsFetcherService = (
   },
   { eventSecurityVerification }: MetricsService
 ) => {
+  const getVotingRequestsHashSubmittedEvents = async (
+    fromBlock: number,
+    toBlock: number
+  ) => {
+    const event = ethers.utils.Fragment.from(
+      'event RequestsHashSubmitted(bytes32 exitRequestsHash)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
+      eventTopic,
+    ])
+
+    logger.info('Loaded RequestsHashSubmitted events', {
+      amount: result.length,
+    })
+
+    const eventsMap: Record<string, string> = {}
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      eventsMap[parsed.args.exitRequestsHash] = log.transactionHash
+    }
+
+    return eventsMap
+  }
+
+  const getMotionCreatedEvents = async (fromBlock: number, toBlock: number) => {
+    const event = ethers.utils.Fragment.from(
+      'event MotionCreated(uint256 indexed _motionId, address _creator, address indexed _evmScriptFactory, bytes _evmScriptCallData, bytes _evmScript)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(
+      fromBlock,
+      toBlock,
+      el.easyTrackAddress,
+      [eventTopic]
+    )
+
+    logger.info('Loaded MotionCreated events', { amount: result.length })
+
+    const eventsMap: Record<string, string> = {} // motion_id -> motion_create_transaction_hash
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      const motionId = parsed.args._motionId.toString()
+      eventsMap[motionId] = log.transactionHash
+    }
+
+    return eventsMap
+  }
+
+  const getMotionEnactedEvents = async (fromBlock: number, toBlock: number) => {
+    const event = ethers.utils.Fragment.from(
+      'event MotionEnacted(uint256 indexed _motionId)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(
+      fromBlock,
+      toBlock,
+      el.easyTrackAddress,
+      [eventTopic]
+    )
+
+    logger.info('Loaded MotionEnacted events', { amount: result.length })
+
+    const eventsMap: Record<string, string> = {} // motion_enact_transaction_hash -> motion_id
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      eventsMap[log.transactionHash] = parsed.args._motionId.toString()
+    }
+
+    return eventsMap
+  }
+
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
@@ -47,7 +128,22 @@ export const makeExitLogsFetcherService = (
       ),
     ])
 
-    logger.info('Loaded ValidatorExitRequest events', { amount: result.length })
+    logger.info('Loaded ValidatorExitRequest events', {
+      amount: result.length,
+    })
+
+    const votingRequestsHashSubmittedEvents =
+      DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
+        ? {}
+        : await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
+
+    const motionCreatedEvents = DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
+      ? {}
+      : await getMotionCreatedEvents(fromBlock, toBlock)
+
+    const motionEnactedEvents = DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
+      ? {}
+      : await getMotionEnactedEvents(fromBlock, toBlock)
 
     const validatorsToEject: ValidatorsToEjectCache = []
 
@@ -72,7 +168,10 @@ export const makeExitLogsFetcherService = (
           await verifier.verifyEvent(
             validatorPubkey,
             log.transactionHash,
-            parseInt(log.blockNumber)
+            parseInt(log.blockNumber),
+            votingRequestsHashSubmittedEvents,
+            motionCreatedEvents,
+            motionEnactedEvents
           )
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })
