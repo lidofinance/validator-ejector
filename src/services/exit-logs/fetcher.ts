@@ -132,18 +132,16 @@ export const makeExitLogsFetcherService = (
       amount: result.length,
     })
 
-    const votingRequestsHashSubmittedEvents =
-      DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
-        ? {}
-        : await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
+    let votingRequestsHashSubmittedEvents = {}
+    let motionCreatedEvents = {}
+    let motionEnactedEvents = {}
 
-    const motionCreatedEvents = DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
-      ? {}
-      : await getMotionCreatedEvents(fromBlock, toBlock)
-
-    const motionEnactedEvents = DISABLE_SECURITY_DONT_USE_IN_PRODUCTION
-      ? {}
-      : await getMotionEnactedEvents(fromBlock, toBlock)
+    if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
+      votingRequestsHashSubmittedEvents =
+        await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
+      motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
+      motionEnactedEvents = await getMotionEnactedEvents(fromBlock, toBlock)
+    }
 
     const validatorsToEject: ValidatorsToEjectCache = []
 
