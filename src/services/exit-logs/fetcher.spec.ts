@@ -1,10 +1,16 @@
 import { ExitLogsService, makeExitLogsService } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import {
-  logsMock,
-  txFirstVerificationMock,
-  txSecondVerificationMock,
-  logsSecurityMock,
+  oracleValidatorExitRequestEventsMock,
+  oracleSubmitReportDataTransactionMock,
+  oracleSubmitReportTransactionMock,
+  oracleConsensusReachedEventsMock,
+  votingRequestsHashSubmittedEventsMock,
+  easyTrackMotionCreatedEventsMock,
+  easyTrackMotionEnactedEventsMock,
+  votingValidatorExitRequestEventsMock,
+  votingSubmitExitRequestsDataTransactionMock,
+  voteEasyTrackMotionCreateTransactionMock,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -36,6 +42,10 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0'),
     })
 
+    Object.defineProperty(executionApi, 'easyTrackAddress', {
+      get: vi.fn(() => '0x0'),
+    })
+
     api = makeExitLogsService(logger, executionApi, config, metrics)
   }
 
@@ -48,8 +58,8 @@ describe('makeConsensusApi logs', () => {
     mockService()
   })
 
-  it('should fetch and parse logs without security', async () => {
-    mockEthServer(logsMock(), config.EXECUTION_NODE)
+  it('should fetch and parse withdrawal events without security when DISABLE_SECURITY_DONT_USE_IN_PRODUCTION is true', async () => {
+    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
 
     config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
     mockService()
@@ -64,14 +74,79 @@ describe('makeConsensusApi logs', () => {
     expect(metrics.eventSecurityVerification.inc).toBeCalledTimes(0)
   })
 
-  it('should fetch and parse logs with security', async () => {
-    mockEthServer(logsMock(), config.EXECUTION_NODE)
-    mockEthServer(txFirstVerificationMock(), config.EXECUTION_NODE)
-    mockEthServer(txSecondVerificationMock(), config.EXECUTION_NODE)
-    mockEthServer(logsSecurityMock(), config.EXECUTION_NODE)
+  it('should verify withdrawal via oracle withdrawal events if recoveredAddress in ORACLE_ADDRESSES_ALLOWLIST', async () => {
+    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE)
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    mockService()
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+    expect(res[0].validatorPubkey).toBe(
+      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    )
+  })
+
+  it('should not verify withdrawal via oracle if recoveredAddress not in ORACLE_ADDRESSES_ALLOWLIST', async () => {
+    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE)
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = ['0x222']
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    mockService()
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(res.length).toBe(0)
+  })
+
+  it('should verify withdrawal via vote successfully when transaction in VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = [
+      '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
     ]
     mockService()
 
@@ -82,6 +157,65 @@ describe('makeConsensusApi logs', () => {
     expect(res[0].validatorPubkey).toBe(
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
     )
-    expect(metrics.eventSecurityVerification.inc).toBeCalledTimes(1)
+  })
+
+  it('should verify withdrawal via vote successfully when transaction in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      voteEasyTrackMotionCreateTransactionMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = [
+      '0xfAd931F268dc5f8E5cdc3000baAaC0cbdb4E0a9C',
+    ]
+    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    mockService()
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+    expect(res[0].validatorPubkey).toBe(
+      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    )
+  })
+
+  it('should not verify withdrawal via vote when transaction not in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and not in VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      voteEasyTrackMotionCreateTransactionMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    mockService()
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(res.length).toBe(0)
   })
 })
