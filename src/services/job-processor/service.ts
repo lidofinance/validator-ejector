@@ -117,19 +117,6 @@ export const makeJobProcessor = ({
         logger.error(`Unable to process exit for ${event.validatorPubkey}`, e)
         metrics.exitActions.inc({ result: 'error' })
       }
-
-      logger.info('Updating exit messages left metrics from contract state')
-      try {
-        const lastRequestedValIx =
-          await exitLogs.verifier.lastRequestedValidatorIndex(
-            event.nodeOperatorId
-          )
-        metrics.updateLeftMessages(messageStorage, lastRequestedValIx)
-      } catch {
-        logger.error(
-          'Unable to update exit messages left metrics from contract state'
-        )
-      }
     }
 
     logger.info('Job finished')
