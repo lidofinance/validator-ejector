@@ -1,5 +1,18 @@
-import { ConsensusApiService, makeConsensusApi } from './service.js'
-import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
+import nock from 'nock'
+import {
+  ConsensusApiService,
+  makeConsensusApi,
+  FAR_FUTURE_EPOCH,
+} from './service.js'
+import {
+  LoggerService,
+  RequestService,
+  makeRequest,
+  makeLogger,
+  retry,
+  logger as loggerMiddleware,
+  abort,
+} from '../../lib/index.js'
 import {
   exitRequestMock,
   genesisMock,
@@ -78,5 +91,100 @@ describe('makeConsensusApi', () => {
 
     // Since exitRequest doesn't return a value, we simply check that no error is thrown
     expect(true).toBe(true)
+  })
+
+  it('should correctly count exiting validators in mixed batch', async () => {
+    const indices = ['1', '2', '3', '4']
+    const mockResponse = {
+      data: [
+        { validator: { exit_epoch: '100' } },
+        { validator: { exit_epoch: FAR_FUTURE_EPOCH } },
+        { validator: { exit_epoch: '200' } },
+        { validator: { exit_epoch: FAR_FUTURE_EPOCH } },
+      ],
+    }
+    nock(config.CONSENSUS_NODE)
+      .get('/eth/v1/beacon/states/head/validators?id=1,2,3,4')
+      .reply(200, mockResponse)
+
+    const count = await api.getExitingValidatorsCount(indices, 1000)
+    expect(count).toBe(2)
+  })
+
+  it('should return 0 when validators not found', async () => {
+    const indices = ['1', '2', '3', '4']
+    const mockResponse = {
+      data: [],
+    }
+    nock(config.CONSENSUS_NODE)
+      .get('/eth/v1/beacon/states/head/validators?id=1,2,3,4')
+      .reply(200, mockResponse)
+
+    const count = await api.getExitingValidatorsCount(indices, 1000)
+    expect(count).toBe(0)
+  })
+
+  it('should handle batch size correctly with large index array', async () => {
+    const indices = Array.from({ length: 1500 }, (_, i) => (i + 1).toString())
+    const mockBatch1 = {
+      data: Array(1000).fill({ validator: { exit_epoch: '100' } }),
+    }
+    const mockBatch2 = {
+      data: Array(500).fill({ validator: { exit_epoch: FAR_FUTURE_EPOCH } }),
+    }
+    nock(config.CONSENSUS_NODE)
+      .get(
+        '/eth/v1/beacon/states/head/validators?id=' +
+          indices.slice(0, 1000).join(',')
+      )
+      .reply(200, mockBatch1)
+    nock(config.CONSENSUS_NODE)
+      .get(
+        '/eth/v1/beacon/states/head/validators?id=' +
+          indices.slice(1000).join(',')
+      )
+      .reply(200, mockBatch2)
+
+    const count = await api.getExitingValidatorsCount(indices, 1000)
+    expect(count).toBe(1000)
+  })
+
+  it('should throw an error on server error (500)', async () => {
+    const indices = ['1']
+    nock(config.CONSENSUS_NODE)
+      .get('/eth/v1/beacon/states/head/validators?id=1')
+      .reply(500, { message: 'Internal Server Error' })
+
+    await expect(api.getExitingValidatorsCount(indices, 1000)).rejects.toThrow()
+  })
+})
+
+describe('makeConsensusApi e2e', () => {
+  let api: ConsensusApiService
+  let logger: LoggerService
+  let config: ConfigService
+
+  beforeEach(() => {
+    logger = makeLogger({
+      level: 'error',
+      format: 'simple',
+    })
+
+    config = mockConfig(logger, {
+      CONSENSUS_NODE:
+        process.env.CONSENSUS_NODE ??
+        'https://ethereum-beacon-api.publicnode.com',
+    })
+    api = makeConsensusApi(
+      makeRequest([retry(3), loggerMiddleware(logger), abort(30_000)]),
+      logger,
+      config
+    )
+  })
+
+  it('should handle batch size correctly with large index array e2e', async () => {
+    const indices = Array.from({ length: 3000 }, (_, i) => (i + 1).toString())
+    const count = await api.getExitingValidatorsCount(indices, 1000)
+    expect(count).toBeGreaterThan(0)
   })
 })

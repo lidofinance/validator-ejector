@@ -119,6 +119,23 @@ export const makeJobProcessor = ({
       }
     }
 
+    logger.info('Updating exit messages left metrics from validator statuses')
+
+    try {
+      const validatorIndices = messageStorage.messages.map(
+        (msg) => msg.message.validator_index
+      )
+      const exitingCount = await consensusApi.getExitingValidatorsCount(
+        validatorIndices
+      )
+      metrics.updateLeftMessages(messageStorage, exitingCount)
+    } catch (e) {
+      logger.error(
+        'Unable to update exit messages left metrics from validator statuses',
+        e
+      )
+    }
+
     logger.info('Job finished')
   }
 

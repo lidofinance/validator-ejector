@@ -104,11 +104,9 @@ export const makeMetrics = ({
 
   const updateLeftMessages = (
     messageStorage: MessageStorage,
-    lastRequestedIx: number
+    exitingCount: number
   ) => {
-    const numberLeft = messageStorage.messages.filter(
-      (msg) => parseInt(msg.message.validator_index) > lastRequestedIx
-    ).length
+    const numberLeft = messageStorage.size - exitingCount
     exitMessagesLeftNumber.set(numberLeft)
 
     const percentLeft =
