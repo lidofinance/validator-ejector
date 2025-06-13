@@ -167,7 +167,8 @@ export const makeVerifier = (
       )
     } catch (e) {
       throw new Error(
-        'ValidatorExitRequest was emitted by unknown contract function'
+        `ValidatorExitRequest was emitted by unknown contract function (tx: ${tx.hash})`,
+        { cause: e }
       )
     }
 
