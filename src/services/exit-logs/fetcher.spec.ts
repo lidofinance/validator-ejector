@@ -93,7 +93,7 @@ describe('makeConsensusApi logs', () => {
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
     ]
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
     const res = await api.fetcher.getLogs(123, 123, [1])
@@ -122,7 +122,7 @@ describe('makeConsensusApi logs', () => {
 
     config.ORACLE_ADDRESSES_ALLOWLIST = ['0x222']
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
     const res = await api.fetcher.getLogs(123, 123, [1])
@@ -130,7 +130,7 @@ describe('makeConsensusApi logs', () => {
     expect(res.length).toBe(0)
   })
 
-  it('should verify withdrawal via vote successfully when transaction in VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST', async () => {
+  it('should verify withdrawal via vote successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
     mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
     mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
     mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
@@ -145,7 +145,7 @@ describe('makeConsensusApi logs', () => {
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = [
+    config.SUBMIT_TX_HASH_ALLOWLIST = [
       '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
     ]
     mockService()
@@ -180,7 +180,7 @@ describe('makeConsensusApi logs', () => {
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = [
       '0xfAd931F268dc5f8E5cdc3000baAaC0cbdb4E0a9C',
     ]
-    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
     const res = await api.fetcher.getLogs(123, 123, [1])
@@ -192,7 +192,7 @@ describe('makeConsensusApi logs', () => {
     )
   })
 
-  it('should not verify withdrawal via vote when transaction not in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and not in VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST', async () => {
+  it('should not verify withdrawal via vote when transaction not in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and not in SUBMIT_TX_HASH_ALLOWLIST', async () => {
     mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
     mockEthServer(easyTrackMotionCreatedEventsMock(), config.EXECUTION_NODE)
     mockEthServer(easyTrackMotionEnactedEventsMock(), config.EXECUTION_NODE)
@@ -211,7 +211,7 @@ describe('makeConsensusApi logs', () => {
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
     const res = await api.fetcher.getLogs(123, 123, [1])

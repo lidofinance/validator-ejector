@@ -19,11 +19,11 @@ export const makeVerifier = (
   {
     ORACLE_ADDRESSES_ALLOWLIST,
     EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
-    VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST,
+    SUBMIT_TX_HASH_ALLOWLIST,
   }: {
     ORACLE_ADDRESSES_ALLOWLIST: string[]
     EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST: string[]
-    VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST: string[]
+    SUBMIT_TX_HASH_ALLOWLIST: string[]
   }
 ) => {
   const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>({
@@ -292,10 +292,10 @@ export const makeVerifier = (
       )
     }
 
-    // VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST is designed for use with Aragon
+    // SUBMIT_TX_HASH_ALLOWLIST is designed for use with Aragon
     // but can also be used for Easy Track in emergencies
     if (
-      VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST.includes(
+      SUBMIT_TX_HASH_ALLOWLIST.includes(
         submitExitRequestsHashTxHash.toLowerCase()
       )
     ) {
