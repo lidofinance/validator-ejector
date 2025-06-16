@@ -163,12 +163,9 @@ export const makeConsensusApi = (
       if (!json.data || !Array.isArray(json.data)) {
         throw new Error('Invalid response from consensus node')
       }
-      const validators = json.data
-      for (const val of validators) {
-        if (val.validator && val.validator.exit_epoch !== FAR_FUTURE_EPOCH) {
-          totalCount++
-        }
-      }
+      totalCount += json.data.filter(
+        (v) => v.validator?.exit_epoch !== FAR_FUTURE_EPOCH
+      ).length
     }
     return totalCount
   }
