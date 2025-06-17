@@ -13,7 +13,7 @@ import {
   depositContractDTO,
 } from './dto.js'
 
-const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
+export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
@@ -148,6 +148,29 @@ export const makeConsensusApi = (
     return (await depositContract()).chain_id
   }
 
+  const getExitingValidatorsCount = async (
+    indices: string[],
+    batchSize = 1000,
+    state: string | number = 'head'
+  ) => {
+    let totalCount = 0
+    for (let i = 0; i < indices.length; i += batchSize) {
+      const batch = indices.slice(i, i + batchSize)
+      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
+        ','
+      )}`
+      const res = await request(url, { middlewares: [notOkError()] })
+      const json = await safelyParseJsonResponse(res, logger)
+      if (!json.data || !Array.isArray(json.data)) {
+        throw new Error('Invalid response from consensus node')
+      }
+      totalCount += json.data.filter(
+        (v) => v.validator?.exit_epoch !== FAR_FUTURE_EPOCH
+      ).length
+    }
+    return totalCount
+  }
+
   return {
     syncing,
     checkSync,
@@ -159,5 +182,6 @@ export const makeConsensusApi = (
     spec,
     depositContract,
     chainId,
+    getExitingValidatorsCount,
   }
 }

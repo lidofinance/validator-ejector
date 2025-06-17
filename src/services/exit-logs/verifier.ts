@@ -3,7 +3,7 @@ import { makeLogger } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { funcDTO, txDTO } from './dto.js'
+import { txDTO } from './dto.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 // This is the number of blocks to look back when searching for
@@ -17,10 +17,8 @@ export const makeVerifier = (
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
   {
-    STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
   }: {
-    STAKING_MODULE_ID: string
     ORACLE_ADDRESSES_ALLOWLIST: string[]
   }
 ) => {
@@ -205,53 +203,7 @@ export const makeVerifier = (
     }
   }
 
-  const lastRequestedValidatorIndex = async (operatorId: number) => {
-    const func = ethers.utils.Fragment.from(
-      'function getLastRequestedValidatorIndices(uint256 moduleId, uint256[] nodeOpIds) view returns (int256[])'
-    )
-    const iface = new ethers.utils.Interface([func])
-    const sig = iface.encodeFunctionData(func.name, [
-      STAKING_MODULE_ID,
-      [operatorId],
-    ])
-
-    try {
-      const json = await el.elRequest({
-        method: 'POST',
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_call',
-          params: [
-            {
-              from: null,
-              to: el.exitBusAddress,
-              data: sig,
-            },
-            'finalized',
-          ],
-          id: 1,
-        }),
-      })
-
-      const { result } = funcDTO(json)
-
-      // One last index or -1 if no exit requests have been sent yet, in BigNumber
-      const decoded = iface.decodeFunctionResult(func.name, result)
-
-      logger.debug('Fetched last requested validator exit for NO')
-
-      const plainNumber = parseInt(decoded.toString())
-
-      return plainNumber
-    } catch (e) {
-      const msg = 'Unable to retrieve last requested validator exit for NO'
-      logger.error(msg, e)
-      throw new Error(msg)
-    }
-  }
-
   return {
     verifyEvent,
-    lastRequestedValidatorIndex,
   }
 }

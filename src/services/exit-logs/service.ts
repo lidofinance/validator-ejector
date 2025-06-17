@@ -24,7 +24,6 @@ export const makeExitLogsService = (
   metrics: MetricsService
 ) => {
   const verifier = makeVerifier(logger, el, {
-    STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
   })
 
