@@ -150,12 +150,13 @@ export const makeConsensusApi = (
 
   const getExitingValidatorsCount = async (
     indices: string[],
-    batchSize = 1000
+    batchSize = 1000,
+    state: string | number = 'head'
   ) => {
     let totalCount = 0
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
-      const url = `${normalizedUrl}/eth/v1/beacon/states/head/validators?id=${batch.join(
+      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
         ','
       )}`
       const res = await request(url, { middlewares: [notOkError()] })

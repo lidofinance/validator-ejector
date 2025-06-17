@@ -184,7 +184,7 @@ describe('makeConsensusApi e2e', () => {
 
   it('should handle batch size correctly with large index array e2e', async () => {
     const indices = Array.from({ length: 3000 }, (_, i) => (i + 1).toString())
-    const count = await api.getExitingValidatorsCount(indices, 1000)
-    expect(count).toBeGreaterThan(0)
+    const count = await api.getExitingValidatorsCount(indices, 1000, 11724253)
+    expect(count).toStrictEqual(1226)
   })
 })
