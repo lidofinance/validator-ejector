@@ -18,11 +18,11 @@ export const makeExitLogsFetcherService = (
   el: ExecutionApiService,
   {
     STAKING_MODULE_ID,
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    TRUST_MODE,
     EASY_TRACK_ADDRESS,
   }: {
     STAKING_MODULE_ID: string
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION: boolean
+    TRUST_MODE: boolean
     EASY_TRACK_ADDRESS: string
   },
   { eventSecurityVerification }: MetricsService
@@ -138,7 +138,7 @@ export const makeExitLogsFetcherService = (
     let motionCreatedEvents = {}
     let motionEnactedEvents = {}
 
-    if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION && EASY_TRACK_ADDRESS) {
+    if (!TRUST_MODE && EASY_TRACK_ADDRESS) {
       votingRequestsHashSubmittedEvents =
         await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
       motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
@@ -163,7 +163,7 @@ export const makeExitLogsFetcherService = (
           nodeOperatorId: ethers.BigNumber
         }
 
-      if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
+      if (!TRUST_MODE) {
         try {
           await verifier.verifyEvent(
             validatorPubkey,

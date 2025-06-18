@@ -81,7 +81,8 @@ export const makeConfig = ({
     RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? true,
 
     DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION:
+    TRUST_MODE:
+      optional(() => bool(env.TRUST_MODE)) ??
       optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
       false,
     PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),

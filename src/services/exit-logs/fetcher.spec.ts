@@ -18,6 +18,7 @@ import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
 import { MetricsService } from 'services/prom/service.js'
 import { makeExecutionApi } from '../execution-api/service.js'
+import nock from 'nock'
 
 describe('makeConsensusApi logs', () => {
   let api: ExitLogsService
@@ -50,6 +51,7 @@ describe('makeConsensusApi logs', () => {
   }
 
   beforeEach(() => {
+    nock.cleanAll()
     request = makeRequest([])
     logger = mockLogger()
     config = mockConfig(logger, {
@@ -58,14 +60,38 @@ describe('makeConsensusApi logs', () => {
     mockService()
   })
 
-  it('should fetch and parse withdrawal events without security when DISABLE_SECURITY_DONT_USE_IN_PRODUCTION is true', async () => {
-    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+  it('should fetch and parse withdrawal events without security when TRUST_MODE is true', async () => {
+    const oracleValidatorExitRequestEvents = mockEthServer(
+      oracleValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const votingValidatorExitRequestEvents = mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const easyTrackMotionCreatedEvents = mockEthServer(
+      easyTrackMotionCreatedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const easyTrackMotionEnactedEvents = mockEthServer(
+      easyTrackMotionEnactedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const votingRequestsHashSubmittedEvents = mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
 
-    config.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION = true
+    config.TRUST_MODE = true
     mockService()
 
     const res = await api.fetcher.getLogs(123, 123, [1])
 
+    expect(oracleValidatorExitRequestEvents.isDone()).to.be.true
+    expect(votingValidatorExitRequestEvents.isDone()).to.be.false
+    expect(easyTrackMotionCreatedEvents.isDone()).to.be.false
+    expect(easyTrackMotionEnactedEvents.isDone()).to.be.false
+    expect(votingRequestsHashSubmittedEvents.isDone()).to.be.false
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
     expect(res[0].validatorPubkey).toBe(

@@ -26,6 +26,7 @@ services:
       - LOGGER_FORMAT=${LOGGER_FORMAT}
       - LOGGER_SECRETS=${LOGGER_SECRETS}
       - DRY_RUN=${DRY_RUN}
+      - TRUST_MODE=${TRUST_MODE}
     ports:
       - '${HTTP_PORT}:${HTTP_PORT}'
     volumes:
