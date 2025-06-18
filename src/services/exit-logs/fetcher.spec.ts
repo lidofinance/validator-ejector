@@ -218,4 +218,43 @@ describe('makeConsensusApi logs', () => {
 
     expect(res.length).toBe(0)
   })
+
+  it('should not verify withdrawal via vote when EASY_TRACK_ADDRESS is empty', async () => {
+    const votingValidatorExitRequestEvents = mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const easyTrackMotionCreatedEvents = mockEthServer(
+      easyTrackMotionCreatedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const easyTrackMotionEnactedEvents = mockEthServer(
+      easyTrackMotionEnactedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    const votingRequestsHashSubmittedEvents = mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+
+    mockEthServer(
+      voteEasyTrackMotionCreateTransactionMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.EASY_TRACK_ADDRESS = ''
+    mockService()
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(votingValidatorExitRequestEvents.isDone()).to.be.true
+    expect(easyTrackMotionCreatedEvents.isDone()).to.be.false
+    expect(easyTrackMotionEnactedEvents.isDone()).to.be.false
+    expect(votingRequestsHashSubmittedEvents.isDone()).to.be.false
+    expect(res.length).toBe(0)
+  })
 })

@@ -22,6 +22,7 @@ export const makeExitLogsService = (
     BLOCKS_PRELOAD,
     EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
+    EASY_TRACK_ADDRESS,
   }: ConfigService,
   metrics: MetricsService
 ) => {
@@ -38,6 +39,7 @@ export const makeExitLogsService = (
     {
       STAKING_MODULE_ID,
       DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+      EASY_TRACK_ADDRESS,
     },
     metrics
   )

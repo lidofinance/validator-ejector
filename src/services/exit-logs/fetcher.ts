@@ -19,9 +19,11 @@ export const makeExitLogsFetcherService = (
   {
     STAKING_MODULE_ID,
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    EASY_TRACK_ADDRESS,
   }: {
     STAKING_MODULE_ID: string
     DISABLE_SECURITY_DONT_USE_IN_PRODUCTION: boolean
+    EASY_TRACK_ADDRESS: string
   },
   { eventSecurityVerification }: MetricsService
 ) => {
@@ -63,7 +65,7 @@ export const makeExitLogsFetcherService = (
     const { result } = await el.getLogs(
       fromBlock,
       toBlock,
-      el.easyTrackAddress,
+      EASY_TRACK_ADDRESS,
       [eventTopic]
     )
 
@@ -90,7 +92,7 @@ export const makeExitLogsFetcherService = (
     const { result } = await el.getLogs(
       fromBlock,
       toBlock,
-      el.easyTrackAddress,
+      EASY_TRACK_ADDRESS,
       [eventTopic]
     )
 
@@ -136,7 +138,7 @@ export const makeExitLogsFetcherService = (
     let motionCreatedEvents = {}
     let motionEnactedEvents = {}
 
-    if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
+    if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION && EASY_TRACK_ADDRESS) {
       votingRequestsHashSubmittedEvents =
         await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
       motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
