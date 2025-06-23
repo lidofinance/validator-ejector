@@ -18,13 +18,96 @@ export const makeExitLogsFetcherService = (
   el: ExecutionApiService,
   {
     STAKING_MODULE_ID,
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    TRUST_MODE,
+    EASY_TRACK_ADDRESS,
   }: {
     STAKING_MODULE_ID: string
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION: boolean
+    TRUST_MODE: boolean
+    EASY_TRACK_ADDRESS: string
   },
   { eventSecurityVerification }: MetricsService
 ) => {
+  const getVotingRequestsHashSubmittedEvents = async (
+    fromBlock: number,
+    toBlock: number
+  ) => {
+    const event = ethers.utils.Fragment.from(
+      'event RequestsHashSubmitted(bytes32 exitRequestsHash)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
+      eventTopic,
+    ])
+
+    logger.info('Loaded RequestsHashSubmitted events', {
+      amount: result.length,
+    })
+
+    const eventsMap: Record<string, string> = {}
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      eventsMap[parsed.args.exitRequestsHash] = log.transactionHash
+    }
+
+    return eventsMap
+  }
+
+  const getMotionCreatedEvents = async (fromBlock: number, toBlock: number) => {
+    const event = ethers.utils.Fragment.from(
+      'event MotionCreated(uint256 indexed _motionId, address _creator, address indexed _evmScriptFactory, bytes _evmScriptCallData, bytes _evmScript)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(
+      fromBlock,
+      toBlock,
+      EASY_TRACK_ADDRESS,
+      [eventTopic]
+    )
+
+    logger.info('Loaded MotionCreated events', { amount: result.length })
+
+    const eventsMap: Record<string, string> = {} // motion_id -> motion_create_transaction_hash
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      const motionId = parsed.args._motionId.toString()
+      eventsMap[motionId] = log.transactionHash
+    }
+
+    return eventsMap
+  }
+
+  const getMotionEnactedEvents = async (fromBlock: number, toBlock: number) => {
+    const event = ethers.utils.Fragment.from(
+      'event MotionEnacted(uint256 indexed _motionId)'
+    )
+    const iface = new ethers.utils.Interface([event])
+    const eventTopic = iface.getEventTopic(event.name)
+
+    const { result } = await el.getLogs(
+      fromBlock,
+      toBlock,
+      EASY_TRACK_ADDRESS,
+      [eventTopic]
+    )
+
+    logger.info('Loaded MotionEnacted events', { amount: result.length })
+
+    const eventsMap: Record<string, string> = {} // motion_enact_transaction_hash -> motion_id
+
+    for (const log of result) {
+      const parsed = iface.parseLog(log)
+      eventsMap[log.transactionHash] = parsed.args._motionId.toString()
+    }
+
+    return eventsMap
+  }
+
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
@@ -47,7 +130,20 @@ export const makeExitLogsFetcherService = (
       ),
     ])
 
-    logger.info('Loaded ValidatorExitRequest events', { amount: result.length })
+    logger.info('Loaded ValidatorExitRequest events', {
+      amount: result.length,
+    })
+
+    let votingRequestsHashSubmittedEvents = {}
+    let motionCreatedEvents = {}
+    let motionEnactedEvents = {}
+
+    if (!TRUST_MODE && EASY_TRACK_ADDRESS) {
+      votingRequestsHashSubmittedEvents =
+        await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
+      motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
+      motionEnactedEvents = await getMotionEnactedEvents(fromBlock, toBlock)
+    }
 
     const validatorsToEject: ValidatorsToEjectCache = []
 
@@ -67,12 +163,15 @@ export const makeExitLogsFetcherService = (
           nodeOperatorId: ethers.BigNumber
         }
 
-      if (!DISABLE_SECURITY_DONT_USE_IN_PRODUCTION) {
+      if (!TRUST_MODE) {
         try {
           await verifier.verifyEvent(
             validatorPubkey,
             log.transactionHash,
-            parseInt(log.blockNumber)
+            parseInt(log.blockNumber),
+            votingRequestsHashSubmittedEvents,
+            motionCreatedEvents,
+            motionEnactedEvents
           )
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })

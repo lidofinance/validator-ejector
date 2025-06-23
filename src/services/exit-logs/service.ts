@@ -18,13 +18,18 @@ export const makeExitLogsService = (
   {
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
-    DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+    TRUST_MODE,
     BLOCKS_PRELOAD,
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+    SUBMIT_TX_HASH_ALLOWLIST,
+    EASY_TRACK_ADDRESS,
   }: ConfigService,
   metrics: MetricsService
 ) => {
   const verifier = makeVerifier(logger, el, {
     ORACLE_ADDRESSES_ALLOWLIST,
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+    SUBMIT_TX_HASH_ALLOWLIST,
   })
 
   const fetcher = makeExitLogsFetcherService(
@@ -33,7 +38,8 @@ export const makeExitLogsService = (
     el,
     {
       STAKING_MODULE_ID,
-      DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+      TRUST_MODE,
+      EASY_TRACK_ADDRESS,
     },
     metrics
   )

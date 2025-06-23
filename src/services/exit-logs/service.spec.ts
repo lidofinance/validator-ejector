@@ -70,7 +70,7 @@ describe('ExitLogsService - getLogs', () => {
       BLOCKS_PRELOAD: 5000,
       STAKING_MODULE_ID: '1',
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify(['0x123']),
-      DISABLE_SECURITY_DONT_USE_IN_PRODUCTION: false,
+      TRUST_MODE: false,
     })
 
     makeTestingService()
