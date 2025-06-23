@@ -36,15 +36,15 @@ describe('makeConsensusApi logs', () => {
     const executionApi = makeExecutionApi(request, logger, config)
 
     Object.defineProperty(executionApi, 'exitBusAddress', {
-      get: vi.fn(() => '0x0'),
+      get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
     Object.defineProperty(executionApi, 'consensusAddress', {
-      get: vi.fn(() => '0x0'),
+      get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
     Object.defineProperty(executionApi, 'easyTrackAddress', {
-      get: vi.fn(() => '0x0'),
+      get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
     api = makeExitLogsService(logger, executionApi, config, metrics)

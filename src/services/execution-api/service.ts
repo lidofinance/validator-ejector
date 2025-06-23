@@ -181,6 +181,24 @@ export const makeExecutionApi = (
     address: string,
     topics: (string | string[])[]
   ) => {
+    if (fromBlock < 0) {
+      throw new Error(`fromBlock must be non-negative, got: ${fromBlock}`)
+    }
+
+    if (toBlock < 0) {
+      throw new Error(`toBlock must be non-negative, got: ${toBlock}`)
+    }
+
+    if (fromBlock > toBlock) {
+      throw new Error(
+        `fromBlock (${fromBlock}) must be <= toBlock (${toBlock})`
+      )
+    }
+
+    if (!ethers.utils.isAddress(address)) {
+      throw new Error(`Invalid Ethereum address: ${address}`)
+    }
+
     const json = await elRequest({
       method: 'POST',
       body: JSON.stringify({
