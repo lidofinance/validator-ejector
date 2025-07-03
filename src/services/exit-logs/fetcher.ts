@@ -108,7 +108,7 @@ export const makeExitLogsFetcherService = (
     return eventsMap
   }
 
-  const getLogs = async (
+  const getValidatorExitRequestEvents = async (
     fromBlock: number,
     toBlock: number,
     operatorIds: number[]
@@ -134,6 +134,36 @@ export const makeExitLogsFetcherService = (
       amount: result.length,
     })
 
+    return result.map((log) => {
+      const parsedLog = iface.parseLog(log)
+      const { validatorIndex, validatorPubkey, nodeOperatorId } =
+        parsedLog.args as unknown as {
+          validatorIndex: ethers.BigNumber
+          validatorPubkey: string
+          nodeOperatorId: ethers.BigNumber
+        }
+
+      return {
+        validatorIndex,
+        validatorPubkey,
+        nodeOperatorId,
+        transactionHash: log.transactionHash,
+        blockNumber: log.blockNumber,
+      }
+    })
+  }
+
+  const getLogs = async (
+    fromBlock: number,
+    toBlock: number,
+    operatorIds: number[]
+  ) => {
+    const validatorExitRequestEvents = await getValidatorExitRequestEvents(
+      fromBlock,
+      toBlock,
+      operatorIds
+    )
+
     let votingRequestsHashSubmittedEvents = {}
     let motionCreatedEvents = {}
     let motionEnactedEvents = {}
@@ -149,26 +179,27 @@ export const makeExitLogsFetcherService = (
 
     logger.info('Verifying validity of exit requests')
 
-    for (const [index, log] of result.entries()) {
+    for (const [index, event] of validatorExitRequestEvents.entries()) {
       logger.debug(
-        `Processing ValidatorExitRequest events ${index + 1}/${result.length}`
+        `Processing ValidatorExitRequest events ${index + 1}/${
+          validatorExitRequestEvents.length
+        }`
       )
 
-      const parsedLog = iface.parseLog(log)
-
-      const { validatorIndex, validatorPubkey, nodeOperatorId } =
-        parsedLog.args as unknown as {
-          validatorIndex: ethers.BigNumber
-          validatorPubkey: string
-          nodeOperatorId: ethers.BigNumber
-        }
+      const {
+        validatorIndex,
+        validatorPubkey,
+        nodeOperatorId,
+        transactionHash,
+        blockNumber,
+      } = event
 
       if (!TRUST_MODE) {
         try {
           await verifier.verifyEvent(
             validatorPubkey,
-            log.transactionHash,
-            parseInt(log.blockNumber),
+            transactionHash,
+            parseInt(blockNumber),
             votingRequestsHashSubmittedEvents,
             motionCreatedEvents,
             motionEnactedEvents
@@ -190,7 +221,7 @@ export const makeExitLogsFetcherService = (
       validatorsToEject.push({
         validatorIndex: validatorIndex.toString(),
         validatorPubkey,
-        blockNumber: ethers.BigNumber.from(log.blockNumber).toNumber(),
+        blockNumber: ethers.BigNumber.from(blockNumber).toNumber(),
         nodeOperatorId: nodeOperatorId.toNumber(),
         acknowledged: false,
         ack() {
