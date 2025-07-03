@@ -1,5 +1,6 @@
 import { ExitLogsService, makeExitLogsService } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
+import { ConsensusApiService } from '../consensus-api/service.js'
 import {
   oracleValidatorExitRequestEventsMock,
   oracleSubmitReportDataTransactionMock,
@@ -32,7 +33,7 @@ describe('makeConsensusApi logs', () => {
     },
   } as unknown as MetricsService
 
-  const mockService = () => {
+  const mockService = (validatorIndices: string[] = ['351636']) => {
     const executionApi = makeExecutionApi(request, logger, config)
 
     Object.defineProperty(executionApi, 'exitBusAddress', {
@@ -47,7 +48,17 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
-    api = makeExitLogsService(logger, executionApi, config, metrics)
+    const consensusApi = {
+      validatePublicKeys: vi.fn().mockResolvedValue(new Set(validatorIndices)),
+    } as unknown as ConsensusApiService
+
+    api = makeExitLogsService(
+      logger,
+      executionApi,
+      consensusApi,
+      config,
+      metrics
+    )
   }
 
   beforeEach(() => {
@@ -282,5 +293,22 @@ describe('makeConsensusApi logs', () => {
     expect(easyTrackMotionEnactedEvents.isDone()).to.be.false
     expect(votingRequestsHashSubmittedEvents.isDone()).to.be.false
     expect(res.length).toBe(0)
+  })
+
+  it('should not verify withdrawal if validator pubkey not found on CL', async () => {
+    const votingValidatorExitRequestEvents = mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.EASY_TRACK_ADDRESS = ''
+    mockService([])
+    api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(votingValidatorExitRequestEvents.isDone()).to.be.true
+    expect(res.length).toBe(0)
+    expect(api.verifier.verifyEvent).not.toHaveBeenCalled()
   })
 })

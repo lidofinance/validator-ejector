@@ -171,6 +171,71 @@ export const makeConsensusApi = (
     return totalCount
   }
 
+  const validatePublicKeys = async (
+    validatorData: Array<{ validatorIndex: string; validatorPubkey: string }>,
+    batchSize = 1000,
+    state: string | number = 'head'
+  ) => {
+    const validIndices = new Set<string>()
+
+    for (let i = 0; i < validatorData.length; i += batchSize) {
+      const batch = validatorData.slice(i, i + batchSize)
+      const validatorIndices = batch.map((v) => v.validatorIndex)
+
+      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${validatorIndices.join(
+        ','
+      )}`
+      const res = await request(url, { middlewares: [notOkError()] })
+      const json = await safelyParseJsonResponse(res, logger)
+
+      if (!json.data || !Array.isArray(json.data)) {
+        logger.error(
+          'Invalid response from consensus node for validator batch',
+          {
+            batchSize: batch.length,
+            validatorIndices,
+          }
+        )
+        continue
+      }
+
+      const validatorRecord: Record<string, string> = Object.fromEntries(
+        json.data.map((v) => [v.index, v.validator.pubkey])
+      )
+
+      for (const validatorInfo of batch) {
+        const expectedPubkey = validatorRecord[validatorInfo.validatorIndex]
+
+        if (!expectedPubkey) {
+          logger.warn('Validator not found in consensus layer', {
+            validatorIndex: validatorInfo.validatorIndex,
+            validatorPubkey: validatorInfo.validatorPubkey,
+          })
+          continue
+        }
+
+        if (expectedPubkey !== validatorInfo.validatorPubkey) {
+          logger.warn('Public key mismatch detected', {
+            validatorIndex: validatorInfo.validatorIndex,
+            expectedPubkey,
+            eventPubkey: validatorInfo.validatorPubkey,
+          })
+          continue
+        }
+
+        validIndices.add(validatorInfo.validatorIndex)
+      }
+    }
+
+    logger.info('Public key validation completed', {
+      totalValidators: validatorData.length,
+      validValidators: validIndices.size,
+      invalidValidators: validatorData.length - validIndices.size,
+    })
+
+    return validIndices
+  }
+
   return {
     syncing,
     checkSync,
@@ -183,5 +248,6 @@ export const makeConsensusApi = (
     depositContract,
     chainId,
     getExitingValidatorsCount,
+    validatePublicKeys,
   }
 }

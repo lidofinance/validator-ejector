@@ -3,9 +3,10 @@ import { makeLogger } from '../../lib/index.js'
 import { ethers } from 'ethers'
 
 import { MetricsService } from '../prom/service'
-
 import { VerifierService } from './verifier.js'
+
 import { ValidatorsToEjectCache } from './types.js'
+import { ConsensusApiService } from '../consensus-api/service.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 export type ExitLogsFetcherService = ReturnType<
@@ -16,6 +17,7 @@ export const makeExitLogsFetcherService = (
   logger: ReturnType<typeof makeLogger>,
   verifier: VerifierService,
   el: ExecutionApiService,
+  cl: ConsensusApiService,
   {
     STAKING_MODULE_ID,
     TRUST_MODE,
@@ -134,7 +136,7 @@ export const makeExitLogsFetcherService = (
       amount: result.length,
     })
 
-    return result.map((log) => {
+    const events = result.map((log) => {
       const parsedLog = iface.parseLog(log)
       const { validatorIndex, validatorPubkey, nodeOperatorId } =
         parsedLog.args as unknown as {
@@ -151,6 +153,17 @@ export const makeExitLogsFetcherService = (
         blockNumber: log.blockNumber,
       }
     })
+
+    const validIndices = await cl.validatePublicKeys(
+      events.map((event) => ({
+        validatorIndex: event.validatorIndex.toString(),
+        validatorPubkey: event.validatorPubkey,
+      }))
+    )
+
+    return events.filter((event) =>
+      validIndices.has(event.validatorIndex.toString())
+    )
   }
 
   const getLogs = async (

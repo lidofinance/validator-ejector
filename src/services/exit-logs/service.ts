@@ -2,9 +2,10 @@ import { makeLogger } from '../../lib/index.js'
 
 import { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
-
 import { makeVerifier } from './verifier.js'
+
 import { ExecutionApiService } from '../execution-api/service.js'
+import { ConsensusApiService } from '../consensus-api/service.js'
 import { makeExitLogsFetcherService } from './fetcher.js'
 import { makeExitLogsCacheService } from './cache.js'
 
@@ -15,6 +16,7 @@ const LOAD_LOGS_STEP = 10000
 export const makeExitLogsService = (
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
+  cl: ConsensusApiService,
   {
     STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
@@ -36,6 +38,7 @@ export const makeExitLogsService = (
     logger,
     verifier,
     el,
+    cl,
     {
       STAKING_MODULE_ID,
       TRUST_MODE,

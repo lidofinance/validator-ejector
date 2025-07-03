@@ -19,6 +19,10 @@ import {
   ExecutionApiService,
   makeExecutionApi,
 } from '../execution-api/service.js'
+import {
+  ConsensusApiService,
+  makeConsensusApi,
+} from '../consensus-api/service.js'
 
 dotenv.config()
 // mainnet block numbers
@@ -37,6 +41,7 @@ const frame2Block = 22064254
 describe('exitLogs e2e', () => {
   let api: ExitLogsService
   let executionApi: ExecutionApiService
+  let consensusApi: ConsensusApiService
   let request: RequestService
   let logger: LoggerService
   let config: ConfigService
@@ -49,8 +54,15 @@ describe('exitLogs e2e', () => {
 
   const loadServices = () => {
     executionApi = makeExecutionApi(request, logger, config)
+    consensusApi = makeConsensusApi(request, logger, config)
 
-    api = makeExitLogsService(logger, executionApi, config, metrics)
+    api = makeExitLogsService(
+      logger,
+      executionApi,
+      consensusApi,
+      config,
+      metrics
+    )
   }
 
   beforeEach(async () => {

@@ -5,6 +5,7 @@ import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
 import { MetricsService } from 'services/prom/service.js'
 import { ExecutionApiService } from '../execution-api/service.js'
+import { ConsensusApiService } from '../consensus-api/service.js'
 
 // Create mock instances that we can configure per test
 const mockCache = {
@@ -40,6 +41,7 @@ describe('ExitLogsService - getLogs', () => {
   let logger: LoggerService
   let config: ConfigService
   let el: ExecutionApiService
+  let cl: ConsensusApiService
   let metrics: MetricsService
 
   const makeTestingService = () => {
@@ -57,11 +59,15 @@ describe('ExitLogsService - getLogs', () => {
       },
     } as unknown as MetricsService
 
+    cl = {
+      validatePublicKeys: vi.fn(),
+    } as unknown as ConsensusApiService
+
     // Reset all mocks before each test
     vi.clearAllMocks()
 
     // Create the service with the mocked dependencies
-    service = makeExitLogsService(logger, el, config, metrics)
+    service = makeExitLogsService(logger, el, cl, config, metrics)
   }
 
   beforeEach(() => {
