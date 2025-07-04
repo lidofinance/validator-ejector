@@ -74,13 +74,6 @@ export const makeConsensusApi = (
     return data
   }
 
-  const isExiting = async (
-    validatorPubkey: string,
-    tag: 'head' | 'finalized' = 'head'
-  ) => {
-    return (await validatorInfo(validatorPubkey, tag)).isExiting
-  }
-
   const validatorInfo = async (
     id: string,
     tag: 'head' | 'finalized' = 'head'
@@ -237,11 +230,12 @@ export const makeConsensusApi = (
     state,
     validatorInfo,
     exitRequest,
-    isExiting,
     spec,
     depositContract,
     chainId,
     getExitingValidatorsCount,
     validatePublicKeys,
+    fetchValidatorsBatch,
+    isValidatorExiting,
   }
 }
