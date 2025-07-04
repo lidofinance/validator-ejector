@@ -26,6 +26,9 @@ export const makeConsensusApi = (
     ? CONSENSUS_NODE.slice(0, -1)
     : CONSENSUS_NODE
 
+  const isValidatorExiting = (exitEpoch: string) =>
+    exitEpoch !== FAR_FUTURE_EPOCH
+
   const syncing = async () => {
     const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
       middlewares: [notOkError()],
@@ -101,7 +104,7 @@ export const makeConsensusApi = (
     const { index, validator, status } = result.data
     const pubKey = validator.pubkey
 
-    const isExiting = validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
+    const isExiting = isValidatorExiting(validator.exit_epoch)
 
     logger.debug('Validator info', { index, pubKey, status, isExiting })
 
@@ -148,12 +151,12 @@ export const makeConsensusApi = (
     return (await depositContract()).chain_id
   }
 
-  const getExitingValidatorsCount = async (
+  const fetchValidatorsBatch = async (
     indices: string[],
     batchSize = 1000,
     state: string | number = 'head'
   ) => {
-    let totalCount = 0
+    const allValidators: any[] = []
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
       const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
@@ -164,11 +167,21 @@ export const makeConsensusApi = (
       if (!json.data || !Array.isArray(json.data)) {
         throw new Error('Invalid response from consensus node')
       }
-      totalCount += json.data.filter(
-        (v) => v.validator?.exit_epoch !== FAR_FUTURE_EPOCH
-      ).length
+      allValidators.push(...json.data)
     }
-    return totalCount
+    return allValidators
+  }
+
+  const getExitingValidatorsCount = async (
+    indices: string[],
+    batchSize = 1000,
+    state: string | number = 'head'
+  ) => {
+    const validators = await fetchValidatorsBatch(indices, batchSize, state)
+    return validators.filter(
+      (v) =>
+        v.validator?.exit_epoch && isValidatorExiting(v.validator.exit_epoch)
+    ).length
   }
 
   const validatePublicKeys = async (
@@ -177,54 +190,35 @@ export const makeConsensusApi = (
     state: string | number = 'head'
   ) => {
     const validIndices = new Set<string>()
+    const indices = validatorData.map((v) => v.validatorIndex)
 
-    for (let i = 0; i < validatorData.length; i += batchSize) {
-      const batch = validatorData.slice(i, i + batchSize)
-      const validatorIndices = batch.map((v) => v.validatorIndex)
+    const validators = await fetchValidatorsBatch(indices, batchSize, state)
 
-      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${validatorIndices.join(
-        ','
-      )}`
-      const res = await request(url, { middlewares: [notOkError()] })
-      const json = await safelyParseJsonResponse(res, logger)
+    const validatorRecord: Record<string, string> = Object.fromEntries(
+      validators.map((v) => [v.index, v.validator.pubkey])
+    )
 
-      if (!json.data || !Array.isArray(json.data)) {
-        logger.error(
-          'Invalid response from consensus node for validator batch',
-          {
-            batchSize: batch.length,
-            validatorIndices,
-          }
-        )
+    for (const validatorInfo of validatorData) {
+      const expectedPubkey = validatorRecord[validatorInfo.validatorIndex]
+
+      if (!expectedPubkey) {
+        logger.warn('Validator not found in consensus layer', {
+          validatorIndex: validatorInfo.validatorIndex,
+          validatorPubkey: validatorInfo.validatorPubkey,
+        })
         continue
       }
 
-      const validatorRecord: Record<string, string> = Object.fromEntries(
-        json.data.map((v) => [v.index, v.validator.pubkey])
-      )
-
-      for (const validatorInfo of batch) {
-        const expectedPubkey = validatorRecord[validatorInfo.validatorIndex]
-
-        if (!expectedPubkey) {
-          logger.warn('Validator not found in consensus layer', {
-            validatorIndex: validatorInfo.validatorIndex,
-            validatorPubkey: validatorInfo.validatorPubkey,
-          })
-          continue
-        }
-
-        if (expectedPubkey !== validatorInfo.validatorPubkey) {
-          logger.warn('Public key mismatch detected', {
-            validatorIndex: validatorInfo.validatorIndex,
-            expectedPubkey,
-            eventPubkey: validatorInfo.validatorPubkey,
-          })
-          continue
-        }
-
-        validIndices.add(validatorInfo.validatorIndex)
+      if (expectedPubkey !== validatorInfo.validatorPubkey) {
+        logger.warn('Public key mismatch detected', {
+          validatorIndex: validatorInfo.validatorIndex,
+          expectedPubkey,
+          eventPubkey: validatorInfo.validatorPubkey,
+        })
+        continue
       }
+
+      validIndices.add(validatorInfo.validatorIndex)
     }
 
     logger.info('Public key validation completed', {
