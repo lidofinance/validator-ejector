@@ -11,6 +11,7 @@ import {
   validatorInfoDTO,
   specDTO,
   depositContractDTO,
+  validatorsBatchDTO,
 } from './dto.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
@@ -149,7 +150,7 @@ export const makeConsensusApi = (
     batchSize = 1000,
     state: string | number = 'head'
   ) => {
-    const allValidators: any[] = []
+    const allValidators: ReturnType<typeof validatorsBatchDTO>['data'] = []
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
       const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
@@ -157,10 +158,8 @@ export const makeConsensusApi = (
       )}`
       const res = await request(url, { middlewares: [notOkError()] })
       const json = await safelyParseJsonResponse(res, logger)
-      if (!json.data || !Array.isArray(json.data)) {
-        throw new Error('Invalid response from consensus node')
-      }
-      allValidators.push(...json.data)
+      const { data } = validatorsBatchDTO(json)
+      allValidators.push(...data)
     }
     return allValidators
   }

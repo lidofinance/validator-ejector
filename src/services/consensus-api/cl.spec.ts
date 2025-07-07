@@ -97,10 +97,26 @@ describe('makeConsensusApi', () => {
     const indices = ['1', '2', '3', '4']
     const mockResponse = {
       data: [
-        { validator: { exit_epoch: '100' } },
-        { validator: { exit_epoch: FAR_FUTURE_EPOCH } },
-        { validator: { exit_epoch: '200' } },
-        { validator: { exit_epoch: FAR_FUTURE_EPOCH } },
+        {
+          index: '1',
+          status: 'active_ongoing',
+          validator: { pubkey: '0x123', exit_epoch: '100' },
+        },
+        {
+          index: '2',
+          status: 'active_ongoing',
+          validator: { pubkey: '0x456', exit_epoch: FAR_FUTURE_EPOCH },
+        },
+        {
+          index: '3',
+          status: 'active_ongoing',
+          validator: { pubkey: '0x789', exit_epoch: '200' },
+        },
+        {
+          index: '4',
+          status: 'active_ongoing',
+          validator: { pubkey: '0xabc', exit_epoch: FAR_FUTURE_EPOCH },
+        },
       ],
     }
     nock(config.CONSENSUS_NODE)
@@ -127,10 +143,18 @@ describe('makeConsensusApi', () => {
   it('should handle batch size correctly with large index array', async () => {
     const indices = Array.from({ length: 1500 }, (_, i) => (i + 1).toString())
     const mockBatch1 = {
-      data: Array(1000).fill({ validator: { exit_epoch: '100' } }),
+      data: Array(1000).fill({
+        index: '1',
+        status: 'active_ongoing',
+        validator: { pubkey: '0x123', exit_epoch: '100' },
+      }),
     }
     const mockBatch2 = {
-      data: Array(500).fill({ validator: { exit_epoch: FAR_FUTURE_EPOCH } }),
+      data: Array(500).fill({
+        index: '2',
+        status: 'active_ongoing',
+        validator: { pubkey: '0x456', exit_epoch: FAR_FUTURE_EPOCH },
+      }),
     }
     nock(config.CONSENSUS_NODE)
       .get(
