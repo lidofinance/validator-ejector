@@ -17,6 +17,9 @@ const mockCache = {
 
 const mockFetcher = {
   getLogs: vi.fn(),
+  getMotionCreatedEvents: vi.fn(() => Promise.resolve({})),
+  getVotingRequestsHashSubmittedEvents: vi.fn(() => Promise.resolve({})),
+  getMotionEnactedEvents: vi.fn(() => Promise.resolve({})),
 }
 
 // Mock cache implementation
@@ -80,6 +83,11 @@ describe('ExitLogsService - getLogs', () => {
     })
 
     makeTestingService()
+    vi.clearAllMocks()
+
+    mockFetcher.getMotionCreatedEvents.mockResolvedValue({})
+    mockFetcher.getVotingRequestsHashSubmittedEvents.mockResolvedValue({})
+    mockFetcher.getMotionEnactedEvents.mockResolvedValue({})
   })
 
   it('should return cached logs if data is fully cached', async () => {
@@ -99,6 +107,7 @@ describe('ExitLogsService - getLogs', () => {
     expect(result).toBe(cachedLogs)
     expect(mockCache.getAll).toHaveBeenCalledTimes(1)
     expect(mockFetcher.getLogs).not.toHaveBeenCalled()
+    expect(mockFetcher.getMotionCreatedEvents).not.toHaveBeenCalled()
     expect(logger.info).toHaveBeenCalledWith(
       'Using cached logs up to block 100'
     )
@@ -111,10 +120,31 @@ describe('ExitLogsService - getLogs', () => {
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
+
+    const motionCreatedEvents = { '0x123': '0xmotiontx1' }
+    const votingEvents = { '0xhash1': '0xvotingtx1' }
+    const motionEnactedEvents = { '0x456': '0xenactedtx1' }
+
+    mockFetcher.getMotionCreatedEvents.mockResolvedValue(motionCreatedEvents)
+    mockFetcher.getVotingRequestsHashSubmittedEvents.mockResolvedValue(
+      votingEvents
+    )
+    mockFetcher.getMotionEnactedEvents.mockResolvedValue(motionEnactedEvents)
+
     const lastBlockNumber = 100
     await service.getLogs([1], lastBlockNumber)
 
-    expect(mockFetcher.getLogs).toHaveBeenCalledWith(0, lastBlockNumber, [1])
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(
+      0,
+      lastBlockNumber,
+      [1],
+      motionCreatedEvents,
+      votingEvents,
+      motionEnactedEvents
+    )
     expect(mockCache.push).toHaveBeenCalled()
     expect(mockCache.setHeader).toHaveBeenCalled()
   })
@@ -137,14 +167,81 @@ describe('ExitLogsService - getLogs', () => {
 
     await service.getLogs([1], endBlock)
 
-    // Should call fetcher.logs 3 times for the chunks:
-    // 1. 5000 to 14999
-    // 2. 15000 to 24999
-    // 3. 25000 to 25001
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalledTimes(3)
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenNthCalledWith(
+      1,
+      0,
+      9999
+    )
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenNthCalledWith(
+      2,
+      10000,
+      19999
+    )
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenNthCalledWith(
+      3,
+      20000,
+      25001
+    )
+
+    expect(
+      mockFetcher.getVotingRequestsHashSubmittedEvents
+    ).toHaveBeenCalledTimes(3)
+    expect(
+      mockFetcher.getVotingRequestsHashSubmittedEvents
+    ).toHaveBeenNthCalledWith(1, 0, 9999)
+    expect(
+      mockFetcher.getVotingRequestsHashSubmittedEvents
+    ).toHaveBeenNthCalledWith(2, 10000, 19999)
+    expect(
+      mockFetcher.getVotingRequestsHashSubmittedEvents
+    ).toHaveBeenNthCalledWith(3, 20000, 25001)
+
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenCalledTimes(3)
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenNthCalledWith(
+      1,
+      0,
+      9999
+    )
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenNthCalledWith(
+      2,
+      10000,
+      19999
+    )
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenNthCalledWith(
+      3,
+      20000,
+      25001
+    )
+
     expect(mockFetcher.getLogs).toHaveBeenCalledTimes(3)
-    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(1, 5000, 14999, [1])
-    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(2, 15000, 24999, [1])
-    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(3, 25000, 25001, [1])
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
+      1,
+      5000,
+      14999,
+      [1],
+      {},
+      {},
+      {}
+    )
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
+      2,
+      15000,
+      24999,
+      [1],
+      {},
+      {},
+      {}
+    )
+    expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
+      3,
+      25000,
+      25001,
+      [1],
+      {},
+      {},
+      {}
+    )
   })
 
   it('should fetch only new logs when cache is partially updated', async () => {
@@ -156,8 +253,39 @@ describe('ExitLogsService - getLogs', () => {
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
     await service.getLogs([1], 100)
 
-    // Should fetch only logs from block 51 to 100
-    expect(mockFetcher.getLogs).toHaveBeenCalledWith(51, 100, [1])
+    expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getMotionEnactedEvents).toHaveBeenCalled()
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(51, 100, [1], {}, {}, {})
     expect(logger.info).toHaveBeenCalledWith('Loading new logs from 51 to 100')
+  })
+
+  it('should not fetch motion events when TRUST_MODE is enabled', async () => {
+    config.TRUST_MODE = true
+    makeTestingService()
+
+    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: -1 })
+    mockCache.getAll.mockReturnValue([])
+
+    const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
+    mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
+    const lastBlockNumber = 100
+    await service.getLogs([1], lastBlockNumber)
+
+    expect(mockFetcher.getMotionCreatedEvents).not.toHaveBeenCalled()
+    expect(
+      mockFetcher.getVotingRequestsHashSubmittedEvents
+    ).not.toHaveBeenCalled()
+    expect(mockFetcher.getMotionEnactedEvents).not.toHaveBeenCalled()
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(
+      0,
+      lastBlockNumber,
+      [1],
+      {},
+      {},
+      {}
+    )
+    expect(mockCache.push).toHaveBeenCalled()
+    expect(mockCache.setHeader).toHaveBeenCalled()
   })
 })

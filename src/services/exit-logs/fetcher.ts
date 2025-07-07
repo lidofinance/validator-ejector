@@ -175,24 +175,16 @@ export const makeExitLogsFetcherService = (
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
-    operatorIds: number[]
+    operatorIds: number[],
+    motionCreatedEvents: Record<string, string> = {},
+    votingRequestsHashSubmittedEvents: Record<string, string> = {},
+    motionEnactedEvents: Record<string, string> = {}
   ) => {
     const validatorExitRequestEvents = await getValidatorExitRequestEvents(
       fromBlock,
       toBlock,
       operatorIds
     )
-
-    let votingRequestsHashSubmittedEvents = {}
-    let motionCreatedEvents = {}
-    let motionEnactedEvents = {}
-
-    if (!TRUST_MODE) {
-      votingRequestsHashSubmittedEvents =
-        await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
-      motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
-      motionEnactedEvents = await getMotionEnactedEvents(fromBlock, toBlock)
-    }
 
     const validatorsToEject: ValidatorsToEjectCache = []
 
@@ -254,5 +246,8 @@ export const makeExitLogsFetcherService = (
 
   return {
     getLogs,
+    getMotionCreatedEvents,
+    getVotingRequestsHashSubmittedEvents,
+    getMotionEnactedEvents,
   }
 }
