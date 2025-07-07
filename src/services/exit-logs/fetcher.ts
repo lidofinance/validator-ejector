@@ -58,6 +58,10 @@ export const makeExitLogsFetcherService = (
   }
 
   const getMotionCreatedEvents = async (fromBlock: number, toBlock: number) => {
+    if (!EASY_TRACK_ADDRESS) {
+      return {}
+    }
+
     const event = ethers.utils.Fragment.from(
       'event MotionCreated(uint256 indexed _motionId, address _creator, address indexed _evmScriptFactory, bytes _evmScriptCallData, bytes _evmScript)'
     )
@@ -85,6 +89,10 @@ export const makeExitLogsFetcherService = (
   }
 
   const getMotionEnactedEvents = async (fromBlock: number, toBlock: number) => {
+    if (!EASY_TRACK_ADDRESS) {
+      return {}
+    }
+
     const event = ethers.utils.Fragment.from(
       'event MotionEnacted(uint256 indexed _motionId)'
     )
@@ -179,7 +187,7 @@ export const makeExitLogsFetcherService = (
     let motionCreatedEvents = {}
     let motionEnactedEvents = {}
 
-    if (!TRUST_MODE && EASY_TRACK_ADDRESS) {
+    if (!TRUST_MODE) {
       votingRequestsHashSubmittedEvents =
         await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
       motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)

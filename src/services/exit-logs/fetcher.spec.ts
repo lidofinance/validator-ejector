@@ -291,13 +291,17 @@ describe('makeConsensusApi logs', () => {
     expect(votingValidatorExitRequestEvents.isDone()).to.be.true
     expect(easyTrackMotionCreatedEvents.isDone()).to.be.false
     expect(easyTrackMotionEnactedEvents.isDone()).to.be.false
-    expect(votingRequestsHashSubmittedEvents.isDone()).to.be.false
+    expect(votingRequestsHashSubmittedEvents.isDone()).to.be.true
     expect(res.length).toBe(0)
   })
 
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {
     const votingValidatorExitRequestEvents = mockEthServer(
       votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      votingRequestsHashSubmittedEventsMock(),
       config.EXECUTION_NODE
     )
 
