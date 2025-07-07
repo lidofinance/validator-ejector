@@ -146,24 +146,22 @@ export const makeExitLogsFetcherService = (
         }
 
       return {
-        validatorIndex,
+        validatorIndex: validatorIndex.toString(),
         validatorPubkey,
         nodeOperatorId,
         transactionHash: log.transactionHash,
-        blockNumber: log.blockNumber,
+        blockNumber: parseInt(log.blockNumber),
       }
     })
 
     const validIndices = await cl.validatePublicKeys(
       events.map((event) => ({
-        validatorIndex: event.validatorIndex.toString(),
+        validatorIndex: event.validatorIndex,
         validatorPubkey: event.validatorPubkey,
       }))
     )
 
-    return events.filter((event) =>
-      validIndices.has(event.validatorIndex.toString())
-    )
+    return events.filter((event) => validIndices.has(event.validatorIndex))
   }
 
   const getLogs = async (
@@ -212,7 +210,7 @@ export const makeExitLogsFetcherService = (
           await verifier.verifyEvent(
             validatorPubkey,
             transactionHash,
-            parseInt(blockNumber),
+            blockNumber,
             votingRequestsHashSubmittedEvents,
             motionCreatedEvents,
             motionEnactedEvents
@@ -232,9 +230,9 @@ export const makeExitLogsFetcherService = (
       }
 
       validatorsToEject.push({
-        validatorIndex: validatorIndex.toString(),
+        validatorIndex,
         validatorPubkey,
-        blockNumber: ethers.BigNumber.from(blockNumber).toNumber(),
+        blockNumber: blockNumber,
         nodeOperatorId: nodeOperatorId.toNumber(),
         acknowledged: false,
         ack() {

@@ -99,7 +99,9 @@ export const validatorsBatchDTO = (json: unknown) =>
     json,
     (json) => {
       if (!Array.isArray(json.data)) {
-        throw new Error('Invalid validators batch response: data is not an array')
+        throw new Error(
+          'Invalid validators batch response: data is not an array'
+        )
       }
       return {
         data: json.data.map((validatorData: any) => {
