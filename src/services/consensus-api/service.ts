@@ -11,6 +11,7 @@ import {
   validatorInfoDTO,
   specDTO,
   depositContractDTO,
+  validatorsBatchDTO,
 } from './dto.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
@@ -25,6 +26,9 @@ export const makeConsensusApi = (
   const normalizedUrl = CONSENSUS_NODE.endsWith('/')
     ? CONSENSUS_NODE.slice(0, -1)
     : CONSENSUS_NODE
+
+  const isValidatorExiting = (exitEpoch: string) =>
+    exitEpoch !== FAR_FUTURE_EPOCH
 
   const syncing = async () => {
     const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
@@ -71,13 +75,6 @@ export const makeConsensusApi = (
     return data
   }
 
-  const isExiting = async (
-    validatorPubkey: string,
-    tag: 'head' | 'finalized' = 'head'
-  ) => {
-    return (await validatorInfo(validatorPubkey, tag)).isExiting
-  }
-
   const validatorInfo = async (
     id: string,
     tag: 'head' | 'finalized' = 'head'
@@ -101,7 +98,7 @@ export const makeConsensusApi = (
     const { index, validator, status } = result.data
     const pubKey = validator.pubkey
 
-    const isExiting = validator.exit_epoch === FAR_FUTURE_EPOCH ? false : true
+    const isExiting = isValidatorExiting(validator.exit_epoch)
 
     logger.debug('Validator info', { index, pubKey, status, isExiting })
 
@@ -148,12 +145,12 @@ export const makeConsensusApi = (
     return (await depositContract()).chain_id
   }
 
-  const getExitingValidatorsCount = async (
+  const fetchValidatorsBatch = async (
     indices: string[],
     batchSize = 1000,
     state: string | number = 'head'
   ) => {
-    let totalCount = 0
+    const allValidators: ReturnType<typeof validatorsBatchDTO>['data'] = []
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
       const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
@@ -161,14 +158,68 @@ export const makeConsensusApi = (
       )}`
       const res = await request(url, { middlewares: [notOkError()] })
       const json = await safelyParseJsonResponse(res, logger)
-      if (!json.data || !Array.isArray(json.data)) {
-        throw new Error('Invalid response from consensus node')
-      }
-      totalCount += json.data.filter(
-        (v) => v.validator?.exit_epoch !== FAR_FUTURE_EPOCH
-      ).length
+      const { data } = validatorsBatchDTO(json)
+      allValidators.push(...data)
     }
-    return totalCount
+    return allValidators
+  }
+
+  const getExitingValidatorsCount = async (
+    indices: string[],
+    batchSize = 1000,
+    state: string | number = 'head'
+  ) => {
+    const validators = await fetchValidatorsBatch(indices, batchSize, state)
+    return validators.filter(
+      (v) =>
+        v.validator?.exit_epoch && isValidatorExiting(v.validator.exit_epoch)
+    ).length
+  }
+
+  const validatePublicKeys = async (
+    validatorData: Array<{ validatorIndex: string; validatorPubkey: string }>,
+    batchSize = 1000,
+    state: string | number = 'head'
+  ) => {
+    const validIndices = new Set<string>()
+    const indices = validatorData.map((v) => v.validatorIndex)
+
+    const validators = await fetchValidatorsBatch(indices, batchSize, state)
+
+    const validatorRecord: Record<string, string> = Object.fromEntries(
+      validators.map((v) => [v.index, v.validator.pubkey])
+    )
+
+    for (const validatorInfo of validatorData) {
+      const expectedPubkey = validatorRecord[validatorInfo.validatorIndex]
+
+      if (!expectedPubkey) {
+        logger.warn('Validator not found in consensus layer', {
+          validatorIndex: validatorInfo.validatorIndex,
+          validatorPubkey: validatorInfo.validatorPubkey,
+        })
+        continue
+      }
+
+      if (expectedPubkey !== validatorInfo.validatorPubkey) {
+        logger.warn('Public key mismatch detected', {
+          validatorIndex: validatorInfo.validatorIndex,
+          expectedPubkey,
+          eventPubkey: validatorInfo.validatorPubkey,
+        })
+        continue
+      }
+
+      validIndices.add(validatorInfo.validatorIndex)
+    }
+
+    logger.info('Public key validation completed', {
+      totalValidators: validatorData.length,
+      validValidators: validIndices.size,
+      invalidValidators: validatorData.length - validIndices.size,
+    })
+
+    return validIndices
   }
 
   return {
@@ -178,10 +229,12 @@ export const makeConsensusApi = (
     state,
     validatorInfo,
     exitRequest,
-    isExiting,
     spec,
     depositContract,
     chainId,
     getExitingValidatorsCount,
+    validatePublicKeys,
+    fetchValidatorsBatch,
+    isValidatorExiting,
   }
 }

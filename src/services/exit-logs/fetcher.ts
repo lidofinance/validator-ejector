@@ -3,9 +3,10 @@ import { makeLogger } from '../../lib/index.js'
 import { ethers } from 'ethers'
 
 import { MetricsService } from '../prom/service'
-
 import { VerifierService } from './verifier.js'
+
 import { ValidatorsToEjectCache } from './types.js'
+import { ConsensusApiService } from '../consensus-api/service.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 export type ExitLogsFetcherService = ReturnType<
@@ -16,6 +17,7 @@ export const makeExitLogsFetcherService = (
   logger: ReturnType<typeof makeLogger>,
   verifier: VerifierService,
   el: ExecutionApiService,
+  cl: ConsensusApiService,
   {
     STAKING_MODULE_ID,
     TRUST_MODE,
@@ -56,6 +58,10 @@ export const makeExitLogsFetcherService = (
   }
 
   const getMotionCreatedEvents = async (fromBlock: number, toBlock: number) => {
+    if (!EASY_TRACK_ADDRESS) {
+      return {}
+    }
+
     const event = ethers.utils.Fragment.from(
       'event MotionCreated(uint256 indexed _motionId, address _creator, address indexed _evmScriptFactory, bytes _evmScriptCallData, bytes _evmScript)'
     )
@@ -83,6 +89,10 @@ export const makeExitLogsFetcherService = (
   }
 
   const getMotionEnactedEvents = async (fromBlock: number, toBlock: number) => {
+    if (!EASY_TRACK_ADDRESS) {
+      return {}
+    }
+
     const event = ethers.utils.Fragment.from(
       'event MotionEnacted(uint256 indexed _motionId)'
     )
@@ -108,7 +118,7 @@ export const makeExitLogsFetcherService = (
     return eventsMap
   }
 
-  const getLogs = async (
+  const getValidatorExitRequestEvents = async (
     fromBlock: number,
     toBlock: number,
     operatorIds: number[]
@@ -134,28 +144,8 @@ export const makeExitLogsFetcherService = (
       amount: result.length,
     })
 
-    let votingRequestsHashSubmittedEvents = {}
-    let motionCreatedEvents = {}
-    let motionEnactedEvents = {}
-
-    if (!TRUST_MODE && EASY_TRACK_ADDRESS) {
-      votingRequestsHashSubmittedEvents =
-        await getVotingRequestsHashSubmittedEvents(fromBlock, toBlock)
-      motionCreatedEvents = await getMotionCreatedEvents(fromBlock, toBlock)
-      motionEnactedEvents = await getMotionEnactedEvents(fromBlock, toBlock)
-    }
-
-    const validatorsToEject: ValidatorsToEjectCache = []
-
-    logger.info('Verifying validity of exit requests')
-
-    for (const [index, log] of result.entries()) {
-      logger.debug(
-        `Processing ValidatorExitRequest events ${index + 1}/${result.length}`
-      )
-
+    const events = result.map((log) => {
       const parsedLog = iface.parseLog(log)
-
       const { validatorIndex, validatorPubkey, nodeOperatorId } =
         parsedLog.args as unknown as {
           validatorIndex: ethers.BigNumber
@@ -163,12 +153,64 @@ export const makeExitLogsFetcherService = (
           nodeOperatorId: ethers.BigNumber
         }
 
+      return {
+        validatorIndex: validatorIndex.toString(),
+        validatorPubkey,
+        nodeOperatorId,
+        transactionHash: log.transactionHash,
+        blockNumber: parseInt(log.blockNumber),
+      }
+    })
+
+    const validIndices = await cl.validatePublicKeys(
+      events.map((event) => ({
+        validatorIndex: event.validatorIndex,
+        validatorPubkey: event.validatorPubkey,
+      }))
+    )
+
+    return events.filter((event) => validIndices.has(event.validatorIndex))
+  }
+
+  const getLogs = async (
+    fromBlock: number,
+    toBlock: number,
+    operatorIds: number[],
+    motionCreatedEvents: Record<string, string> = {},
+    votingRequestsHashSubmittedEvents: Record<string, string> = {},
+    motionEnactedEvents: Record<string, string> = {}
+  ) => {
+    const validatorExitRequestEvents = await getValidatorExitRequestEvents(
+      fromBlock,
+      toBlock,
+      operatorIds
+    )
+
+    const validatorsToEject: ValidatorsToEjectCache = []
+
+    logger.info('Verifying validity of exit requests')
+
+    for (const [index, event] of validatorExitRequestEvents.entries()) {
+      logger.debug(
+        `Processing ValidatorExitRequest events ${index + 1}/${
+          validatorExitRequestEvents.length
+        }`
+      )
+
+      const {
+        validatorIndex,
+        validatorPubkey,
+        nodeOperatorId,
+        transactionHash,
+        blockNumber,
+      } = event
+
       if (!TRUST_MODE) {
         try {
           await verifier.verifyEvent(
             validatorPubkey,
-            log.transactionHash,
-            parseInt(log.blockNumber),
+            transactionHash,
+            blockNumber,
             votingRequestsHashSubmittedEvents,
             motionCreatedEvents,
             motionEnactedEvents
@@ -188,9 +230,9 @@ export const makeExitLogsFetcherService = (
       }
 
       validatorsToEject.push({
-        validatorIndex: validatorIndex.toString(),
+        validatorIndex,
         validatorPubkey,
-        blockNumber: ethers.BigNumber.from(log.blockNumber).toNumber(),
+        blockNumber: blockNumber,
         nodeOperatorId: nodeOperatorId.toNumber(),
         acknowledged: false,
         ack() {
@@ -204,5 +246,8 @@ export const makeExitLogsFetcherService = (
 
   return {
     getLogs,
+    getMotionCreatedEvents,
+    getVotingRequestsHashSubmittedEvents,
+    getMotionEnactedEvents,
   }
 }

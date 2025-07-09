@@ -51,6 +51,17 @@ export const makeJobProcessor = ({
   webhookProcessor: WebhookProcessorService
   metrics: MetricsService
 }) => {
+  const createExitingValidatorsRecord = (
+    validators: any[]
+  ): Record<string, boolean> => {
+    return Object.fromEntries(
+      validators.map((v) => [
+        v.index,
+        consensusApi.isValidatorExiting(v.validator.exit_epoch),
+      ])
+    )
+  }
+
   const handleJob = async ({
     messageStorage,
   }: {
@@ -78,6 +89,24 @@ export const makeJobProcessor = ({
       amount: eventsForEject.length,
     })
 
+    const validatorIndices = eventsForEject.map((event) => event.validatorIndex)
+
+    const validatorsHead = await consensusApi.fetchValidatorsBatch(
+      validatorIndices,
+      1000,
+      'head'
+    )
+    const exitingValidatorsRecord =
+      createExitingValidatorsRecord(validatorsHead)
+
+    const validatorsFinalized = await consensusApi.fetchValidatorsBatch(
+      validatorIndices,
+      1000,
+      'finalized'
+    )
+    const exitingValidatorsFinalizedRecord =
+      createExitingValidatorsRecord(validatorsFinalized)
+
     for (const [ix, event] of eventsForEject.entries()) {
       logger.debug(`Handling exit ${ix + 1}/${eventsForEject.length}`, event)
 
@@ -87,7 +116,7 @@ export const makeJobProcessor = ({
       }
 
       try {
-        if (await consensusApi.isExiting(event.validatorPubkey)) {
+        if (exitingValidatorsRecord[event.validatorIndex]) {
           logger.info('Validator is already exiting(ed), skipping', {
             validatorIndex: event.validatorIndex,
           })
@@ -96,7 +125,7 @@ export const makeJobProcessor = ({
           // we might miss the reorganization.
           if (
             lastBlockNumber - event.blockNumber > FINALIZED_BLOCK_EQUIVALENT ||
-            (await consensusApi.isExiting(event.validatorPubkey, 'finalized'))
+            exitingValidatorsFinalizedRecord[event.validatorIndex]
           ) {
             event.ack()
           }
