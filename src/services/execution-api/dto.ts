@@ -1,11 +1,34 @@
-import { arr, obj, str, bool } from '../../lib/index.js'
+import { arr, obj, str } from '../../lib/index.js'
 
 export const syncingDTO = (json: unknown) =>
   obj(
     json,
-    (json) => ({
-      result: bool(json.result),
-    }),
+    (json) => {
+      const result = json.result
+
+      // Standard EL clients
+      if (typeof result === 'boolean') {
+        return { result }
+      }
+
+      // Nethermind
+      if (typeof result === 'object' && result !== null) {
+        const syncObj = result as {
+          currentBlock?: string
+          highestBlock?: string
+        }
+
+        if (!syncObj.currentBlock || !syncObj.highestBlock) {
+          throw new Error(
+            'Invalid syncing object: missing currentBlock or highestBlock'
+          )
+        }
+
+        return { result: syncObj.currentBlock !== syncObj.highestBlock }
+      }
+
+      throw new Error(`Invalid syncing response type: ${typeof result}`)
+    },
     'Invalid syncing response'
   )
 
