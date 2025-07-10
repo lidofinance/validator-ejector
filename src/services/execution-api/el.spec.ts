@@ -1,12 +1,18 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
-import { funcMock, lastBlockNumberMock, syncingMock } from './fixtures.js'
+import {
+  funcMock,
+  lastBlockNumberMock,
+  syncingMock,
+  syncingBooleanMock,
+  syncingObjectMock,
+} from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
 
-describe('makeConsensusApi', () => {
+describe('makeExecutionApi', () => {
   let api: ExecutionApiService
   let request: RequestService
   let logger: LoggerService
@@ -21,6 +27,36 @@ describe('makeConsensusApi', () => {
 
   it('should fetch syncing status', async () => {
     mockEthServer(syncingMock(), config.EXECUTION_NODE)
+
+    const res = await api.syncing()
+
+    expect(res).toBe(true)
+  })
+
+  it('should handle boolean syncing response (standard EL)', async () => {
+    mockEthServer(syncingBooleanMock(false), config.EXECUTION_NODE)
+
+    const res = await api.syncing()
+
+    expect(res).toBe(false)
+  })
+
+  it('should handle object syncing response when synced (Nethermind)', async () => {
+    mockEthServer(
+      syncingObjectMock('0x9539a6', '0x9539a6'),
+      config.EXECUTION_NODE
+    )
+
+    const res = await api.syncing()
+
+    expect(res).toBe(false)
+  })
+
+  it('should handle object syncing response when syncing (Nethermind)', async () => {
+    mockEthServer(
+      syncingObjectMock('0x9539a0', '0x9539a6'),
+      config.EXECUTION_NODE
+    )
 
     const res = await api.syncing()
 
