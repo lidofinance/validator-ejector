@@ -11,6 +11,7 @@ import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
+import { NodeNotSyncedError } from './errors.js'
 
 describe('makeExecutionApi', () => {
   let api: ExecutionApiService
@@ -28,39 +29,35 @@ describe('makeExecutionApi', () => {
   it('should fetch syncing status', async () => {
     mockEthServer(syncingMock(), config.EXECUTION_NODE)
 
-    const res = await api.syncing()
+    const res = await api.checkSync()
 
     expect(res).toBe(true)
   })
 
-  it('should handle boolean syncing response (standard EL)', async () => {
+  it('should handle boolean syncing response', async () => {
     mockEthServer(syncingBooleanMock(false), config.EXECUTION_NODE)
 
-    const res = await api.syncing()
+    const res = await api.checkSync()
 
     expect(res).toBe(false)
   })
 
-  it('should handle object syncing response when synced (Nethermind)', async () => {
+  it('should throw NodeNotSyncedError for object response when synced', async () => {
     mockEthServer(
       syncingObjectMock('0x9539a6', '0x9539a6'),
       config.EXECUTION_NODE
     )
 
-    const res = await api.syncing()
-
-    expect(res).toBe(false)
+    await expect(api.checkSync()).rejects.toThrow(NodeNotSyncedError)
   })
 
-  it('should handle object syncing response when syncing (Nethermind)', async () => {
+  it('should throw NodeNotSyncedError for object response when syncing', async () => {
     mockEthServer(
       syncingObjectMock('0x9539a0', '0x9539a6'),
       config.EXECUTION_NODE
     )
 
-    const res = await api.syncing()
-
-    expect(res).toBe(true)
+    await expect(api.checkSync()).rejects.toThrow(NodeNotSyncedError)
   })
 
   it('should fetch genesis data', async () => {

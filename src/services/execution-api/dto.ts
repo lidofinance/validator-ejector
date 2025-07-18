@@ -1,36 +1,31 @@
 import { arr, obj, str } from '../../lib/index.js'
+import { NodeNotSyncedError } from './errors.js'
 
-export const syncingDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => {
-      const result = json.result
+export const syncingDTO = (json: unknown) => {
+  const validatedJson = obj(json, () => json, 'Invalid syncing response')
+  const result = (validatedJson as any).result
 
-      // Standard EL clients
-      if (typeof result === 'boolean') {
-        return { result }
-      }
+  if (typeof result === 'boolean') {
+    return { result }
+  }
 
-      // Nethermind
-      if (typeof result === 'object' && result !== null) {
-        const syncObj = result as {
-          currentBlock?: string
-          highestBlock?: string
-        }
+  if (typeof result === 'object' && result !== null) {
+    const syncObj = result as {
+      currentBlock?: string
+      highestBlock?: string
+    }
 
-        if (!syncObj.currentBlock || !syncObj.highestBlock) {
-          throw new Error(
-            'Invalid syncing object: missing currentBlock or highestBlock'
-          )
-        }
+    if (!syncObj.currentBlock || !syncObj.highestBlock) {
+      throw new Error(
+        'Invalid syncing object: missing currentBlock or highestBlock'
+      )
+    }
 
-        return { result: syncObj.currentBlock !== syncObj.highestBlock }
-      }
+    throw new NodeNotSyncedError(`EL node is not synced`, syncObj)
+  }
 
-      throw new Error(`Invalid syncing response type: ${typeof result}`)
-    },
-    'Invalid syncing response'
-  )
+  throw new Error(`Invalid syncing response type: ${typeof result}`)
+}
 
 export const lastBlockNumberDTO = (json: unknown) =>
   obj(

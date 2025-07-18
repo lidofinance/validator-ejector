@@ -51,7 +51,7 @@ export const makeExecutionApi = (
     return await safelyParseJsonResponse(res, logger)
   }
 
-  const syncing = async () => {
+  const checkSync = async () => {
     const json = await elRequest({
       method: 'POST',
       body: JSON.stringify({
@@ -64,12 +64,6 @@ export const makeExecutionApi = (
     const { result } = syncingDTO(json)
     logger.debug('fetched syncing status')
     return result
-  }
-
-  const checkSync = async () => {
-    if (await syncing()) {
-      logger.warn('Execution node is still syncing! Proceed with caution.')
-    }
   }
 
   const latestBlockNumber = async () => {
@@ -238,7 +232,6 @@ export const makeExecutionApi = (
       }
       return consensusAddress
     },
-    syncing,
     checkSync,
     latestBlockNumber,
     resolveExitBusAddress,
