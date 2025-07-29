@@ -118,6 +118,50 @@ export const makeVerifier = (
     return ethers.utils.recoverAddress(hash, sig)
   }
 
+  const verifyTransactionIntegrity = (
+    tx: ReturnType<typeof txDTO>['result'],
+    expectedHash: string
+  ) => {
+    const signature = {
+      v: Number(tx.v),
+      r: tx.r,
+      s: tx.s,
+    }
+
+    const txData = {
+      nonce: Number(tx.nonce),
+      gasLimit: ethers.BigNumber.from(tx.gas),
+      gasPrice: tx.gasPrice ? ethers.BigNumber.from(tx.gasPrice) : undefined,
+      maxFeePerGas: tx.maxFeePerGas
+        ? ethers.BigNumber.from(tx.maxFeePerGas)
+        : undefined,
+      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
+        ? ethers.BigNumber.from(tx.maxPriorityFeePerGas)
+        : undefined,
+      to: tx.to,
+      value: ethers.BigNumber.from(tx.value),
+      data: tx.input,
+      chainId: Number(tx.chainId),
+      type: Number(tx.type),
+    }
+
+    const serialized = ethers.utils.serializeTransaction(txData, signature)
+    const computedHash = ethers.utils.keccak256(serialized)
+
+    if (computedHash.toLowerCase() !== expectedHash.toLowerCase()) {
+      logger.error(
+        '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+        {
+          computedHash,
+          expectedHash,
+        }
+      )
+      throw new Error(
+        '[verifyTransactionIntegrity] Transaction hash mismatch detected'
+      )
+    }
+  }
+
   const verifyEvent = async (
     validatorPubkey: string,
     transactionHash: string,
@@ -303,6 +347,8 @@ export const makeVerifier = (
       logger.info(
         '[verifyVotingEvent] submitExitRequestsHash transaction found in allowlist, verification passed'
       )
+      const tx = await getTransaction(submitExitRequestsHashTxHash)
+      verifyTransactionIntegrity(tx, submitExitRequestsHashTxHash)
       return
     }
 
