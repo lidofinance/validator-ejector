@@ -12,6 +12,8 @@ import {
   votingValidatorExitRequestEventsMock,
   votingSubmitExitRequestsDataTransactionMock,
   voteEasyTrackMotionCreateTransactionMock,
+  voteSubmitHashTransactionMock,
+  voteSubmitHashTransactionWithWrongHashMock,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -182,18 +184,19 @@ describe('makeConsensusApi logs', () => {
       votingSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE
     )
+    mockEthServer(voteSubmitHashTransactionMock(), config.EXECUTION_NODE)
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
     config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
+      '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
     ]
     mockService()
 
     const motionCreatedEvents = {}
     const votingRequestsHashSubmittedEvents = {
       '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
+        '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
     }
     const motionEnactedEvents = {}
     const res = await api.fetcher.getLogs(
@@ -209,6 +212,52 @@ describe('makeConsensusApi logs', () => {
     expect(res[0].validatorIndex).toBe('351636')
     expect(res[0].validatorPubkey).toBe(
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    )
+  })
+
+  it('should throw transaction hash mismatch error when verifying transaction integrity when SUBMIT_TX_HASH_ALLOWLIST used', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      voteSubmitHashTransactionWithWrongHashMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = [
+      '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
+    ]
+    mockService()
+
+    const motionCreatedEvents = {}
+    const votingRequestsHashSubmittedEvents = {
+      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
+        '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
+    }
+    const motionEnactedEvents = {}
+
+    const loggerErrorSpy = vi.spyOn(logger, 'error')
+
+    const res = await api.fetcher.getLogs(
+      123,
+      123,
+      [1],
+      motionCreatedEvents,
+      votingRequestsHashSubmittedEvents,
+      motionEnactedEvents
+    )
+
+    expect(res.length).toBe(0)
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+      expect.objectContaining({
+        computedHash: expect.any(String),
+        expectedHash: expect.any(String),
+      })
     )
   })
 
