@@ -197,7 +197,7 @@ export const makeVerifier = (
     }
 
     const submitExitRequestsDataFragment = ethers.utils.Fragment.from(
-      'function submitExitRequestsData(tuple(uint256 dataFormat, bytes data) request)'
+      'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)'
     )
     const submitExitRequestsDataIface = new ethers.utils.Interface([
       submitExitRequestsDataFragment,

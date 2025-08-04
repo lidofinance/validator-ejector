@@ -318,14 +318,14 @@ export const easyTrackMotionCreatedEventsMock = () => ({
 export const votingSubmitExitRequestsDataTransactionMock = () => {
   const { encodedData } = getExitRequestsData()
   const submitExitRequestsDataFragment = ethers.utils.Fragment.from(
-    'function submitExitRequestsData(tuple(uint256 dataFormat, bytes data) request)'
+    'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)'
   )
   const submitExitRequestsDataIface = new ethers.utils.Interface([
     submitExitRequestsDataFragment,
   ])
 
   const dataFormat = 1
-  const request = [dataFormat, encodedData]
+  const request = [encodedData, dataFormat]
   const input = submitExitRequestsDataIface.encodeFunctionData(
     'submitExitRequestsData',
     [request]
