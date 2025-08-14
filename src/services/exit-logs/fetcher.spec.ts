@@ -14,6 +14,8 @@ import {
   voteEasyTrackMotionCreateTransactionMock,
   voteSubmitHashTransactionMock,
   voteSubmitHashTransactionWithWrongHashMock,
+  legacySubmitHashTransactionMock,
+  legacySubmitHashTransactionMissingGasPriceMock,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -459,5 +461,88 @@ describe('makeConsensusApi logs', () => {
 
       expect(result).toEqual({})
     })
+  })
+
+  it('should verify legacy transaction successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(legacySubmitHashTransactionMock(), config.EXECUTION_NODE)
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = [
+      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
+    ]
+    mockService()
+
+    const motionCreatedEvents = {}
+    const votingRequestsHashSubmittedEvents = {
+      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
+        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
+    }
+    const motionEnactedEvents = {}
+    const res = await api.fetcher.getLogs(
+      123,
+      123,
+      [1],
+      motionCreatedEvents,
+      votingRequestsHashSubmittedEvents,
+      motionEnactedEvents
+    )
+
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+    expect(res[0].validatorPubkey).toBe(
+      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    )
+  })
+
+  it('should not verify when legacy transaction missing gasPrice', async () => {
+    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE
+    )
+    mockEthServer(
+      legacySubmitHashTransactionMissingGasPriceMock(),
+      config.EXECUTION_NODE
+    )
+
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = [
+      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
+    ]
+    mockService()
+
+    const motionCreatedEvents = {}
+    const votingRequestsHashSubmittedEvents = {
+      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
+        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
+    }
+    const motionEnactedEvents = {}
+
+    const loggerErrorSpy = vi.spyOn(logger, 'error')
+
+    const res = await api.fetcher.getLogs(
+      123,
+      123,
+      [1],
+      motionCreatedEvents,
+      votingRequestsHashSubmittedEvents,
+      motionEnactedEvents
+    )
+
+    expect(res.length).toBe(0)
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
+      expect.objectContaining({
+        message:
+          '[verifyTransactionIntegrity] Legacy transaction missing gasPrice',
+      })
+    )
   })
 })

@@ -128,22 +128,31 @@ export const makeVerifier = (
       s: tx.s,
     }
 
-    const txData = {
+    const baseTxData = {
       nonce: Number(tx.nonce),
       gasLimit: ethers.BigNumber.from(tx.gas),
-      gasPrice: tx.gasPrice ? ethers.BigNumber.from(tx.gasPrice) : undefined,
-      maxFeePerGas: tx.maxFeePerGas
-        ? ethers.BigNumber.from(tx.maxFeePerGas)
-        : undefined,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
-        ? ethers.BigNumber.from(tx.maxPriorityFeePerGas)
-        : undefined,
       to: tx.to,
       value: ethers.BigNumber.from(tx.value),
       data: tx.input,
       chainId: Number(tx.chainId),
       type: Number(tx.type),
     }
+
+    const isLegacyTx = Number(tx.type) === 0
+
+    if (isLegacyTx && !tx.gasPrice) {
+      throw new Error(
+        '[verifyTransactionIntegrity] Legacy transaction missing gasPrice'
+      )
+    }
+
+    const txData = isLegacyTx
+      ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice!) }
+      : {
+          ...baseTxData,
+          maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas!),
+          maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas!),
+        }
 
     const serialized = ethers.utils.serializeTransaction(txData, signature)
     const computedHash = ethers.utils.keccak256(serialized)

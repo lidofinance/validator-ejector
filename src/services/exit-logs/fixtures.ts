@@ -458,3 +458,64 @@ export const voteSubmitHashTransactionWithWrongHashMock = () => ({
     id: 1,
   },
 })
+
+// Legacy transaction mocks (type 0)
+const LEGACY_SUBMIT_HASH_TX =
+  '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce'
+
+export const legacySubmitHashTransactionMock = () => ({
+  url: '/',
+  method: 'POST',
+  result: {
+    result: {
+      from: '0x8ee5143fb47d3234b36d6a77deb88fbd8047fbc1',
+      gas: '0x909fc',
+      gasPrice: '0x926099f9',
+      hash: LEGACY_SUBMIT_HASH_TX,
+      input:
+        '0xfe0d94c10000000000000000000000000000000000000000000000000000000000000009',
+      nonce: '0x1',
+      to: '0x0a5e22782c0bd4addf10d771f0bf0406b038282d',
+      value: '0x0',
+      type: '0x0',
+      chainId: '0x88bb0',
+      v: '0x111784',
+      r: '0x83818ddf5c93568f0b2a3251515c7c1f6ab13a66a8c8dfd77d8f57974cb09e82',
+      s: '0x724d417e39bdd10fb0bea9fe1f62c7575780aa7d93d4fda2bcfd501c0a7f747a',
+    },
+  },
+  body: {
+    jsonrpc: '2.0',
+    method: 'eth_getTransactionByHash',
+    params: [LEGACY_SUBMIT_HASH_TX],
+    id: 1,
+  },
+})
+
+export const legacySubmitHashTransactionMissingGasPriceMock = () => ({
+  url: '/',
+  method: 'POST',
+  result: {
+    result: {
+      from: '0x8ee5143fb47d3234b36d6a77deb88fbd8047fbc1',
+      gas: '0x909fc',
+      hash: LEGACY_SUBMIT_HASH_TX,
+      input:
+        '0xfe0d94c10000000000000000000000000000000000000000000000000000000000000009',
+      nonce: '0x1',
+      to: '0x0a5e22782c0bd4addf10d771f0bf0406b038282d',
+      value: '0x0',
+      type: '0x0',
+      chainId: '0x88bb0',
+      v: '0x111784',
+      r: '0x83818ddf5c93568f0b2a3251515c7c1f6ab13a66a8c8dfd77d8f57974cb09e82',
+      s: '0x724d417e39bdd10fb0bea9fe1f62c7575780aa7d93d4fda2bcfd501c0a7f747a',
+    },
+  },
+  body: {
+    jsonrpc: '2.0',
+    method: 'eth_getTransactionByHash',
+    params: [LEGACY_SUBMIT_HASH_TX],
+    id: 1,
+  },
+})
