@@ -102,10 +102,9 @@ export const makeVerifier = (
       v: parseInt(tx.v),
     }
     const sig = ethers.utils.joinSignature(expandedSig)
-    const txData = {
+    
+    const baseTxData = {
       gasLimit: ethers.BigNumber.from(tx.gas),
-      maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas),
-      maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas),
       data: tx.input,
       nonce: parseInt(tx.nonce),
       to: tx.to,
@@ -113,6 +112,21 @@ export const makeVerifier = (
       type: parseInt(tx.type),
       chainId: parseInt(tx.chainId),
     }
+
+    const isLegacyTx = Number(tx.type) === 0
+    
+    if (isLegacyTx && !tx.gasPrice) {
+      throw new Error('[recoverAddress] Legacy transaction missing gasPrice')
+    }
+
+    const txData = isLegacyTx 
+      ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice!) }
+      : { 
+          ...baseTxData, 
+          maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas!),
+          maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas!)
+        }
+
     const encodedTx = ethers.utils.serializeTransaction(txData)
     const hash = ethers.utils.keccak256(encodedTx)
     return ethers.utils.recoverAddress(hash, sig)
