@@ -95,6 +95,20 @@ export const makeVerifier = (
     return found.transactionHash
   }
 
+  const validateTransactionType = (tx: ReturnType<typeof txDTO>['result']) => {
+    const isLegacyTx = tx.type
+      ? Number(tx.type) === 0
+      : !tx.maxFeePerGas && !tx.maxPriorityFeePerGas
+
+    if (isLegacyTx && !tx.gasPrice) {
+      throw new Error(
+        '[validateTransactionType] Legacy transaction missing gasPrice'
+      )
+    }
+
+    return isLegacyTx
+  }
+
   const recoverAddress = async (tx: ReturnType<typeof txDTO>['result']) => {
     const expandedSig = {
       r: tx.r,
@@ -102,7 +116,7 @@ export const makeVerifier = (
       v: parseInt(tx.v),
     }
     const sig = ethers.utils.joinSignature(expandedSig)
-    
+
     const baseTxData = {
       gasLimit: ethers.BigNumber.from(tx.gas),
       data: tx.input,
@@ -113,18 +127,14 @@ export const makeVerifier = (
       chainId: parseInt(tx.chainId),
     }
 
-    const isLegacyTx = Number(tx.type) === 0
-    
-    if (isLegacyTx && !tx.gasPrice) {
-      throw new Error('[recoverAddress] Legacy transaction missing gasPrice')
-    }
+    const isLegacyTx = validateTransactionType(tx)
 
-    const txData = isLegacyTx 
+    const txData = isLegacyTx
       ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice!) }
-      : { 
-          ...baseTxData, 
+      : {
+          ...baseTxData,
           maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas!),
-          maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas!)
+          maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas!),
         }
 
     const encodedTx = ethers.utils.serializeTransaction(txData)
@@ -152,13 +162,7 @@ export const makeVerifier = (
       type: Number(tx.type),
     }
 
-    const isLegacyTx = Number(tx.type) === 0
-
-    if (isLegacyTx && !tx.gasPrice) {
-      throw new Error(
-        '[verifyTransactionIntegrity] Legacy transaction missing gasPrice'
-      )
-    }
+    const isLegacyTx = validateTransactionType(tx)
 
     const txData = isLegacyTx
       ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice!) }

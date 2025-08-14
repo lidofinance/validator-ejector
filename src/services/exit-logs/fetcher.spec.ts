@@ -543,7 +543,7 @@ describe('makeConsensusApi logs', () => {
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
         message:
-          '[verifyTransactionIntegrity] Legacy transaction missing gasPrice',
+          '[validateTransactionType] Legacy transaction missing gasPrice',
       })
     )
   })
@@ -636,7 +636,8 @@ describe('makeConsensusApi logs', () => {
     expect(loggerErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
-        message: '[recoverAddress] Legacy transaction missing gasPrice',
+        message:
+          '[validateTransactionType] Legacy transaction missing gasPrice',
       })
     )
   })
