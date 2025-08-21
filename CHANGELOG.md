@@ -1,3 +1,43 @@
+# [1.9.0](https://github.com/lidofinance/validator-ejector/compare/1.8.0...1.9.0) (2025-08-21)
+
+
+### Features
+
+* **orc-409:** add more context for error when ValidatorExitRequest was emitted by unknown contract function ([585e3bf](https://github.com/lidofinance/validator-ejector/commit/585e3bf63b887a3d31826895472daf7156cdb589))
+* **orc-409:** add tests ([dba9b55](https://github.com/lidofinance/validator-ejector/commit/dba9b55a4b21c6c57b9b3ed74f5e1d527f0acf5b))
+* **orc-409:** add validation for getLogs ([1015c93](https://github.com/lidofinance/validator-ejector/commit/1015c93a693aaa7cdf6be1ac1fe6a017f66e4a31))
+* **orc-409:** add withdrawal via voting contracts ([3d06ee6](https://github.com/lidofinance/validator-ejector/commit/3d06ee676538f63b17e4f058bdccaf282dd92eae))
+* **orc-409:** make EASY_TRACK_ADDRESS env optional ([8ad400d](https://github.com/lidofinance/validator-ejector/commit/8ad400d7d08601852c914b6221a320d0c26f4724))
+* **orc-409:** refact voting events fetching ([80d60a4](https://github.com/lidofinance/validator-ejector/commit/80d60a43c835954ced9968502500d495b7af6f95))
+* **orc-409:** rename VOTING_WITHDRAWAL_TRANSACTIONS_ALLOWLIST to SUBMIT_TX_HASH_ALLOWLIST ([7b9bd70](https://github.com/lidofinance/validator-ejector/commit/7b9bd70dd733ccef4d1e2da4b8d3aba3e16be61f))
+* **orc-409:** replace DISABLE_SECURITY_DONT_USE_IN_PRODUCTION with TRUST_MODE ([4480e87](https://github.com/lidofinance/validator-ejector/commit/4480e87da11f57543586be7abddec41dda6e2ddb))
+* **orc-409:** update readme ([9c759c1](https://github.com/lidofinance/validator-ejector/commit/9c759c1f54499baaa8fa0aec6c467faa300033ac))
+* **orc-413:** add state param to getExitingValidatorsCount, and improve test ([6659870](https://github.com/lidofinance/validator-ejector/commit/66598701277a089e6e335a85d3591bce6fd8a065))
+* **orc-413:** refact loop to filter ([2b3de06](https://github.com/lidofinance/validator-ejector/commit/2b3de064bcf2c1095b6e2041116f0c34f074e5ee))
+* **orc-413:** remove lastRequestedValidatorIndex ([7700ffc](https://github.com/lidofinance/validator-ejector/commit/7700ffcf756f82860698f67886068dbd0bb2b79c))
+* **orc-413:** Updating exit messages left metrics from validator statuses ([e750fb3](https://github.com/lidofinance/validator-ejector/commit/e750fb3194d1d297b1ce7b3093ecd796caa60e6e))
+* **orc-428:** add getValidatorExitRequestEvents method ([36f3927](https://github.com/lidofinance/validator-ejector/commit/36f39272fd5f5d658a35f1c7a43a65d446938ce9))
+* **orc-428:** add JobProcessor integration tests ([2470bd8](https://github.com/lidofinance/validator-ejector/commit/2470bd8df99e622d3a3b3e246dc20c9c335efb84))
+* **orc-428:** add stricter typing to fetchValidatorsBatch ([097e3f9](https://github.com/lidofinance/validator-ejector/commit/097e3f93e32e5527ddfdc08ca47139e2b8b15323))
+* **orc-428:** add validatePublicKeys to cl, use validatePublicKeys inside fetcher ([719f642](https://github.com/lidofinance/validator-ejector/commit/719f64204472d9e99489e05d69e2d749b6f22fa4))
+* **orc-428:** added EASY_TRACK_FRAME_BLOCKS + pre-uploading of voting-based events ([ae140cb](https://github.com/lidofinance/validator-ejector/commit/ae140cb56d14f73a0aef01d9868d3ede3baceb25))
+* **orc-428:** Aragon case fix ([b1f25ad](https://github.com/lidofinance/validator-ejector/commit/b1f25adef148c0db3fa892085956e511be2d49a8))
+* **orc-428:** extract fetchValidatorsBatch method ([d156820](https://github.com/lidofinance/validator-ejector/commit/d1568203f4a9dff248167bca9d4c0d9d82e1306c))
+* **orc-428:** remove unnecessary types casting ([16691d9](https://github.com/lidofinance/validator-ejector/commit/16691d91da1e1b81b35cdf52a6ae2ddb40ac88ef))
+* **orc-428:** replace isExiting with batching ([4451aef](https://github.com/lidofinance/validator-ejector/commit/4451aef9a3a5f62b466bc34f364a25af7101558f))
+* **orc-431:** fix endpoint according to Nethermind ([2bf533f](https://github.com/lidofinance/validator-ejector/commit/2bf533f1cf9a1ba563bc70ee6699ea32630ae19f))
+* **orc-445:** Raise error instead of return currentBlock != highestBlock in syncingDTO ([44105ac](https://github.com/lidofinance/validator-ejector/commit/44105acfefc072b1a2744351801b5cb007e038fd))
+* **orc-448:** .github/PULL_REQUEST_TEMPLATE.md added ([7a9cf64](https://github.com/lidofinance/validator-ejector/commit/7a9cf64147de286d3a06296aa23d87cb6a133a2c))
+* **orc-448:** add test to new logic ([88295d5](https://github.com/lidofinance/validator-ejector/commit/88295d55f652d1c1e460e0feecd25dad0802813f))
+* **orc-448:** add verifyTransactionIntegrity ([b49afc0](https://github.com/lidofinance/validator-ejector/commit/b49afc048a6877747adf1919d82e21b7675a39ae))
+* **orc-448:** fix contract abi ([65af229](https://github.com/lidofinance/validator-ejector/commit/65af229ea760505e101383872c0710bf47bd37e2))
+* **TW:** add legacy type transactions support to recoverAddress ([7c0dd15](https://github.com/lidofinance/validator-ejector/commit/7c0dd152b0a844e7b585a5bf1cb61de4951db19e))
+* **TW:** add type-0 transaction support for SUBMIT_TX_HASH_ALLOWLIST ([660550e](https://github.com/lidofinance/validator-ejector/commit/660550e6cc7caee890acdedd4241081eab6f59a2))
+* **TW:** introduce validateTransactionType method ([c62f5dd](https://github.com/lidofinance/validator-ejector/commit/c62f5dd2fdb043a316ececb848b0c3a004d49e40))
+* **TW:** refactor ([3eaf2f6](https://github.com/lidofinance/validator-ejector/commit/3eaf2f6ce57fb17d8231d4dd6fc0eaac6d605ab6))
+
+
+
 # [1.8.0](https://github.com/lidofinance/validator-ejector/compare/1.7.0...1.8.0) (2025-05-12)
 
 
