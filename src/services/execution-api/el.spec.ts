@@ -1,12 +1,19 @@
 import { ExecutionApiService, makeExecutionApi } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
-import { funcMock, lastBlockNumberMock, syncingMock } from './fixtures.js'
+import {
+  funcMock,
+  lastBlockNumberMock,
+  syncingMock,
+  syncingBooleanMock,
+  syncingObjectMock,
+} from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
+import { NodeNotSyncedError } from './errors.js'
 
-describe('makeConsensusApi', () => {
+describe('makeExecutionApi', () => {
   let api: ExecutionApiService
   let request: RequestService
   let logger: LoggerService
@@ -22,9 +29,35 @@ describe('makeConsensusApi', () => {
   it('should fetch syncing status', async () => {
     mockEthServer(syncingMock(), config.EXECUTION_NODE)
 
-    const res = await api.syncing()
+    const res = await api.checkSync()
 
     expect(res).toBe(true)
+  })
+
+  it('should handle boolean syncing response', async () => {
+    mockEthServer(syncingBooleanMock(false), config.EXECUTION_NODE)
+
+    const res = await api.checkSync()
+
+    expect(res).toBe(false)
+  })
+
+  it('should throw NodeNotSyncedError for object response when synced', async () => {
+    mockEthServer(
+      syncingObjectMock('0x9539a6', '0x9539a6'),
+      config.EXECUTION_NODE
+    )
+
+    await expect(api.checkSync()).rejects.toThrow(NodeNotSyncedError)
+  })
+
+  it('should throw NodeNotSyncedError for object response when syncing', async () => {
+    mockEthServer(
+      syncingObjectMock('0x9539a0', '0x9539a6'),
+      config.EXECUTION_NODE
+    )
+
+    await expect(api.checkSync()).rejects.toThrow(NodeNotSyncedError)
   })
 
   it('should fetch genesis data', async () => {

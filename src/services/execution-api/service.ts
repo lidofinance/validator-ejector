@@ -51,7 +51,7 @@ export const makeExecutionApi = (
     return await safelyParseJsonResponse(res, logger)
   }
 
-  const syncing = async () => {
+  const checkSync = async () => {
     const json = await elRequest({
       method: 'POST',
       body: JSON.stringify({
@@ -64,12 +64,6 @@ export const makeExecutionApi = (
     const { result } = syncingDTO(json)
     logger.debug('fetched syncing status')
     return result
-  }
-
-  const checkSync = async () => {
-    if (await syncing()) {
-      logger.warn('Execution node is still syncing! Proceed with caution.')
-    }
   }
 
   const latestBlockNumber = async () => {
@@ -181,6 +175,24 @@ export const makeExecutionApi = (
     address: string,
     topics: (string | string[])[]
   ) => {
+    if (fromBlock < 0) {
+      throw new Error(`fromBlock must be non-negative, got: ${fromBlock}`)
+    }
+
+    if (toBlock < 0) {
+      throw new Error(`toBlock must be non-negative, got: ${toBlock}`)
+    }
+
+    if (fromBlock > toBlock) {
+      throw new Error(
+        `fromBlock (${fromBlock}) must be <= toBlock (${toBlock})`
+      )
+    }
+
+    if (!ethers.utils.isAddress(address)) {
+      throw new Error(`Invalid Ethereum address: ${address}`)
+    }
+
     const json = await elRequest({
       method: 'POST',
       body: JSON.stringify({
@@ -220,7 +232,6 @@ export const makeExecutionApi = (
       }
       return consensusAddress
     },
-    syncing,
     checkSync,
     latestBlockNumber,
     resolveExitBusAddress,

@@ -1,13 +1,31 @@
-import { arr, obj, str, bool } from '../../lib/index.js'
+import { arr, obj, str } from '../../lib/index.js'
+import { NodeNotSyncedError } from './errors.js'
 
-export const syncingDTO = (json: unknown) =>
-  obj(
-    json,
-    (json) => ({
-      result: bool(json.result),
-    }),
-    'Invalid syncing response'
-  )
+export const syncingDTO = (json: unknown) => {
+  const validatedJson = obj(json, () => json, 'Invalid syncing response')
+  const result = (validatedJson as any).result
+
+  if (typeof result === 'boolean') {
+    return { result }
+  }
+
+  if (typeof result === 'object' && result !== null) {
+    const syncObj = result as {
+      currentBlock?: string
+      highestBlock?: string
+    }
+
+    if (!syncObj.currentBlock || !syncObj.highestBlock) {
+      throw new Error(
+        'Invalid syncing object: missing currentBlock or highestBlock'
+      )
+    }
+
+    throw new NodeNotSyncedError(`EL node is not synced`, syncObj)
+  }
+
+  throw new Error(`Invalid syncing response type: ${typeof result}`)
+}
 
 export const lastBlockNumberDTO = (json: unknown) =>
   obj(

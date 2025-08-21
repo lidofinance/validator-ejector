@@ -1,4 +1,4 @@
-import { arr, obj, str } from '../../lib/index.js'
+import { arr, obj, str, optional } from '../../lib/index.js'
 
 export const logsDTO = (json: unknown) =>
   obj(
@@ -34,9 +34,9 @@ export const txDTO = (json: unknown) =>
       result: obj(json.result, (result) => ({
         from: str(result.from),
         gas: str(result.gas),
-        gasPrice: str(result.gasPrice),
-        maxFeePerGas: str(result.maxFeePerGas),
-        maxPriorityFeePerGas: str(result.maxPriorityFeePerGas),
+        gasPrice: optional(() => str(result.gasPrice)),
+        maxFeePerGas: optional(() => str(result.maxFeePerGas)),
+        maxPriorityFeePerGas: optional(() => str(result.maxPriorityFeePerGas)),
         hash: str(result.hash),
         input: str(result.input),
         nonce: str(result.nonce),

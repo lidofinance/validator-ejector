@@ -10,6 +10,7 @@ import {
 } from '../lib/index.js'
 import { makeLoggerConfig, makeConfig } from '../services/config/service.js'
 import { makeExecutionApi } from '../services/execution-api/service.js'
+import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExitLogsService } from '../services/exit-logs/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 
@@ -33,17 +34,36 @@ const run = async () => {
 
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
-  const executionHttp = makeRequest([
-    retry(3),
-    loggerMiddleware(logger),
-    prom(metrics.executionRequestDurationSeconds),
-    notOkError(),
-    abort(30_000),
-  ])
+  const executionApi = makeExecutionApi(
+    makeRequest([
+      retry(3),
+      loggerMiddleware(logger),
+      prom(metrics.executionRequestDurationSeconds),
+      notOkError(),
+      abort(30_000),
+    ]),
+    logger,
+    config
+  )
 
-  const executionApi = makeExecutionApi(executionHttp, logger, config)
+  const consensusApi = makeConsensusApi(
+    makeRequest([
+      retry(3),
+      loggerMiddleware(logger),
+      prom(metrics.consensusRequestDurationSeconds),
+      abort(30_000),
+    ]),
+    logger,
+    config
+  )
 
-  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
+  const exitLogs = makeExitLogsService(
+    logger,
+    executionApi,
+    consensusApi,
+    config,
+    metrics
+  )
 
   await executionApi.resolveExitBusAddress()
   await executionApi.resolveConsensusAddress()

@@ -74,8 +74,6 @@ export const makeAppModule = async () => {
     jwtService
   )
 
-  const exitLogs = makeExitLogsService(logger, executionApi, config, metrics)
-
   const consensusApi = makeConsensusApi(
     makeRequest([
       retry(3),
@@ -85,6 +83,14 @@ export const makeAppModule = async () => {
     ]),
     logger,
     config
+  )
+
+  const exitLogs = makeExitLogsService(
+    logger,
+    executionApi,
+    consensusApi,
+    config,
+    metrics
   )
 
   const forkVersionResolver = makeForkVersionResolver(

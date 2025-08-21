@@ -3,7 +3,7 @@ import { makeLogger } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { funcDTO, txDTO } from './dto.js'
+import { txDTO } from './dto.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 // This is the number of blocks to look back when searching for
@@ -17,11 +17,13 @@ export const makeVerifier = (
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
   {
-    STAKING_MODULE_ID,
     ORACLE_ADDRESSES_ALLOWLIST,
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
+    SUBMIT_TX_HASH_ALLOWLIST,
   }: {
-    STAKING_MODULE_ID: string
     ORACLE_ADDRESSES_ALLOWLIST: string[]
+    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST: string[]
+    SUBMIT_TX_HASH_ALLOWLIST: string[]
   }
 ) => {
   const lruTransactionCache = new LRUCache<string, ReturnType<typeof txDTO>>({
@@ -93,27 +95,151 @@ export const makeVerifier = (
     return found.transactionHash
   }
 
+  const prepareTransactionData = (tx: ReturnType<typeof txDTO>['result']) => {
+    const isLegacyTx =
+      Number(tx.type) === 0 || (!tx.maxFeePerGas && !tx.maxPriorityFeePerGas)
+
+    if (isLegacyTx && !tx.gasPrice) {
+      throw new Error(
+        '[validateTransactionType] Legacy transaction missing gasPrice'
+      )
+    }
+
+    const baseTxData = {
+      gasLimit: ethers.BigNumber.from(tx.gas),
+      data: tx.input,
+      nonce: parseInt(tx.nonce),
+      to: tx.to,
+      value: ethers.BigNumber.from(tx.value),
+      type: parseInt(tx.type),
+      chainId: parseInt(tx.chainId),
+    }
+
+    return isLegacyTx
+      ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice || '0') }
+      : {
+          ...baseTxData,
+          maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas || '0'),
+          maxPriorityFeePerGas: ethers.BigNumber.from(
+            tx.maxPriorityFeePerGas || '0'
+          ),
+        }
+  }
+
+  const recoverAddress = async (tx: ReturnType<typeof txDTO>['result']) => {
+    const expandedSig = {
+      r: tx.r,
+      s: tx.s,
+      v: parseInt(tx.v),
+    }
+    const sig = ethers.utils.joinSignature(expandedSig)
+
+    const txData = prepareTransactionData(tx)
+
+    const encodedTx = ethers.utils.serializeTransaction(txData)
+    const hash = ethers.utils.keccak256(encodedTx)
+    return ethers.utils.recoverAddress(hash, sig)
+  }
+
+  const verifyTransactionIntegrity = (
+    tx: ReturnType<typeof txDTO>['result'],
+    expectedHash: string
+  ) => {
+    const signature = {
+      v: Number(tx.v),
+      r: tx.r,
+      s: tx.s,
+    }
+
+    const txData = prepareTransactionData(tx)
+
+    const serialized = ethers.utils.serializeTransaction(txData, signature)
+    const computedHash = ethers.utils.keccak256(serialized)
+
+    if (computedHash.toLowerCase() !== expectedHash.toLowerCase()) {
+      logger.error(
+        '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+        {
+          computedHash,
+          expectedHash,
+        }
+      )
+      throw new Error(
+        '[verifyTransactionIntegrity] Transaction hash mismatch detected'
+      )
+    }
+  }
+
   const verifyEvent = async (
     validatorPubkey: string,
     transactionHash: string,
-    toBlock: number
+    toBlock: number,
+    votingRequestsHashSubmittedEvents: Record<string, string>,
+    motionCreatedEvents: Record<string, string>,
+    motionEnactedEvents: Record<string, string>
   ) => {
-    // Final tx in which report data has been finalized
-    const finalizationTx = await getTransaction(transactionHash)
+    const tx = await getTransaction(transactionHash)
 
-    const finalizationFragment = ethers.utils.Fragment.from(
+    const submitReportDataFragment = ethers.utils.Fragment.from(
       'function submitReportData(tuple(uint256 consensusVersion, uint256 refSlot, uint256 requestsCount, uint256 dataFormat, bytes data) data, uint256 contractVersion)'
     )
+    const submitReportDataIface = new ethers.utils.Interface([
+      submitReportDataFragment,
+    ])
 
-    const finalizationIface = new ethers.utils.Interface([finalizationFragment])
+    let isEventEmittedByOracle = true
 
-    const finalizationDecoded = finalizationIface.decodeFunctionData(
-      finalizationFragment.name,
-      finalizationTx.input
+    let decodedReportData = {} as ethers.utils.Result
+    try {
+      decodedReportData = submitReportDataIface.decodeFunctionData(
+        submitReportDataFragment.name,
+        tx.input
+      )
+    } catch (e) {
+      isEventEmittedByOracle = false
+    }
+
+    if (isEventEmittedByOracle) {
+      await verifyOracleEvent(validatorPubkey, decodedReportData, toBlock)
+      return
+    }
+
+    const submitExitRequestsDataFragment = ethers.utils.Fragment.from(
+      'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)'
     )
+    const submitExitRequestsDataIface = new ethers.utils.Interface([
+      submitExitRequestsDataFragment,
+    ])
 
+    let decodedExitRequestsData = {} as ethers.utils.Result
+    try {
+      decodedExitRequestsData = submitExitRequestsDataIface.decodeFunctionData(
+        submitExitRequestsDataFragment.name,
+        tx.input
+      )
+    } catch (e) {
+      throw new Error(
+        `ValidatorExitRequest was emitted by unknown contract function (tx: ${tx.hash})`,
+        { cause: e }
+      )
+    }
+
+    await verifyVotingEvent(
+      validatorPubkey,
+      decodedExitRequestsData,
+      votingRequestsHashSubmittedEvents,
+      motionCreatedEvents,
+      motionEnactedEvents
+    )
+  }
+
+  const verifyOracleEvent = async (
+    validatorPubkey: string,
+    decoded: ethers.utils.Result,
+    toBlock: number
+  ) => {
     const { data, refSlot, consensusVersion, requestsCount, dataFormat } =
-      finalizationDecoded.data as {
+      decoded.data as {
         data: string
         refSlot: ethers.BigNumber
         consensusVersion: ethers.BigNumber
@@ -168,32 +294,8 @@ export const makeVerifier = (
       )
     }
 
-    const expandedSig = {
-      r: originTx.r,
-      s: originTx.s,
-      v: parseInt(originTx.v),
-    }
+    const recoveredAddress = await recoverAddress(originTx)
 
-    const sig = ethers.utils.joinSignature(expandedSig)
-
-    const txData = {
-      gasLimit: ethers.BigNumber.from(originTx.gas),
-      maxFeePerGas: ethers.BigNumber.from(originTx.maxFeePerGas),
-      maxPriorityFeePerGas: ethers.BigNumber.from(
-        originTx.maxPriorityFeePerGas
-      ),
-      data: originTx.input,
-      nonce: parseInt(originTx.nonce),
-      to: originTx.to,
-      value: ethers.BigNumber.from(originTx.value),
-      type: parseInt(originTx.type),
-      chainId: parseInt(originTx.chainId),
-    }
-    const encodedTx = ethers.utils.serializeTransaction(txData) // RLP encoded tx
-    const hash = ethers.utils.keccak256(encodedTx)
-    const recoveredAddress = ethers.utils.recoverAddress(hash, sig)
-
-    // Address can be passed as checksummed or not, account for that
     const allowlist = ORACLE_ADDRESSES_ALLOWLIST.map((address) =>
       address.toLowerCase()
     )
@@ -205,53 +307,105 @@ export const makeVerifier = (
     }
   }
 
-  const lastRequestedValidatorIndex = async (operatorId: number) => {
-    const func = ethers.utils.Fragment.from(
-      'function getLastRequestedValidatorIndices(uint256 moduleId, uint256[] nodeOpIds) view returns (int256[])'
+  const verifyVotingEvent = async (
+    validatorPubkey: string,
+    decoded: ethers.utils.Result,
+    votingRequestsHashSubmittedEvents: Record<string, string>,
+    motionCreatedEvents: Record<string, string>,
+    motionEnactedEvents: Record<string, string>
+  ) => {
+    const { data, dataFormat } = decoded.request as {
+      data: string
+      dataFormat: ethers.BigNumber
+    }
+
+    if (!data.includes((validatorPubkey as string).slice(2)))
+      throw new Error(
+        '[verifyVotingEvent] Pubkey for exit was not found in finalized tx data'
+      )
+
+    const exitRequestsHash = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ['bytes', 'uint256'],
+        [data, dataFormat]
+      )
     )
-    const iface = new ethers.utils.Interface([func])
-    const sig = iface.encodeFunctionData(func.name, [
-      STAKING_MODULE_ID,
-      [operatorId],
-    ])
 
-    try {
-      const json = await el.elRequest({
-        method: 'POST',
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_call',
-          params: [
-            {
-              from: null,
-              to: el.exitBusAddress,
-              data: sig,
-            },
-            'finalized',
-          ],
-          id: 1,
-        }),
-      })
+    const submitExitRequestsHashTxHash =
+      votingRequestsHashSubmittedEvents[exitRequestsHash]
+    if (!submitExitRequestsHashTxHash) {
+      logger.error(
+        '[verifyVotingEvent] No corresponding RequestsHashSubmitted event found',
+        {
+          exitRequestsHash: exitRequestsHash,
+        }
+      )
+      throw new Error(
+        '[verifyVotingEvent] No corresponding RequestsHashSubmitted event found'
+      )
+    }
 
-      const { result } = funcDTO(json)
+    // SUBMIT_TX_HASH_ALLOWLIST is designed for use with Aragon
+    // but can also be used for Easy Track in emergencies
+    if (
+      SUBMIT_TX_HASH_ALLOWLIST.includes(
+        submitExitRequestsHashTxHash.toLowerCase()
+      )
+    ) {
+      logger.info(
+        '[verifyVotingEvent] submitExitRequestsHash transaction found in allowlist, verification passed'
+      )
+      const tx = await getTransaction(submitExitRequestsHashTxHash)
+      verifyTransactionIntegrity(tx, submitExitRequestsHashTxHash)
+      return
+    }
 
-      // One last index or -1 if no exit requests have been sent yet, in BigNumber
-      const decoded = iface.decodeFunctionResult(func.name, result)
+    const motionId = motionEnactedEvents[submitExitRequestsHashTxHash]
+    if (!motionId) {
+      logger.error(
+        '[verifyVotingEvent] No corresponding MotionEnacted event found for the submitExitRequestsHash transaction',
+        {
+          submitExitRequestsHashTxHash: submitExitRequestsHashTxHash,
+        }
+      )
+      throw new Error(
+        '[verifyVotingEvent] No corresponding MotionEnacted event found for the submitExitRequestsHash transaction'
+      )
+    }
 
-      logger.debug('Fetched last requested validator exit for NO')
+    const motionCreateTxHash = motionCreatedEvents[motionId]
+    if (!motionCreateTxHash) {
+      logger.error(
+        '[verifyVotingEvent] No corresponding MotionCreated event found for the motion ID',
+        {
+          motionId: motionId,
+        }
+      )
+      throw new Error(
+        '[verifyVotingEvent] No corresponding MotionCreated event found for the motion ID'
+      )
+    }
 
-      const plainNumber = parseInt(decoded.toString())
+    const motionCreateTx = await getTransaction(motionCreateTxHash)
+    const recoveredAddress = await recoverAddress(motionCreateTx)
 
-      return plainNumber
-    } catch (e) {
-      const msg = 'Unable to retrieve last requested validator exit for NO'
-      logger.error(msg, e)
-      throw new Error(msg)
+    const allowlist = EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST.map(
+      (address) => address.toLowerCase()
+    )
+    if (!allowlist.includes(recoveredAddress.toLowerCase())) {
+      logger.error(
+        '[verifyVotingEvent] Motion creation transaction is not signed by a trusted address',
+        {
+          address: recoveredAddress,
+        }
+      )
+      throw new Error(
+        '[verifyVotingEvent] Motion creation transaction is not signed by a trusted address'
+      )
     }
   }
 
   return {
     verifyEvent,
-    lastRequestedValidatorIndex,
   }
 }
