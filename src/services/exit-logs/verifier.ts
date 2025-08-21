@@ -95,17 +95,18 @@ export const makeVerifier = (
     return found.transactionHash
   }
 
-  const recoverAddress = async (tx: ReturnType<typeof txDTO>['result']) => {
-    const expandedSig = {
-      r: tx.r,
-      s: tx.s,
-      v: parseInt(tx.v),
+  const prepareTransactionData = (tx: ReturnType<typeof txDTO>['result']) => {
+    const isLegacyTx =
+      Number(tx.type) === 0 || (!tx.maxFeePerGas && !tx.maxPriorityFeePerGas)
+
+    if (isLegacyTx && !tx.gasPrice) {
+      throw new Error(
+        '[validateTransactionType] Legacy transaction missing gasPrice'
+      )
     }
-    const sig = ethers.utils.joinSignature(expandedSig)
-    const txData = {
+
+    const baseTxData = {
       gasLimit: ethers.BigNumber.from(tx.gas),
-      maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas),
-      maxPriorityFeePerGas: ethers.BigNumber.from(tx.maxPriorityFeePerGas),
       data: tx.input,
       nonce: parseInt(tx.nonce),
       to: tx.to,
@@ -113,6 +114,28 @@ export const makeVerifier = (
       type: parseInt(tx.type),
       chainId: parseInt(tx.chainId),
     }
+
+    return isLegacyTx
+      ? { ...baseTxData, gasPrice: ethers.BigNumber.from(tx.gasPrice || '0') }
+      : {
+          ...baseTxData,
+          maxFeePerGas: ethers.BigNumber.from(tx.maxFeePerGas || '0'),
+          maxPriorityFeePerGas: ethers.BigNumber.from(
+            tx.maxPriorityFeePerGas || '0'
+          ),
+        }
+  }
+
+  const recoverAddress = async (tx: ReturnType<typeof txDTO>['result']) => {
+    const expandedSig = {
+      r: tx.r,
+      s: tx.s,
+      v: parseInt(tx.v),
+    }
+    const sig = ethers.utils.joinSignature(expandedSig)
+
+    const txData = prepareTransactionData(tx)
+
     const encodedTx = ethers.utils.serializeTransaction(txData)
     const hash = ethers.utils.keccak256(encodedTx)
     return ethers.utils.recoverAddress(hash, sig)
@@ -128,22 +151,7 @@ export const makeVerifier = (
       s: tx.s,
     }
 
-    const txData = {
-      nonce: Number(tx.nonce),
-      gasLimit: ethers.BigNumber.from(tx.gas),
-      gasPrice: tx.gasPrice ? ethers.BigNumber.from(tx.gasPrice) : undefined,
-      maxFeePerGas: tx.maxFeePerGas
-        ? ethers.BigNumber.from(tx.maxFeePerGas)
-        : undefined,
-      maxPriorityFeePerGas: tx.maxPriorityFeePerGas
-        ? ethers.BigNumber.from(tx.maxPriorityFeePerGas)
-        : undefined,
-      to: tx.to,
-      value: ethers.BigNumber.from(tx.value),
-      data: tx.input,
-      chainId: Number(tx.chainId),
-      type: Number(tx.type),
-    }
+    const txData = prepareTransactionData(tx)
 
     const serialized = ethers.utils.serializeTransaction(txData, signature)
     const computedHash = ethers.utils.keccak256(serialized)
