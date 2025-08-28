@@ -158,19 +158,97 @@ Available metrics:
 
 ## Troubleshooting
 
-When you try to use Lido Validator Ejector on ARM, you may encounter an unexpected
-problem related to the inability to install @chainsafe/blst dependencies under darwin arm64.
+### Installation Issues
 
-### Why does it happen?!
+#### Node.js Version Compatibility
 
-It happens because https://www.npmjs.com/package/@chainsafe/blst doesn't provide native C binding to https://github.com/supranational/blst under darwin arm64.
-Such as there no native binding, a user has to compile C binding to blst lab manually for darwin arm64.
-@chainsafe/blst has compile option but inside itself for downloading dependencies this lib uses Python language.
-Historically MacOs uses alias python3 for python. So then @chainsafe/blst fails with an error that it could not install all dependencies.
-To fix it on MacOs just create alias python for python3.
+The project requires Node.js v18. If you encounter build errors with @chainsafe/blst or other native modules:
 
 ```bash
-ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
+# Check your Node.js version
+node --version
+
+# If using Node.js v24 or higher, switch to v18
+nvm install 18
+nvm use 18
+
+# Clear caches and reinstall
+yarn cache clean
+rm -rf node_modules yarn.lock
+yarn install
 ```
 
-More info here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566
+#### macOS Setup
+
+When you try to use Lido Validator Ejector on ARM Mac, you may encounter problems with @chainsafe/blst dependencies.
+
+**Python Command Not Found:**
+```bash
+# Create python symlink (required for node-gyp)
+sudo ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
+# Or alternatively:
+sudo ln -s $(which python3) /usr/local/bin/python
+```
+
+**Build Dependencies:**
+```bash
+# Install Xcode command line tools
+xcode-select --install
+
+# Install Python development headers (if using pyenv)
+env PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.x.x
+```
+
+#### Linux Setup
+
+**Ubuntu/Debian:**
+```bash
+# Install build dependencies
+sudo apt-get update
+sudo apt-get install -y python3 python3-dev make g++ gcc build-essential
+
+# Create python symlink
+sudo ln -sf /usr/bin/python3 /usr/bin/python
+```
+
+**CentOS/RHEL:**
+```bash
+# Install build dependencies  
+sudo yum install -y python3 python3-devel make gcc gcc-c++
+
+# Create python symlink
+sudo ln -sf /usr/bin/python3 /usr/bin/python
+```
+
+### Docker Issues
+
+#### Platform Architecture Mismatch
+
+If you see "exec format error" on Linux servers:
+
+```bash
+# Build for correct platform
+docker build --platform linux/amd64 -t validator-ejector .
+
+```
+
+#### Network Connection Issues
+
+If the container cannot connect to `127.0.0.1:8545`:
+
+1. **Use host networking** (recommended for localhost services):
+   ```yaml
+   # In docker-compose.yml
+   services:
+     app:
+       network_mode: host
+   ```
+
+2. **Use server IP instead** of localhost:
+   ```bash
+   # In .env file
+   EXECUTION_NODE=http://YOUR_SERVER_IP:8545
+   CONSENSUS_NODE=http://YOUR_SERVER_IP:5052
+   ```
+
+More info: https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566

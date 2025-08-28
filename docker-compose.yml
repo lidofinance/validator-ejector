@@ -2,12 +2,14 @@ version: '3.7'
 services:
   app:
     # get last hash from https://docs.lido.fi/guides/tooling#validator-ejector
-    image: lidofinance/validator-ejector@<latest-hash>
+    image: 2020jack/validator-ejector:v1.9.1
     container_name: validator-ejector
     restart: unless-stopped
+    network_mode: host
     environment:
       - EXECUTION_NODE=${EXECUTION_NODE}
       - CONSENSUS_NODE=${CONSENSUS_NODE}
+      - JWT_SECRET_PATH=${JWT_SECRET_PATH}
       - LOCATOR_ADDRESS=${LOCATOR_ADDRESS}
       - STAKING_MODULE_ID=${STAKING_MODULE_ID}
       - OPERATOR_ID=${OPERATOR_ID}
@@ -32,3 +34,5 @@ services:
       - '${HTTP_PORT}:${HTTP_PORT}'
     volumes:
       - ./messages:/app/messages
+      - ${JWT_SECRET_PATH}:${JWT_SECRET_PATH}:ro
+

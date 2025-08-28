@@ -39,6 +39,12 @@ export const makeExecutionApi = (
       const token = jwtService.generateToken()
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
+        logger.debug('JWT token added to request headers')
+      } else {
+        logger.warn('JWT service failed to generate token, proceeding without authentication')
+        }
+      } else if (JWT_SECRET_PATH) {
+        logger.warn('JWT_SECRET_PATH configured but jwtService not initialized')
       }
     }
 
