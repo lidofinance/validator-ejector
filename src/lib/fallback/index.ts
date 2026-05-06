@@ -126,3 +126,32 @@ export const broadcastAll = async <T>(
 
   return succeeded
 }
+
+/**
+ * Run `op` against every URL, capturing per-URL success or failure.
+ * Unlike `makeFallback` (single-success-wins) and `broadcastAll`
+ * (>=1-success-required), this returns the full per-endpoint result
+ * matrix without short-circuiting. Use when the caller cares about
+ * each endpoint's individual outcome — e.g. cross-endpoint consistency
+ * checks where divergence itself is the signal.
+ */
+export const iterateAll = async <T>(
+  urls: string[],
+  op: (url: string, idx: number) => Promise<T>
+): Promise<
+  Array<
+    | { url: string; idx: number; value: T }
+    | { url: string; idx: number; err: unknown }
+  >
+> => {
+  if (urls.length === 0) {
+    throw new Error('iterateAll: urls list is empty')
+  }
+  const settled = await Promise.allSettled(urls.map((u, i) => op(u, i)))
+  return settled.map((s, i) => {
+    const url = urls[i]
+    return s.status === 'fulfilled'
+      ? { url, idx: i, value: s.value }
+      : { url, idx: i, err: s.reason }
+  })
+}

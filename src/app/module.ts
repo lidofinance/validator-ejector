@@ -32,6 +32,7 @@ import { makeApp } from './service.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
 import { makeExitLogsService } from '../services/exit-logs/service.js'
+import { makeConsistencyChecker } from '../services/consistency/service.js'
 
 dotenv.config()
 
@@ -72,6 +73,12 @@ export const makeAppModule = async () => {
     logger,
     config,
     jwtService
+  )
+
+  const consistencyChecker = makeConsistencyChecker(
+    executionHttp,
+    logger,
+    config
   )
 
   const consensusApi = makeConsensusApi(
@@ -158,6 +165,7 @@ export const makeAppModule = async () => {
     executionApi,
     consensusApi,
     appInfoReader,
+    consistencyChecker,
   })
 
   return {

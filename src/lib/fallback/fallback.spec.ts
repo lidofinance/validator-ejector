@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest'
 
 import { mockLogger } from '../../test/logger.js'
 import { HttpException } from '../request/errors.js'
-import { broadcastAll, makeFallback } from './index.js'
+import { broadcastAll, iterateAll, makeFallback } from './index.js'
 
 const URLS = [
   'http://primary.example:8545',
@@ -247,6 +247,75 @@ describe('broadcastAll', () => {
     }
 
     await broadcastAll(URLS, op, logger, 'CL')
+
+    // Three sequential 50ms delays would be ≥150ms; parallel should be ~50ms.
+    expect(Date.now() - startedAt).toBeLessThan(140)
+  })
+})
+
+describe('iterateAll', () => {
+  test('returns one result entry per URL when every op succeeds', async () => {
+    const seen: string[] = []
+    const op = async (url: string) => {
+      seen.push(url)
+      return `ok:${url}`
+    }
+
+    const results = await iterateAll(URLS, op)
+
+    expect(seen.sort()).toEqual([...URLS].sort())
+    expect(results).toHaveLength(URLS.length)
+    results.forEach((r, i) => {
+      expect(r.url).toBe(URLS[i])
+      expect(r.idx).toBe(i)
+      expect('value' in r).toBe(true)
+      if ('value' in r) expect(r.value).toBe(`ok:${URLS[i]}`)
+    })
+  })
+
+  test('captures per-URL failures alongside successes without short-circuiting', async () => {
+    const op = async (url: string) => {
+      if (url === URLS[1]) throw new Error(`boom:${url}`)
+      return `ok:${url}`
+    }
+
+    const results = await iterateAll(URLS, op)
+
+    expect(results).toHaveLength(URLS.length)
+    expect('value' in results[0]).toBe(true)
+    expect('err' in results[1]).toBe(true)
+    expect('value' in results[2]).toBe(true)
+    if ('err' in results[1]) {
+      expect((results[1].err as Error).message).toBe(`boom:${URLS[1]}`)
+    }
+  })
+
+  test('does not short-circuit when every op fails', async () => {
+    const seen: string[] = []
+    const op = async (url: string) => {
+      seen.push(url)
+      throw new Error(`fail:${url}`)
+    }
+
+    const results = await iterateAll(URLS, op)
+
+    expect(seen.sort()).toEqual([...URLS].sort())
+    expect(results).toHaveLength(URLS.length)
+    expect(results.every((r) => 'err' in r)).toBe(true)
+  })
+
+  test('throws synchronously when constructed with an empty URL list', async () => {
+    await expect(iterateAll([], async () => 'never')).rejects.toThrow(/empty/)
+  })
+
+  test('runs operations in parallel (not serialised)', async () => {
+    const startedAt = Date.now()
+    const op = async () => {
+      await new Promise((r) => setTimeout(r, 50))
+      return 'ok'
+    }
+
+    await iterateAll(URLS, op)
 
     // Three sequential 50ms delays would be ≥150ms; parallel should be ~50ms.
     expect(Date.now() - startedAt).toBeLessThan(140)

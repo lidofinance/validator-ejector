@@ -61,3 +61,14 @@ export const exitRequestMock = () => ({
   method: 'POST',
   result: { status: 200 },
 })
+
+export const depositContractMock = (chainId = '1') => ({
+  url: '/eth/v1/config/deposit_contract',
+  method: 'GET',
+  result: {
+    data: {
+      chain_id: chainId,
+      address: '0x00000000219ab540356cBB839Cbe05303d7705Fa',
+    },
+  },
+})
