@@ -80,7 +80,7 @@ describe('makeFallback', () => {
     expect(seen).toEqual(URLS)
   })
 
-  test('throws the last error when every endpoint fails', async () => {
+  test('throws AggregateError preserving every per-endpoint cause when all fail', async () => {
     const logger = mockLogger()
     const fallback = makeFallback(URLS, logger, 'EL')
 
@@ -90,10 +90,21 @@ describe('makeFallback', () => {
       throw new HttpException(`fail:${url}`, 502)
     }
 
-    await expect(fallback(op)).rejects.toMatchObject({
-      statusCode: 502,
-      response: `fail:${URLS[2]}`,
-    })
+    let caught: unknown
+    try {
+      await fallback(op)
+    } catch (err) {
+      caught = err
+    }
+
+    expect(caught).toBeInstanceOf(AggregateError)
+    const aggr = caught as AggregateError
+    expect(aggr.message).toMatch(/fallback failed at all 3 endpoints/)
+    expect(aggr.errors).toHaveLength(3)
+    expect(aggr.errors.every((e) => e instanceof HttpException)).toBe(true)
+    const responses = aggr.errors.map((e) => (e as HttpException).response)
+    expect(responses.sort()).toEqual(URLS.map((u) => `fail:${u}`).sort())
+
     expect(seen).toEqual(URLS)
     expect(logger.warn).toHaveBeenCalledWith(
       'EL endpoint failed, all endpoints exhausted',
@@ -111,7 +122,7 @@ describe('makeFallback', () => {
       fallback(async () => {
         throw new HttpException('boom', 503)
       })
-    ).rejects.toBeInstanceOf(HttpException)
+    ).rejects.toBeInstanceOf(AggregateError)
   })
 
   test('throws synchronously when constructed with an empty URL list', () => {
@@ -155,7 +166,7 @@ describe('makeFallback', () => {
     }
 
     const startedAt = Date.now()
-    await expect(fallback(op)).rejects.toBeInstanceOf(HttpException)
+    await expect(fallback(op)).rejects.toBeInstanceOf(AggregateError)
     expect(Date.now() - startedAt).toBeLessThan(150)
   })
 })

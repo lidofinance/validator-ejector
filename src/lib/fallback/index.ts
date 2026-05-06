@@ -41,14 +41,14 @@ export const makeFallback = (
   }
 
   return async <T>(op: (url: string) => Promise<T>): Promise<T> => {
-    let lastErr: unknown
+    const causes: unknown[] = []
     for (let i = 0; i < urls.length; i++) {
       const url = urls[i]
       try {
         return await op(url)
       } catch (err) {
         if (!isFallbackable(err)) throw err
-        lastErr = err
+        causes.push(err)
         const isLast = i === urls.length - 1
         const msg = isLast
           ? `${label} endpoint failed, all endpoints exhausted`
@@ -56,7 +56,13 @@ export const makeFallback = (
         logger.warn(msg, { url: hostOf(url), idx: i, err })
       }
     }
-    throw lastErr
+    // Use AggregateError so every per-endpoint failure is preserved for
+    // diagnostics (Node ≥15). Mirrors broadcastAll — surfacing only the
+    // last cause hides why a multi-URL config didn't recover.
+    throw new AggregateError(
+      causes,
+      `${label} fallback failed at all ${urls.length} endpoints`
+    )
   }
 }
 
@@ -74,7 +80,7 @@ export const broadcastAll = async <T>(
   urls: string[],
   op: (url: string) => Promise<T>,
   logger: LoggerService,
-  label: string
+  label: FallbackLabel
 ): Promise<T[]> => {
   if (urls.length === 0) {
     throw new Error(`broadcastAll: ${label} urls list is empty`)
