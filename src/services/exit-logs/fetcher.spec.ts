@@ -80,11 +80,11 @@ describe('makeConsensusApi logs', () => {
   it('should fetch and parse withdrawal events without security when TRUST_MODE is true', async () => {
     const oracleValidatorExitRequestEvents = mockEthServer(
       oracleValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     const votingValidatorExitRequestEvents = mockEthServer(
       votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.TRUST_MODE = true
@@ -115,13 +115,16 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should verify withdrawal via oracle withdrawal events if recoveredAddress in ORACLE_ADDRESSES_ALLOWLIST', async () => {
-    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      oracleValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       oracleSubmitReportDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
-    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE)
-    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
@@ -152,13 +155,16 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should not verify withdrawal via oracle if recoveredAddress not in ORACLE_ADDRESSES_ALLOWLIST', async () => {
-    mockEthServer(oracleValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      oracleValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       oracleSubmitReportDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
-    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE)
-    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = ['0x222']
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
@@ -183,12 +189,15 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should verify withdrawal via vote successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
-    mockEthServer(voteSubmitHashTransactionMock(), config.EXECUTION_NODE)
+    mockEthServer(voteSubmitHashTransactionMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
@@ -220,14 +229,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should throw transaction hash mismatch error when verifying transaction integrity when SUBMIT_TX_HASH_ALLOWLIST used', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       voteSubmitHashTransactionWithWrongHashMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
@@ -266,14 +278,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should verify withdrawal via vote successfully when transaction in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       voteEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
@@ -310,14 +325,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should not verify withdrawal via vote when transaction not in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and not in SUBMIT_TX_HASH_ALLOWLIST', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       voteEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
@@ -345,16 +363,16 @@ describe('makeConsensusApi logs', () => {
   it('should not verify withdrawal via vote when EASY_TRACK_ADDRESS is empty', async () => {
     const votingValidatorExitRequestEvents = mockEthServer(
       votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     mockEthServer(
       voteEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.EASY_TRACK_ADDRESS = ''
@@ -369,7 +387,7 @@ describe('makeConsensusApi logs', () => {
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {
     const votingValidatorExitRequestEvents = mockEthServer(
       votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.EASY_TRACK_ADDRESS = ''
@@ -386,7 +404,7 @@ describe('makeConsensusApi logs', () => {
   it('should fetch motion created events correctly', async () => {
     const easyTrackMotionCreatedEvents = mockEthServer(
       easyTrackMotionCreatedEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.EASY_TRACK_ADDRESS = '0x0000000000000000000000000000000000000000'
@@ -403,7 +421,7 @@ describe('makeConsensusApi logs', () => {
   it('should return empty object when EASY_TRACK_ADDRESS is not set', async () => {
     const easyTrackMotionCreatedEvents = mockEthServer(
       easyTrackMotionCreatedEventsMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.EASY_TRACK_ADDRESS = ''
@@ -419,7 +437,7 @@ describe('makeConsensusApi logs', () => {
     it('should fetch and parse voting requests hash submitted events', async () => {
       const votingRequestsHashSubmittedEvents = mockEthServer(
         votingRequestsHashSubmittedEventsMock(),
-        config.EXECUTION_NODE
+        config.EXECUTION_NODE[0]
       )
 
       mockService()
@@ -441,7 +459,7 @@ describe('makeConsensusApi logs', () => {
     it('should fetch and parse motion enacted events', async () => {
       const easyTrackMotionEnactedEvents = mockEthServer(
         easyTrackMotionEnactedEventsMock(),
-        config.EXECUTION_NODE
+        config.EXECUTION_NODE[0]
       )
 
       mockService()
@@ -466,12 +484,15 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should verify legacy transaction successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
-    mockEthServer(legacySubmitHashTransactionMock(), config.EXECUTION_NODE)
+    mockEthServer(legacySubmitHashTransactionMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
     config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
@@ -503,14 +524,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should not verify when legacy transaction missing gasPrice', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       legacySubmitHashTransactionMissingGasPriceMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
@@ -549,14 +573,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should verify withdrawal via Easy Track motion successfully when legacy transaction with recoverAddress', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       legacyEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
@@ -593,14 +620,17 @@ describe('makeConsensusApi logs', () => {
   })
 
   it('should not verify withdrawal via Easy Track when legacy transaction missing gasPrice in recoverAddress', async () => {
-    mockEthServer(votingValidatorExitRequestEventsMock(), config.EXECUTION_NODE)
+    mockEthServer(
+      votingValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
     mockEthServer(
       votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
     mockEthServer(
       legacyEasyTrackMotionCreateTransactionMissingGasPriceMock(),
-      config.EXECUTION_NODE
+      config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
