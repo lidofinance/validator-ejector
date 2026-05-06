@@ -1,4 +1,5 @@
 import nock from 'nock'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ConsistencyChecker, makeConsistencyChecker } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
