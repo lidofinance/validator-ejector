@@ -122,6 +122,77 @@ describe('config module', () => {
       )
     })
   })
+
+  describe('staking module identification validation', () => {
+    test('should not throw when only STAKING_MODULE_ID is provided', () => {
+      const config = {
+        ...configBase,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        STAKING_MODULE_ID: '123',
+        STAKING_MODULE_IDENTIFIERS: undefined,
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.STAKING_MODULE_IDS).toEqual(['123'])
+    })
+
+    test('should not throw when only STAKING_MODULE_IDENTIFIERS with values is provided', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { STAKING_MODULE_ID, ...configWithoutStakingModuleId } = configBase
+      const config = {
+        ...configWithoutStakingModuleId,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        STAKING_MODULE_IDENTIFIERS: '[1, 2, 3]',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.STAKING_MODULE_IDS).toEqual(['1', '2', '3'])
+    })
+
+    test('if both values are set, STAKING_MODULE_IDENTIFIERS must be selected', () => {
+      const config = {
+        ...configBase,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        STAKING_MODULE_IDENTIFIERS: '[1, 2, 3]',
+        STAKING_MODULE_ID: '2222',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).not.toThrow()
+
+      const configResult = makeConf()
+      expect(configResult.STAKING_MODULE_IDS).toEqual(['1', '2', '3'])
+    })
+
+    test('should throw when STAKING_MODULE_IDENTIFIERS is empty array', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { STAKING_MODULE_ID, ...configWithoutStakingModuleId } = configBase
+      const config = {
+        ...configWithoutStakingModuleId,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        STAKING_MODULE_IDENTIFIERS: '[]',
+      }
+
+      const makeConf = () =>
+        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+      expect(makeConf).toThrow(
+        'At least one of STAKING_MODULE_ID or STAKING_MODULE_IDENTIFIERS must be provided.'
+      )
+    })
+  })
 })
 
 describe('logger config module', () => {

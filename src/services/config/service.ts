@@ -32,9 +32,18 @@ export const makeConfig = ({
       env.LOCATOR_ADDRESS,
       'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     ),
-    STAKING_MODULE_ID: str(
-      env.STAKING_MODULE_ID,
-      'Please, setup STAKING_MODULE_ID id. Example: 123'
+    STAKING_MODULE_ID: optional(() =>
+      str(
+        env.STAKING_MODULE_ID,
+        'Please, setup STAKING_MODULE_ID id. Example: 123'
+      )
+    ),
+    STAKING_MODULE_IDENTIFIERS: optional(() =>
+      json_arr(
+        env.STAKING_MODULE_IDENTIFIERS,
+        (modules) => modules.map((module) => String(num(module))),
+        'Please, setup STAKING_MODULE_IDENTIFIERS. Example: [1,2,3]'
+      )
     ),
     OPERATOR_ID: optional(() =>
       num(env.OPERATOR_ID, 'Please, setup OPERATOR_ID id. Example: 123')
@@ -93,6 +102,7 @@ export const makeConfig = ({
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
 
     OPERATOR_IDS: [] as number[],
+    STAKING_MODULE_IDS: [] as string[],
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -104,6 +114,19 @@ export const makeConfig = ({
   if (!config.MESSAGES_LOCATION && !config.VALIDATOR_EXIT_WEBHOOK) {
     throw new Error(
       'Neither MESSAGES_LOCATION nor VALIDATOR_EXIT_WEBHOOK are defined. Please set one of them.'
+    )
+  }
+
+  if (config.STAKING_MODULE_IDENTIFIERS?.length)
+    config.STAKING_MODULE_IDS = config.STAKING_MODULE_IDENTIFIERS
+
+  if (!config.STAKING_MODULE_IDS?.length && config.STAKING_MODULE_ID) {
+    config.STAKING_MODULE_IDS = [config.STAKING_MODULE_ID]
+  }
+
+  if (!config.STAKING_MODULE_IDS?.length) {
+    throw new Error(
+      'At least one of STAKING_MODULE_ID or STAKING_MODULE_IDENTIFIERS must be provided.'
     )
   }
 

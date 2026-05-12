@@ -26,6 +26,7 @@ import { ConfigService } from '../config/service.js'
 import { MetricsService } from 'services/prom/service.js'
 import { makeExecutionApi } from '../execution-api/service.js'
 import nock from 'nock'
+import { ethers } from 'ethers'
 
 describe('makeConsensusApi logs', () => {
   let api: ExitLogsService
@@ -112,6 +113,31 @@ describe('makeConsensusApi logs', () => {
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
     )
     expect(metrics.eventSecurityVerification.inc).toBeCalledTimes(0)
+  })
+
+  it('should filter validator exit requests by multiple staking modules', async () => {
+    config = mockConfig(logger, {
+      EXECUTION_NODE: 'http://localhost:4455',
+      STAKING_MODULE_IDENTIFIERS: '[1, 2]',
+    })
+    mockService([])
+
+    const topic = (id: number) =>
+      ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
+
+    const logsMock = nock(config.EXECUTION_NODE)
+      .post('/', (body) => {
+        expect(body.method).toBe('eth_getLogs')
+        expect(body.params[0].topics[1]).toEqual([topic(1), topic(2)])
+        expect(body.params[0].topics[2]).toEqual([topic(1)])
+        return true
+      })
+      .reply(200, { result: [] })
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(logsMock.isDone()).toBe(true)
+    expect(res).toHaveLength(0)
   })
 
   it('should verify withdrawal via oracle withdrawal events if recoveredAddress in ORACLE_ADDRESSES_ALLOWLIST', async () => {

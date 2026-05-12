@@ -19,7 +19,7 @@ export const makeExitLogsService = (
   el: ExecutionApiService,
   cl: ConsensusApiService,
   {
-    STAKING_MODULE_ID,
+    STAKING_MODULE_IDS,
     ORACLE_ADDRESSES_ALLOWLIST,
     TRUST_MODE,
     BLOCKS_PRELOAD,
@@ -41,7 +41,7 @@ export const makeExitLogsService = (
     el,
     cl,
     {
-      STAKING_MODULE_ID,
+      STAKING_MODULE_IDS,
       TRUST_MODE,
       EASY_TRACK_ADDRESS,
     },

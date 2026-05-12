@@ -72,7 +72,7 @@ export const makeJobProcessor = ({
 
     logger.info('Job started', {
       operatorIds,
-      stakingModuleId: config.STAKING_MODULE_ID,
+      stakingModuleIds: config.STAKING_MODULE_IDS,
     })
 
     await messageReloader.reloadAndVerifyMessages(messageStorage)

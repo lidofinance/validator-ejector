@@ -19,11 +19,11 @@ export const makeExitLogsFetcherService = (
   el: ExecutionApiService,
   cl: ConsensusApiService,
   {
-    STAKING_MODULE_ID,
+    STAKING_MODULE_IDS,
     TRUST_MODE,
     EASY_TRACK_ADDRESS,
   }: {
-    STAKING_MODULE_ID: string
+    STAKING_MODULE_IDS: string[]
     TRUST_MODE: boolean
     EASY_TRACK_ADDRESS: string
   },
@@ -131,9 +131,8 @@ export const makeExitLogsFetcherService = (
 
     const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
       eventTopic,
-      ethers.utils.hexZeroPad(
-        ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
-        32
+      STAKING_MODULE_IDS.map((id) =>
+        ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
       ),
       operatorIds.map((id) =>
         ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
