@@ -176,6 +176,32 @@ export const makeConsensusApi = (
     ).length
   }
 
+  const fetchValidatorsInfoBatch = async (
+    indices: string[],
+    batchSize = 1000,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
+    const validators = await fetchValidatorsBatch(indices, batchSize, tag)
+
+    const result = new Map<
+      string,
+      { index: string; pubKey: string; status: string; isExiting: boolean }
+    >()
+
+    for (const v of validators) {
+      result.set(v.index, {
+        index: v.index,
+        pubKey: v.validator.pubkey,
+        status: v.status,
+        isExiting: isValidatorExiting(v.validator.exit_epoch),
+      })
+    }
+
+    logger.debug(`Fetched info for ${result.size} validators in batch`)
+
+    return result
+  }
+
   const validatePublicKeys = async (
     validatorData: Array<{ validatorIndex: string; validatorPubkey: string }>,
     batchSize = 1000,
@@ -235,6 +261,7 @@ export const makeConsensusApi = (
     getExitingValidatorsCount,
     validatePublicKeys,
     fetchValidatorsBatch,
+    fetchValidatorsInfoBatch,
     isValidatorExiting,
   }
 }

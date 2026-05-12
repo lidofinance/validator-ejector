@@ -103,4 +103,30 @@ describe('messages processor', () => {
 
     di.restore()
   })
+
+  it('propagates batch validator info failures', async () => {
+    const di = prepareDeps(
+      [CAPELLA_MESSAGE],
+      {
+        pubKey: VALIDATOR_PUB_KEY,
+        id: VALIDATOR_INDEX,
+      },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      },
+      { failValidatorsBatch: true }
+    )
+
+    await expect(
+      di.messagesProcessor.loadToMemoryStorage(di.messageStorage, {
+        isDencun: false,
+        capellaVersion: CAPELLA_FORK_VERSION,
+        currentVersion: CAPELLA_FORK_VERSION,
+      })
+    ).rejects.toThrow()
+
+    di.restore()
+  })
 })

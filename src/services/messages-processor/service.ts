@@ -178,6 +178,13 @@ export const makeMessagesProcessor = ({
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
+    const validatorIndices = Array.from(
+      new Set(messages.map((m) => m.data.message.validator_index))
+    )
+    const validatorsInfoMap = await consensusApi.fetchValidatorsInfoBatch(
+      validatorIndices
+    )
+
     const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
 
     for (const [ix, m] of messages.entries()) {
@@ -186,14 +193,10 @@ export const makeMessagesProcessor = ({
       const { message, signature: rawSignature } = m.data
       const { validator_index: validatorIndex, epoch } = message
 
-      let validatorInfo: { pubKey: string; isExiting: boolean }
-      try {
-        validatorInfo = await consensusApi.validatorInfo(validatorIndex)
-      } catch (e) {
-        logger.error(
-          `Failed to get validator info for index ${validatorIndex}`,
-          e
-        )
+      const validatorInfo = validatorsInfoMap.get(validatorIndex)
+
+      if (!validatorInfo) {
+        logger.error(`Failed to get validator info for index ${validatorIndex}`)
         invalidExitMessageFiles.add(m.meta.filename)
         continue
       }

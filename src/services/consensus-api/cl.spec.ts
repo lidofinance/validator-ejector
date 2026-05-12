@@ -77,6 +77,52 @@ describe('makeConsensusApi', () => {
     })
   })
 
+  it('should fetch validator info in batch', async () => {
+    const indices = ['1', '2']
+    const mockResponse = {
+      data: [
+        {
+          index: '1',
+          status: 'active_ongoing',
+          validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+        },
+        {
+          index: '2',
+          status: 'active_exiting',
+          validator: { pubkey: '0x456', exit_epoch: '100' },
+        },
+      ],
+    }
+    nock(config.CONSENSUS_NODE)
+      .get('/eth/v1/beacon/states/head/validators?id=1,2')
+      .reply(200, mockResponse)
+
+    const res = await api.fetchValidatorsInfoBatch(indices, 1000)
+
+    expect(res).toEqual(
+      new Map([
+        [
+          '1',
+          {
+            index: '1',
+            pubKey: '0x123',
+            status: 'active_ongoing',
+            isExiting: false,
+          },
+        ],
+        [
+          '2',
+          {
+            index: '2',
+            pubKey: '0x456',
+            status: 'active_exiting',
+            isExiting: true,
+          },
+        ],
+      ])
+    )
+  })
+
   it('should send exit request', async () => {
     const message = {
       message: {
