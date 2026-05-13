@@ -65,3 +65,19 @@ export const arr = (input: unknown, errorMessage?: string) => {
   }
   throw new ValidationError(errorMessage || `Invalid array input: "${input}"`)
 }
+
+export const url_list = (input: unknown, errorMessage?: string | number) => {
+  const string = str(input, errorMessage)
+  const items = string
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((s) => s.replace(/\/+$/, ''))
+  if (items.length === 0)
+    throw new ValidationError(
+      typeof errorMessage === 'string'
+        ? errorMessage
+        : `Invalid url_list input: "${input}"`
+    )
+  return items
+}

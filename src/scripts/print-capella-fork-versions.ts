@@ -66,7 +66,7 @@ const makeCrossChainProvider = () => {
           abort(30_000),
         ]),
         logger,
-        { ...config, CONSENSUS_NODE }
+        { ...config, CONSENSUS_NODE: [CONSENSUS_NODE] }
       )
     )
   }

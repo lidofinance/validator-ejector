@@ -64,10 +64,10 @@ export const prepareDeps = (
   })
 
   const serverMocks = [
-    mockEthCLNode(depositContractMock('17000'), config.CONSENSUS_NODE),
-    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE),
-    mockEthCLNode(validatorInfoMock(validator), config.CONSENSUS_NODE),
-    mockEthCLNode(genesisMock(), config.CONSENSUS_NODE),
+    mockEthCLNode(depositContractMock('17000'), config.CONSENSUS_NODE[0]),
+    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE[0]),
+    mockEthCLNode(validatorInfoMock(validator), config.CONSENSUS_NODE[0]),
+    mockEthCLNode(genesisMock(), config.CONSENSUS_NODE[0]),
   ]
 
   const consensusApi = makeConsensusApi(
@@ -130,7 +130,7 @@ export const prepareDeps = (
     epoch: string
   }) => {
     restore('/eth/v1/beacon/states/finalized/fork')
-    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE)
+    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE[0])
   }
 
   return {

@@ -12,7 +12,6 @@ import { makeExitLogsCacheService } from './cache.js'
 export type ExitLogsService = ReturnType<typeof makeExitLogsService>
 
 const LOAD_LOGS_STEP = 10000
-const VOTING_EVENTS_FRAME_BLOCKS = 216000 // ~30 days
 
 export const makeExitLogsService = (
   logger: ReturnType<typeof makeLogger>,
@@ -23,6 +22,7 @@ export const makeExitLogsService = (
     ORACLE_ADDRESSES_ALLOWLIST,
     TRUST_MODE,
     BLOCKS_PRELOAD,
+    VOTING_EVENTS_FRAME_BLOCKS,
     EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
     EASY_TRACK_ADDRESS,

@@ -82,6 +82,19 @@ export const json_obj = makeJson(v.obj)
  */
 export const json_arr = makeJson(v.arr)
 
+/**
+ * Check unknown value is a comma-separated list of URLs.
+ * Single URL parses as a length-1 array. Trims whitespace, strips
+ * trailing slashes, and rejects empty input.
+ * ```ts
+ * const urls = url_list(env.EXECUTION_NODE)
+ * ```
+ * @param value - unknown string (comma-separated)
+ * @param {String | undefined} errorMessage - custom error message
+ * @returns string[]
+ */
+export const url_list = make(v.url_list)
+
 type Check<A, B> = A extends B ? A : never
 
 /**

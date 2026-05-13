@@ -1,9 +1,12 @@
 import {
+  broadcastAll,
+  makeFallback,
   makeLogger,
   makeRequest,
   notOkError,
   safelyParseJsonResponse,
 } from '../../lib/index.js'
+import { RequestConfig } from '../../lib/request/types.js'
 import {
   syncingDTO,
   genesisDTO,
@@ -21,17 +24,18 @@ export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 export const makeConsensusApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { CONSENSUS_NODE }: { CONSENSUS_NODE: string }
+  { CONSENSUS_NODE }: { CONSENSUS_NODE: string[] }
 ) => {
-  const normalizedUrl = CONSENSUS_NODE.endsWith('/')
-    ? CONSENSUS_NODE.slice(0, -1)
-    : CONSENSUS_NODE
+  const fallback = makeFallback(CONSENSUS_NODE, logger, 'CL')
+
+  const clRequest = (path: string, cfg?: RequestConfig) =>
+    fallback((url) => request(`${url}${path}`, cfg))
 
   const isValidatorExiting = (exitEpoch: string) =>
     exitEpoch !== FAR_FUTURE_EPOCH
 
   const syncing = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
+    const res = await clRequest('/eth/v1/node/syncing', {
       middlewares: [notOkError()],
     })
     const { data } = syncingDTO(await safelyParseJsonResponse(res, logger))
@@ -46,7 +50,7 @@ export const makeConsensusApi = (
   }
 
   const genesis = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/beacon/genesis`, {
+    const res = await clRequest('/eth/v1/beacon/genesis', {
       middlewares: [notOkError()],
     })
     const { data } = genesisDTO(await safelyParseJsonResponse(res, logger))
@@ -55,19 +59,16 @@ export const makeConsensusApi = (
   }
 
   const state = async () => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/finalized/fork`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
+    const res = await clRequest('/eth/v1/beacon/states/finalized/fork', {
+      middlewares: [notOkError()],
+    })
     const { data } = stateDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched state data')
     return data
   }
 
   const spec = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/config/spec`, {
+    const res = await clRequest('/eth/v1/config/spec', {
       middlewares: [notOkError()],
     })
     const { data } = specDTO(await safelyParseJsonResponse(res, logger))
@@ -79,19 +80,10 @@ export const makeConsensusApi = (
     id: string,
     tag: 'head' | 'finalized' = 'head'
   ) => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/${tag}/validators/${id}`
+    const res = await clRequest(
+      `/eth/v1/beacon/states/${tag}/validators/${id}`,
+      { middlewares: [notOkError()] }
     )
-
-    if (!res.ok) {
-      const { message } = (await await safelyParseJsonResponse(
-        res,
-        logger
-      )) as {
-        message: string
-      }
-      throw new Error(message)
-    }
 
     const result = validatorInfoDTO(await safelyParseJsonResponse(res, logger))
 
@@ -112,30 +104,27 @@ export const makeConsensusApi = (
     }
     signature: string
   }) => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message),
-      }
+    // Voluntary exits are broadcast to *every* configured CL endpoint in
+    // parallel so the message reaches gossip via the widest possible path.
+    // Succeeds if any one endpoint accepts; throws only if all reject.
+    await broadcastAll(
+      CONSENSUS_NODE,
+      (url) =>
+        request(`${url}/eth/v1/beacon/pool/voluntary_exits`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(message),
+          middlewares: [notOkError()],
+        }),
+      logger,
+      'CL'
     )
-
-    if (!res.ok) {
-      const { message } = (await safelyParseJsonResponse(res, logger)) as {
-        message: string
-      }
-      throw new Error(message)
-    }
   }
 
   const depositContract = async () => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/config/deposit_contract`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
+    const res = await clRequest('/eth/v1/config/deposit_contract', {
+      middlewares: [notOkError()],
+    })
     const { data } = depositContractDTO(await res.json())
     logger.debug('fetched deposit contract data')
     return data
@@ -153,10 +142,10 @@ export const makeConsensusApi = (
     const allValidators: ReturnType<typeof validatorsBatchDTO>['data'] = []
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
-      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
+      const path = `/eth/v1/beacon/states/${state}/validators?id=${batch.join(
         ','
       )}`
-      const res = await request(url, { middlewares: [notOkError()] })
+      const res = await clRequest(path, { middlewares: [notOkError()] })
       const json = await safelyParseJsonResponse(res, logger)
       const { data } = validatorsBatchDTO(json)
       allValidators.push(...data)

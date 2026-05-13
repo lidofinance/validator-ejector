@@ -39,7 +39,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch syncing status', async () => {
-    mockEthServer(nodeSyncingMock(), config.CONSENSUS_NODE)
+    mockEthServer(nodeSyncingMock(), config.CONSENSUS_NODE[0])
 
     const res = await api.syncing()
 
@@ -47,7 +47,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch genesis data', async () => {
-    mockEthServer(genesisMock(), config.CONSENSUS_NODE)
+    mockEthServer(genesisMock(), config.CONSENSUS_NODE[0])
 
     const res = await api.genesis()
 
@@ -55,7 +55,7 @@ describe('makeConsensusApi', () => {
   })
 
   it('should fetch state data', async () => {
-    mockEthServer(stateMock(), config.CONSENSUS_NODE)
+    mockEthServer(stateMock(), config.CONSENSUS_NODE[0])
 
     const res = await api.state()
 
@@ -65,7 +65,7 @@ describe('makeConsensusApi', () => {
   it('should fetch validator info', async () => {
     const id = '1'
     const mock = validatorInfoMock(id)
-    mockEthServer(mock, config.CONSENSUS_NODE)
+    mockEthServer(mock, config.CONSENSUS_NODE[0])
 
     const res = await api.validatorInfo(id)
 
@@ -85,7 +85,7 @@ describe('makeConsensusApi', () => {
       },
       signature: '1',
     }
-    mockEthServer(exitRequestMock(), config.CONSENSUS_NODE)
+    mockEthServer(exitRequestMock(), config.CONSENSUS_NODE[0])
 
     await api.exitRequest(message)
 
@@ -119,7 +119,7 @@ describe('makeConsensusApi', () => {
         },
       ],
     }
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get('/eth/v1/beacon/states/head/validators?id=1,2,3,4')
       .reply(200, mockResponse)
 
@@ -132,7 +132,7 @@ describe('makeConsensusApi', () => {
     const mockResponse = {
       data: [],
     }
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get('/eth/v1/beacon/states/head/validators?id=1,2,3,4')
       .reply(200, mockResponse)
 
@@ -156,13 +156,13 @@ describe('makeConsensusApi', () => {
         validator: { pubkey: '0x456', exit_epoch: FAR_FUTURE_EPOCH },
       }),
     }
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get(
         '/eth/v1/beacon/states/head/validators?id=' +
           indices.slice(0, 1000).join(',')
       )
       .reply(200, mockBatch1)
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get(
         '/eth/v1/beacon/states/head/validators?id=' +
           indices.slice(1000).join(',')
@@ -175,11 +175,146 @@ describe('makeConsensusApi', () => {
 
   it('should throw an error on server error (500)', async () => {
     const indices = ['1']
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get('/eth/v1/beacon/states/head/validators?id=1')
       .reply(500, { message: 'Internal Server Error' })
 
     await expect(api.getExitingValidatorsCount(indices, 1000)).rejects.toThrow()
+  })
+
+  describe('multi-URL fallback', () => {
+    const PRIMARY = 'http://primary.cl.example:5051'
+    const SECONDARY = 'http://secondary.cl.example:5051'
+
+    it('falls back to the next URL when the primary returns 5xx', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY).get('/eth/v1/beacon/genesis').reply(503, 'busy')
+      mockEthServer(genesisMock(), SECONDARY)
+
+      const res = await apiMulti.genesis()
+
+      expect(res).toEqual(genesisMock().result.data)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatorInfo falls back to the next URL on 5xx', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '42'
+      nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(503, 'busy')
+      const mock = validatorInfoMock(id)
+      mockEthServer(mock, SECONDARY)
+
+      const res = await apiMulti.validatorInfo(id)
+
+      expect(res.index).toBe(mock.result.data.index)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('genesis does not rotate on 4xx (terminal)', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY).get('/eth/v1/beacon/genesis').reply(404, 'not found')
+      // Note: no mock for SECONDARY — if the call rotated, nock would error
+      // about an unexpected request, surfacing the bug.
+
+      await expect(apiMulti.genesis()).rejects.toBeInstanceOf(Error)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+  })
+
+  describe('multi-URL broadcast (exitRequest)', () => {
+    const PRIMARY = 'http://primary.cl.example:5051'
+    const SECONDARY = 'http://secondary.cl.example:5051'
+
+    const exitMessage = {
+      message: { epoch: '1', validator_index: '1' },
+      signature: '1',
+    }
+
+    it('POSTs the voluntary exit to every configured URL when all succeed', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const primaryScope = nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(200, '')
+      const secondaryScope = nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(200, '')
+
+      await apiMulti.exitRequest(exitMessage)
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(secondaryScope.isDone()).toBe(true)
+    })
+
+    it('succeeds when at least one endpoint accepts the exit', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(503, 'busy')
+      const secondaryScope = nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(200, '')
+
+      await expect(apiMulti.exitRequest(exitMessage)).resolves.toBeUndefined()
+
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL broadcast failed at endpoint',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+      expect(logger.info).toHaveBeenCalledWith(
+        'CL broadcast partial success',
+        expect.objectContaining({ ok: 1, failed: 1, total: 2 })
+      )
+    })
+
+    it('throws when every endpoint rejects the exit', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(503, 'busy')
+      nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(500, 'oops')
+
+      await expect(apiMulti.exitRequest(exitMessage)).rejects.toThrow(
+        /broadcast failed at all 2 endpoints/
+      )
+    })
   })
 })
 
