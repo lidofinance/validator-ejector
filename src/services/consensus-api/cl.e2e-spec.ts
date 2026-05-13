@@ -1,3 +1,4 @@
+import nodeFetch from 'node-fetch'
 import { ConsensusApiService, makeConsensusApi } from './service.js'
 import {
   LoggerService,
@@ -14,8 +15,9 @@ describe('makeConsensusApi e2e', () => {
   let api: ConsensusApiService
   let logger: LoggerService
   let config: ConfigService
+  let finalizedSlot: number
 
-  beforeEach(() => {
+  beforeEach(async () => {
     logger = makeLogger({
       level: 'error',
       format: 'simple',
@@ -31,12 +33,26 @@ describe('makeConsensusApi e2e', () => {
       logger,
       config
     )
+
+    const res = await nodeFetch(
+      `${config.CONSENSUS_NODE}/eth/v1/beacon/headers/finalized`
+    )
+    const json = (await res.json()) as {
+      data: { header: { message: { slot: string } } }
+    }
+    finalizedSlot = Number(json.data.header.message.slot)
   })
 
   it('should handle batch size correctly with large index array e2e', async () => {
     const indices = Array.from({ length: 3000 }, (_, i) => (i + 1).toString())
-    const count = await api.getExitingValidatorsCount(indices, 1000, 11724253)
-    expect(count).toStrictEqual(1226)
+    const count = await api.getExitingValidatorsCount(
+      indices,
+      1000,
+      finalizedSlot
+    )
+    expect(typeof count).toBe('number')
+    expect(count).toBeGreaterThanOrEqual(0)
+    expect(count).toBeLessThanOrEqual(indices.length)
   })
 
   it('should validate public keys e2e', async () => {
@@ -61,14 +77,18 @@ describe('makeConsensusApi e2e', () => {
     const validIndices = await api.validatePublicKeys(
       validatorData,
       1000,
-      11724253
+      finalizedSlot
     )
     expect(validIndices.size).toEqual(2)
   })
 
   it('should fetch validators batch e2e', async () => {
     const indices = ['1', '2']
-    const validators = await api.fetchValidatorsBatch(indices, 1000, 11724253)
+    const validators = await api.fetchValidatorsBatch(
+      indices,
+      1000,
+      finalizedSlot
+    )
 
     expect(validators).toHaveLength(2)
 

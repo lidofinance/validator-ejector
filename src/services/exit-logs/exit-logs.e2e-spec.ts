@@ -75,7 +75,11 @@ describe('exitLogs e2e', () => {
 
     const secrets = Object.values(nodes)
 
-    request = makeRequest([retry(3), notOkError(), abort(30_000)])
+    request = makeRequest([
+      retry(6, { ignoreAbort: true, sleep: 5000 }),
+      notOkError(),
+      abort(30_000),
+    ])
     logger = makeLogger({
       level: 'info',
       format: 'simple',
