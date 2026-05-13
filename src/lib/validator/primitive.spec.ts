@@ -1,4 +1,4 @@
-import { str, num, bool, optional } from './index.js'
+import { str, num, bool, optional, url_list } from './index.js'
 
 describe('data casting', () => {
   test('string', () => {
@@ -57,6 +57,33 @@ describe('data casting optional', () => {
     const value = true as unknown
     expect(optional(() => bool(value))).toBe(true)
     expect(optional(() => bool())).toBe(undefined)
+  })
+})
+
+describe('url_list', () => {
+  test('single URL → length-1 array', () => {
+    expect(url_list('http://h:8545')).toEqual(['http://h:8545'])
+  })
+  test('comma-separated URLs are split, trimmed, and stripped', () => {
+    expect(url_list('http://a:1, http://b:2 ,http://c:3/')).toEqual([
+      'http://a:1',
+      'http://b:2',
+      'http://c:3',
+    ])
+  })
+  test('multiple trailing slashes are all removed', () => {
+    expect(url_list('http://h:8545//')).toEqual(['http://h:8545'])
+    expect(url_list('http://h:8545///')).toEqual(['http://h:8545'])
+  })
+  test('empty entries from trailing/leading commas are dropped', () => {
+    expect(url_list(',http://a:1,, ,http://b:2,')).toEqual([
+      'http://a:1',
+      'http://b:2',
+    ])
+  })
+  test('whitespace-only input throws', () => {
+    expect(() => url_list('   ')).toThrow()
+    expect(() => url_list(',,,')).toThrow()
   })
 })
 

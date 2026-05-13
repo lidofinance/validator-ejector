@@ -11,6 +11,7 @@ export const makeApp = ({
   executionApi,
   consensusApi,
   appInfoReader,
+  consistencyChecker,
 }: Dependencies) => {
   const { BLOCKS_PRELOAD, JOB_INTERVAL, OPERATOR_IDS, STAKING_MODULE_IDS } =
     config
@@ -35,6 +36,12 @@ export const makeApp = ({
         mode,
       })
       .inc()
+
+    // Cross-endpoint chain-id consistency must run BEFORE any
+    // chain-specific behaviour: if the operator pasted mismatched-network
+    // URLs, we want to refuse boot rather than rotate between chains and
+    // sign exits against the wrong fork-version digest.
+    await consistencyChecker.checkChainIds()
 
     await executionApi.checkSync()
     await consensusApi.checkSync()

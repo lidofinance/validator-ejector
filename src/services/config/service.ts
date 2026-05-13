@@ -7,6 +7,7 @@ import {
   optional,
   log_format,
   json_arr,
+  url_list,
 } from '../../lib/index.js'
 import { readFileSync } from 'fs'
 
@@ -19,13 +20,13 @@ export const makeConfig = ({
   env: NodeJS.ProcessEnv
 }) => {
   const config = {
-    EXECUTION_NODE: str(
+    EXECUTION_NODE: url_list(
       env.EXECUTION_NODE,
-      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
+      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545 or http://primary:8545,http://backup:8545'
     ),
-    CONSENSUS_NODE: str(
+    CONSENSUS_NODE: url_list(
       env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051 or http://primary:5051,http://backup:5051'
     ),
     JWT_SECRET_PATH: optional(() => str(env.JWT_SECRET_PATH)),
     LOCATOR_ADDRESS: str(
@@ -83,6 +84,8 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    VOTING_EVENTS_FRAME_BLOCKS:
+      optional(() => num(env.VOTING_EVENTS_FRAME_BLOCKS)) ?? 216000, // ~30 days
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
@@ -151,9 +154,9 @@ export const makeConfig = ({
 
 export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
-    CONSENSUS_NODE: str(
+    CONSENSUS_NODE: url_list(
       env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051 or http://primary:5051,http://backup:5051'
     ),
     MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),

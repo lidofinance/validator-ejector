@@ -6,6 +6,7 @@ import type { ExecutionApiService } from '../services/execution-api/service.js'
 import type { ConsensusApiService } from '../services/consensus-api/service.js'
 import type { AppInfoReaderService } from '../services/app-info-reader/service.js'
 import type { MessageReloader } from '../services/message-reloader/message-reloader.js'
+import type { ConsistencyChecker } from '../services/consistency/service.js'
 
 export interface Dependencies {
   config: ConfigService
@@ -17,4 +18,5 @@ export interface Dependencies {
   executionApi: ExecutionApiService
   consensusApi: ConsensusApiService
   appInfoReader: AppInfoReaderService
+  consistencyChecker: ConsistencyChecker
 }
