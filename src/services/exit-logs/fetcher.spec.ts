@@ -1,5 +1,10 @@
 import { ExitLogsService, makeExitLogsService } from './service.js'
-import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
+import {
+  LoggerService,
+  RequestService,
+  makeRequest,
+  notOkError,
+} from '../../lib/index.js'
 import { ConsensusApiService } from '../consensus-api/service.js'
 import {
   oracleValidatorExitRequestEventsMock,
@@ -113,6 +118,91 @@ describe('makeConsensusApi logs', () => {
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
     )
     expect(metrics.eventSecurityVerification.inc).toBeCalledTimes(0)
+  })
+
+  it('should fallback to secondary EL while loading exit logs', async () => {
+    const primary = 'http://primary.el.example:8545'
+    const secondary = 'http://secondary.el.example:8545'
+    request = makeRequest([notOkError()])
+    config = mockConfig(logger, {
+      EXECUTION_NODE: `${primary},${secondary}`,
+    })
+    config.TRUST_MODE = true
+    mockService()
+
+    const validatorExitRequestMock = oracleValidatorExitRequestEventsMock()
+    const primaryScope = nock(primary)
+      .post('/', (body) => validatorExitRequestMock.bodyMatcher(body))
+      .reply(503, 'busy')
+    const secondaryScope = mockEthServer(validatorExitRequestMock, secondary)
+
+    const res = await api.fetcher.getLogs(123, 123, [1])
+
+    expect(primaryScope.isDone()).toBe(true)
+    expect(secondaryScope.isDone()).toBe(true)
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+    expect(logger.warn).toHaveBeenCalledWith(
+      'EL endpoint failed, trying next',
+      expect.objectContaining({ url: 'primary.el.example:8545' })
+    )
+  })
+
+  it('should fallback to secondary EL while verifying transaction details', async () => {
+    const primary = 'http://primary.el.example:8545'
+    const secondary = 'http://secondary.el.example:8545'
+    request = makeRequest([notOkError()])
+    config = mockConfig(logger, {
+      EXECUTION_NODE: `${primary},${secondary}`,
+    })
+    config.ORACLE_ADDRESSES_ALLOWLIST = [
+      '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+    mockService()
+
+    const reportDataTxMock = oracleSubmitReportDataTransactionMock()
+    mockEthServer(oracleValidatorExitRequestEventsMock(), primary)
+    const primaryTxScope = nock(primary)
+      .post(
+        '/',
+        (body) =>
+          body.method === reportDataTxMock.body.method &&
+          body.params[0] === reportDataTxMock.body.params[0]
+      )
+      .reply(503, 'busy')
+    const secondaryTxScope = nock(secondary)
+      .post(
+        '/',
+        (body) =>
+          body.method === reportDataTxMock.body.method &&
+          body.params[0] === reportDataTxMock.body.params[0]
+      )
+      .reply(200, reportDataTxMock.result)
+    mockEthServer(oracleConsensusReachedEventsMock(), primary)
+    mockEthServer(oracleSubmitReportTransactionMock(), primary)
+
+    const motionCreatedEvents = {
+      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
+    }
+    const res = await api.fetcher.getLogs(
+      123,
+      123,
+      [1],
+      motionCreatedEvents,
+      {},
+      {}
+    )
+
+    expect(primaryTxScope.isDone()).toBe(true)
+    expect(secondaryTxScope.isDone()).toBe(true)
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+    expect(logger.warn).toHaveBeenCalledWith(
+      'EL endpoint failed, trying next',
+      expect.objectContaining({ url: 'primary.el.example:8545' })
+    )
   })
 
   it('should filter validator exit requests by multiple staking modules', async () => {

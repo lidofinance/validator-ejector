@@ -6,6 +6,7 @@ import {
   RequestService,
   makeRequest,
   notOkError,
+  retry,
 } from '../../lib/index.js'
 import {
   funcMock,
@@ -107,6 +108,44 @@ describe('makeExecutionApi', () => {
 
       const res = await apiMulti.latestBlockNumber()
 
+      expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
+      expect(logger.warn).toHaveBeenCalledWith(
+        'EL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.example:8545' })
+      )
+    })
+
+    it('exhausts request retries on the primary before falling back', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const requestWithRetries = makeRequest([
+        retry(2, { ignoreAbort: true, sleep: 0 }),
+        notOkError(),
+      ])
+      const apiMulti = makeExecutionApi(requestWithRetries, logger, cfg)
+
+      let primaryCalls = 0
+      const primaryScope = nock(PRIMARY)
+        .post('/')
+        .times(2)
+        .reply(() => {
+          primaryCalls += 1
+          return [503, 'busy']
+        })
+      nock(PRIMARY)
+        .post('/')
+        .reply(() => {
+          primaryCalls += 1
+          return [418, 'extra retry']
+        })
+      const secondaryScope = mockEthServer(lastBlockNumberMock(), SECONDARY)
+
+      const res = await apiMulti.latestBlockNumber()
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(primaryCalls).toBe(2)
+      expect(secondaryScope.isDone()).toBe(true)
       expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
       expect(logger.warn).toHaveBeenCalledWith(
         'EL endpoint failed, trying next',

@@ -264,6 +264,102 @@ describe('makeConsensusApi', () => {
       )
     })
 
+    it('fetchValidatorsInfoBatch falls back to the next URL on 5xx', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const mockResponse = {
+        data: [
+          {
+            index: '1',
+            status: 'active_ongoing',
+            validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+          },
+          {
+            index: '2',
+            status: 'active_exiting',
+            validator: { pubkey: '0x456', exit_epoch: '100' },
+          },
+        ],
+      }
+
+      const primaryScope = nock(PRIMARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1,2')
+        .reply(503, 'busy')
+      const secondaryScope = nock(SECONDARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1,2')
+        .reply(200, mockResponse)
+
+      const res = await apiMulti.fetchValidatorsInfoBatch(['1', '2'], 1000)
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(res).toEqual(
+        new Map([
+          [
+            '1',
+            {
+              index: '1',
+              pubKey: '0x123',
+              status: 'active_ongoing',
+              isExiting: false,
+            },
+          ],
+          [
+            '2',
+            {
+              index: '2',
+              pubKey: '0x456',
+              status: 'active_exiting',
+              isExiting: true,
+            },
+          ],
+        ])
+      )
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatePublicKeys uses CL batch fallback', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const mockResponse = {
+        data: [
+          {
+            index: '1',
+            status: 'active_ongoing',
+            validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+          },
+        ],
+      }
+
+      const primaryScope = nock(PRIMARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1')
+        .reply(503, 'busy')
+      const secondaryScope = nock(SECONDARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1')
+        .reply(200, mockResponse)
+
+      const res = await apiMulti.validatePublicKeys([
+        { validatorIndex: '1', validatorPubkey: '0x123' },
+      ])
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(res).toEqual(new Set(['1']))
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
     it('genesis does not rotate on 4xx (terminal)', async () => {
       const cfg = mockConfig(logger, {
         CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
