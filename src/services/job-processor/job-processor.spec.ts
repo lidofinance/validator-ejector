@@ -1,21 +1,15 @@
 import { makeJobProcessor } from './service.js'
-import { makeConsensusApi } from '../consensus-api/service.js'
+import { FAR_FUTURE_EPOCH, makeConsensusApi } from '../consensus-api/service.js'
 import { makeExecutionApi } from '../execution-api/service.js'
 import { makeExitLogsService } from '../exit-logs/service.js'
 import { makeMessagesProcessor } from '../messages-processor/service.js'
 import { makeWebhookProcessor } from '../webhook-caller/service.js'
 import { MessageStorage } from './message-storage.js'
-import {
-  makeLogger,
-  makeRequest,
-  retry,
-  logger as loggerMiddleware,
-  abort,
-} from '../../lib/index.js'
+import { makeLogger, makeRequest } from '../../lib/index.js'
 import { mockConfig } from '../../test/config.js'
 import { expect } from 'vitest'
 
-describe('JobProcessor integration tests', () => {
+describe('JobProcessor', () => {
   let jobProcessor: ReturnType<typeof makeJobProcessor>
   let exitLogs: ReturnType<typeof makeExitLogsService>
   let executionApi: ReturnType<typeof makeExecutionApi>
@@ -31,24 +25,15 @@ describe('JobProcessor integration tests', () => {
     })
 
     config = mockConfig(logger, {
-      CONSENSUS_NODE:
-        process.env.CONSENSUS_NODE ??
-        'https://ethereum-beacon-api.publicnode.com',
-      EXECUTION_NODE:
-        process.env.EXECUTION_NODE ?? 'https://ethereum-rpc.publicnode.com',
-      LOCATOR_ADDRESS:
-        process.env.LOCATOR_ADDRESS ??
-        '0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb',
+      CONSENSUS_NODE: 'http://localhost:4455',
+      EXECUTION_NODE: 'http://localhost:4445',
+      LOCATOR_ADDRESS: '0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb',
       STAKING_MODULE_ID: '1',
       DRY_RUN: true,
       TRUST_MODE: true, // Verifying logic tested inside fetcher.spec.ts
     })
 
-    const request = makeRequest([
-      retry(3),
-      loggerMiddleware(logger),
-      abort(30_000),
-    ])
+    const request = makeRequest([])
 
     consensusApi = makeConsensusApi(request, logger, config)
     executionApi = makeExecutionApi(request, logger, config)
@@ -117,18 +102,57 @@ describe('JobProcessor integration tests', () => {
       {
         validatorIndex: '67890',
         validatorPubkey: 'pubkey2',
-        blockNumber: 800, // Old block to trigger FINALIZED_BLOCK_EQUIVALENT condition (1000 - 800 = 200 > 120)
+        blockNumber: 950,
         nodeOperatorId: 67890,
         acknowledged: false,
         ack: ackSpy67890,
       },
     ])
 
-    const fetchValidatorsBatchSpy = vi.spyOn(
-      consensusApi,
-      'fetchValidatorsBatch'
-    )
+    const fetchValidatorsBatchSpy = vi
+      .spyOn(consensusApi, 'fetchValidatorsBatch')
+      .mockImplementation(async (_indices, _batchSize, state) => {
+        if (state === 'head') {
+          return [
+            {
+              index: '12345',
+              status: 'active_ongoing',
+              validator: { pubkey: 'pubkey1', exit_epoch: FAR_FUTURE_EPOCH },
+            },
+            {
+              index: '67890',
+              status: 'active_exiting',
+              validator: { pubkey: 'pubkey2', exit_epoch: '100' },
+            },
+          ]
+        }
+
+        return [
+          {
+            index: '12345',
+            status: 'active_ongoing',
+            validator: { pubkey: 'pubkey1', exit_epoch: FAR_FUTURE_EPOCH },
+          },
+          {
+            index: '67890',
+            status: 'active_exiting',
+            validator: { pubkey: 'pubkey2', exit_epoch: '100' },
+          },
+        ]
+      })
     const isValidatorExitingSpy = vi.spyOn(consensusApi, 'isValidatorExiting')
+    const getExitingValidatorsCountSpy = vi
+      .spyOn(consensusApi, 'getExitingValidatorsCount')
+      .mockResolvedValue(0)
+    const latestBlockNumberSpy = vi
+      .spyOn(executionApi, 'latestBlockNumber')
+      .mockResolvedValue(1000)
+    const resolveExitBusAddressSpy = vi
+      .spyOn(executionApi, 'resolveExitBusAddress')
+      .mockResolvedValue(undefined)
+    const resolveConsensusAddressSpy = vi
+      .spyOn(executionApi, 'resolveConsensusAddress')
+      .mockResolvedValue(undefined)
 
     await jobProcessor.handleJob({
       eventsNumber: 10,
@@ -138,7 +162,10 @@ describe('JobProcessor integration tests', () => {
     expect(messageReloader.reloadAndVerifyMessages).toHaveBeenCalledWith(
       messageStorage
     )
-    expect(getLogsSpy).toHaveBeenCalledWith([12345, 67890], expect.any(Number))
+    expect(resolveExitBusAddressSpy).toHaveBeenCalled()
+    expect(resolveConsensusAddressSpy).toHaveBeenCalled()
+    expect(latestBlockNumberSpy).toHaveBeenCalled()
+    expect(getLogsSpy).toHaveBeenCalledWith([12345, 67890], 1000)
     expect(fetchValidatorsBatchSpy).toHaveBeenCalledWith(
       ['12345', '67890'],
       1000,
@@ -149,6 +176,7 @@ describe('JobProcessor integration tests', () => {
       1000,
       'finalized'
     )
+    expect(getExitingValidatorsCountSpy).toHaveBeenCalledWith([])
     expect(isValidatorExitingSpy).toHaveBeenCalled()
     expect(ackSpy12345).not.toHaveBeenCalled()
     expect(ackSpy67890).toHaveBeenCalled()
