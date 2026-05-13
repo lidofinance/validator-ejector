@@ -125,7 +125,7 @@ describe('makeConsensusApi logs', () => {
     const topic = (id: number) =>
       ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
 
-    const logsMock = nock(config.EXECUTION_NODE)
+    const logsMock = nock(config.EXECUTION_NODE[0])
       .post('/', (body) => {
         expect(body.method).toBe('eth_getLogs')
         expect(body.params[0].topics[1]).toEqual([topic(1), topic(2)])

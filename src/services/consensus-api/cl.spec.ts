@@ -85,7 +85,7 @@ describe('makeConsensusApi', () => {
         },
       ],
     }
-    nock(config.CONSENSUS_NODE)
+    nock(config.CONSENSUS_NODE[0])
       .get('/eth/v1/beacon/states/head/validators?id=1,2')
       .reply(200, mockResponse)
 
