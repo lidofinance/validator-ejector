@@ -94,6 +94,7 @@ export const json_arr = makeJson(v.arr)
  * @returns string[]
  */
 export const url_list = make(v.url_list)
+export const normalizeUrlList = v.normalizeUrlList
 
 type Check<A, B> = A extends B ? A : never
 

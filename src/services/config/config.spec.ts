@@ -1,6 +1,7 @@
 import { configBase } from '../../test/config.js'
 import { makeConfig, makeLoggerConfig } from './service.js'
 import { mockLogger } from '../../test/logger.js'
+import { makeLogger } from '../../lib/index.js'
 
 let logger = mockLogger()
 
@@ -242,5 +243,75 @@ describe('logger config module', () => {
     const config = makeConf()
 
     expect(config.LOGGER_SECRETS).toEqual(['simple', 'secret'])
+  })
+
+  test('dynamic multi-url secrets include individual normalized endpoints', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["EXECUTION_NODE","CONSENSUS_NODE"]`,
+      EXECUTION_NODE:
+        'https://el-a.example/secret-el-token-a/, https://el-b.example/secret-el-token-b//',
+      CONSENSUS_NODE:
+        'https://cl-a.example/secret-cl-token-a,http://cl-b.example/secret-cl-token-b/',
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).not.toThrow()
+
+    const config = makeConf()
+
+    expect(config.LOGGER_SECRETS).toEqual([
+      env.EXECUTION_NODE,
+      'https://el-a.example/secret-el-token-a',
+      'https://el-b.example/secret-el-token-b',
+      env.CONSENSUS_NODE,
+      'https://cl-a.example/secret-cl-token-a',
+      'http://cl-b.example/secret-cl-token-b',
+    ])
+  })
+
+  test('dynamic multi-url secrets redact normalized config arrays in json logs', () => {
+    const env = {
+      ...configBase,
+      MESSAGES_LOCATION: 'messages',
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'json',
+      LOGGER_SECRETS: `["EXECUTION_NODE","CONSENSUS_NODE"]`,
+      EXECUTION_NODE:
+        'https://el-a.example/secret-el-token-a/, https://el-b.example/secret-el-token-b//',
+      CONSENSUS_NODE:
+        'https://cl-a.example/secret-cl-token-a,http://cl-b.example/secret-cl-token-b/',
+    } as unknown as NodeJS.ProcessEnv
+
+    const loggerConfig = makeLoggerConfig({ env })
+    const logger = makeLogger({
+      level: loggerConfig.LOGGER_LEVEL,
+      format: loggerConfig.LOGGER_FORMAT,
+      sanitizer: {
+        secrets: loggerConfig.LOGGER_SECRETS,
+        replacer: '<secret>',
+      },
+    })
+    const appConfig = makeConfig({ logger, env })
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+    try {
+      logger.info('startup', { ...appConfig })
+
+      const output = String(info.mock.calls[0][0])
+      expect(output).toContain('<secret>')
+      expect(output).not.toContain('https://el-a.example/secret-el-token-a')
+      expect(output).not.toContain('https://el-b.example/secret-el-token-b')
+      expect(output).not.toContain('https://cl-a.example/secret-cl-token-a')
+      expect(output).not.toContain('http://cl-b.example/secret-cl-token-b')
+      expect(output).not.toContain('secret-el-token-a')
+      expect(output).not.toContain('secret-el-token-b')
+      expect(output).not.toContain('secret-cl-token-a')
+      expect(output).not.toContain('secret-cl-token-b')
+    } finally {
+      info.mockRestore()
+    }
   })
 })

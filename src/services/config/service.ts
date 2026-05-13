@@ -8,6 +8,7 @@ import {
   log_format,
   json_arr,
   url_list,
+  normalizeUrlList,
 } from '../../lib/index.js'
 import { readFileSync } from 'fs'
 
@@ -174,9 +175,14 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
       ) ?? [],
   }
 
-  // Resolve the value of an env var if such exists
-  config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
-    (envVar) => envOrFile(env, envVar) ?? envVar
+  // Resolve the value of an env var if such exists. RPC endpoints are stored
+  // as arrays in config logs, so include each comma-separated endpoint too.
+  config.LOGGER_SECRETS = Array.from(
+    new Set(
+      config.LOGGER_SECRETS.flatMap((envVar) =>
+        resolveLoggerSecretValues(env, envVar)
+      )
+    )
   )
 
   return config
@@ -196,6 +202,11 @@ export const makeWebhookProcessorConfig = ({
   return config
 }
 
+const LOGGER_SECRET_URL_LIST_ENV_VARS = new Set([
+  'EXECUTION_NODE',
+  'CONSENSUS_NODE',
+])
+
 const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (env[envName]) return env[envName]
 
@@ -210,4 +221,15 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   }
 
   return undefined
+}
+
+const resolveLoggerSecretValues = (env: NodeJS.ProcessEnv, envVar: string) => {
+  const value = envOrFile(env, envVar)
+  if (!value) return [envVar]
+
+  if (!LOGGER_SECRET_URL_LIST_ENV_VARS.has(envVar)) {
+    return [value]
+  }
+
+  return [value, ...normalizeUrlList(value)]
 }
