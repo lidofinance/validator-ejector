@@ -4,9 +4,10 @@ import {
   makeLogger,
   makeRequest,
   notOkError,
+  isRetryableHttpStatus,
   safelyParseJsonResponse,
 } from '../../lib/index.js'
-import { RequestConfig } from '../../lib/request/types.js'
+import { Middleware, RequestConfig } from '../../lib/request/types.js'
 import {
   syncingDTO,
   genesisDTO,
@@ -16,6 +17,7 @@ import {
   depositContractDTO,
   validatorsBatchDTO,
 } from './dto.js'
+import { HttpException } from '../../lib/request/errors.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
@@ -30,6 +32,28 @@ export const makeConsensusApi = (
 
   const clRequest = (path: string, cfg?: RequestConfig) =>
     fallback((url) => request(`${url}${path}`, cfg))
+
+  const clErrorMessage = (): Middleware => async (config, next) => {
+    const res = await next(config)
+    if (!res.ok) {
+      const isRetryable = isRetryableHttpStatus(res.status)
+      let message = `Consensus API request failed with status ${res.status}`
+      try {
+        const json = (await safelyParseJsonResponse(res, logger)) as {
+          message?: unknown
+        }
+        if (typeof json.message === 'string') message = json.message
+      } catch (error) {
+        if (!isRetryable) throw error
+        if (error instanceof Error) message = error.message
+      }
+      if (isRetryable) {
+        throw new HttpException(message, res.status)
+      }
+      throw new Error(message)
+    }
+    return res
+  }
 
   const isValidatorExiting = (exitEpoch: string) =>
     exitEpoch !== FAR_FUTURE_EPOCH
@@ -82,7 +106,7 @@ export const makeConsensusApi = (
   ) => {
     const res = await clRequest(
       `/eth/v1/beacon/states/${tag}/validators/${id}`,
-      { middlewares: [notOkError()] }
+      { middlewares: [clErrorMessage()] }
     )
 
     const result = validatorInfoDTO(await safelyParseJsonResponse(res, logger))
@@ -114,7 +138,7 @@ export const makeConsensusApi = (
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(message),
-          middlewares: [notOkError()],
+          middlewares: [clErrorMessage()],
         }),
       logger,
       'CL'

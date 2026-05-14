@@ -292,10 +292,7 @@ export const makeMessagesProcessor = ({
       )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
-      logger.error(
-        'Failed to send out exit message',
-        e instanceof Error ? e.message : e
-      )
+      logger.error('Failed to send out exit message', e)
       metrics.exitActions.inc({ result: 'error' })
     }
   }

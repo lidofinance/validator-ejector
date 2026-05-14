@@ -141,6 +141,8 @@ export const prepareDeps = (
 
   return {
     messagesProcessor,
+    consensusApi,
+    errorLogger: logger,
     logger: infoLogger,
     forkVersionResolver,
     messageStorage,

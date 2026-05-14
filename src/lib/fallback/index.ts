@@ -1,5 +1,6 @@
 import { FetchError } from 'node-fetch'
 import { HttpException } from '../request/errors.js'
+import { isRetryableHttpStatus } from '../request/index.js'
 import type { LoggerService } from '../logger/index.js'
 
 export type FallbackLabel = 'EL' | 'CL'
@@ -15,7 +16,7 @@ export const hostOf = (url: string): string => {
 }
 
 const isFallbackable = (err: unknown): boolean => {
-  if (err instanceof HttpException) return err.statusCode >= 500
+  if (err instanceof HttpException) return isRetryableHttpStatus(err.statusCode)
   if (err instanceof FetchError) return true
   if (err instanceof Error && err.name === 'AbortError') return true
   return false
@@ -23,8 +24,9 @@ const isFallbackable = (err: unknown): boolean => {
 
 /**
  * Stateless per-request fallback. Each call iterates the configured URLs in
- * order from index 0; on a retryable error (5xx / network / timeout) the
- * helper moves to the next URL. 4xx and validation errors are terminal.
+ * order from index 0; on a retryable error (5xx / 408 / 429 / network /
+ * timeout) the helper moves to the next URL. Other 4xx and validation errors
+ * are terminal.
  *
  * Mirrors lido-oracle's approach (`src/providers/http_provider.py`): no
  * sticky cursor, no reset interval, no per-call state — every request is

@@ -264,6 +264,111 @@ describe('makeConsensusApi', () => {
       )
     })
 
+    it('validatorInfo falls back to the next URL on transient 408', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '42'
+      nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(408, { message: 'request timeout' })
+      const mock = validatorInfoMock(id)
+      mockEthServer(mock, SECONDARY)
+
+      const res = await apiMulti.validatorInfo(id)
+
+      expect(res.index).toBe(mock.result.data.index)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatorInfo falls back to the next URL on transient 429', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '42'
+      nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(429, { message: 'rate limited' })
+      const mock = validatorInfoMock(id)
+      mockEthServer(mock, SECONDARY)
+
+      const res = await apiMulti.validatorInfo(id)
+
+      expect(res.index).toBe(mock.result.data.index)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatorInfo preserves 4xx error message and does not rotate', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '404'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(404, { message: 'validator not found' })
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow(
+        'validator not found'
+      )
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
+    it('validatorInfo treats 414 as terminal and does not rotate', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = 'too-long'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(414, { message: 'URI too long' })
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow('URI too long')
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
+    it('validatorInfo uses safe parsing for non-JSON 4xx responses', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = 'cloudflare'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(400, '<html>Bad request</html>')
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow(
+        'Received markup (HTML/XML) response instead of JSON. Status:'
+      )
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
     it('fetchValidatorsInfoBatch falls back to the next URL on 5xx', async () => {
       const cfg = mockConfig(logger, {
         CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
@@ -448,6 +553,67 @@ describe('makeConsensusApi', () => {
       await expect(apiMulti.exitRequest(exitMessage)).rejects.toThrow(
         /broadcast failed at all 2 endpoints/
       )
+    })
+
+    it('exitRequest preserves 5xx safe-parse messages when every endpoint rejects', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(503, '<html>proxy error</html>')
+      nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(500, { message: 'secondary server rejected exit' })
+
+      let caught: unknown
+      try {
+        await apiMulti.exitRequest(exitMessage)
+      } catch (error) {
+        caught = error
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError)
+      expect(
+        (caught as AggregateError).errors.map((error) => error.message)
+      ).toEqual([
+        'Received markup (HTML/XML) response instead of JSON. Status:',
+        'secondary server rejected exit',
+      ])
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Received markup (HTML/XML) response instead of JSON. Status: 503'
+        ),
+        { content: '<html>proxy error</html>' }
+      )
+    })
+
+    it('exitRequest preserves CL error messages when every endpoint rejects', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(400, { message: 'primary rejected exit' })
+      nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(400, { message: 'secondary rejected exit' })
+
+      let caught: unknown
+      try {
+        await apiMulti.exitRequest(exitMessage)
+      } catch (error) {
+        caught = error
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError)
+      expect(
+        (caught as AggregateError).errors.map((error) => error.message)
+      ).toEqual(['primary rejected exit', 'secondary rejected exit'])
     })
   })
 })
