@@ -11,6 +11,8 @@ const URLS = [
   'http://tertiary.example:8545',
 ]
 
+class RetryableHttpException extends HttpException {}
+
 describe('makeFallback', () => {
   test('happy path: hits the primary URL and returns its result', async () => {
     const logger = mockLogger()
@@ -58,6 +60,28 @@ describe('makeFallback', () => {
 
     await expect(fallback(op)).rejects.toBeInstanceOf(HttpException)
     expect(seen).toEqual([URLS[0]])
+  })
+
+  test('rotates when retryable error is an HttpException subclass', async () => {
+    const logger = mockLogger()
+    const fallback = makeFallback(URLS, logger, 'EL')
+
+    const seen: string[] = []
+    const result = await fallback(async (url) => {
+      seen.push(url)
+      if (url === URLS[0]) throw new RetryableHttpException('boom', 502)
+      return `ok:${url}`
+    })
+
+    expect(result).toBe(`ok:${URLS[1]}`)
+    expect(seen).toEqual([URLS[0], URLS[1]])
+    expect(logger.warn).toHaveBeenCalledWith(
+      'EL endpoint failed, trying next',
+      expect.objectContaining({
+        err: expect.any(RetryableHttpException),
+        url: 'primary.example:8545',
+      })
+    )
   })
 
   test('FetchError and AbortError are retryable', async () => {
@@ -130,7 +154,7 @@ describe('makeFallback', () => {
     expect(() => makeFallback([], logger, 'EL')).toThrow(/empty/)
   })
 
-  test('isFallbackable boundary: HttpException 499 is terminal, 500 is retryable', async () => {
+  test('isFallbackable boundary: HttpException 499 is terminal, 408, 429 and 500 are retryable', async () => {
     const logger = mockLogger()
     const fallback = makeFallback(URLS, logger, 'EL')
 
@@ -142,6 +166,28 @@ describe('makeFallback', () => {
       })
     ).rejects.toBeInstanceOf(HttpException)
     expect(seen499).toEqual([URLS[0]])
+
+    const logger408 = mockLogger()
+    const fallback408 = makeFallback(URLS, logger408, 'EL')
+    const seen408: string[] = []
+    const result408 = await fallback408(async (url) => {
+      seen408.push(url)
+      if (url === URLS[0]) throw new HttpException('timeout', 408)
+      return `ok:${url}`
+    })
+    expect(result408).toBe(`ok:${URLS[1]}`)
+    expect(seen408).toEqual([URLS[0], URLS[1]])
+
+    const logger429 = mockLogger()
+    const fallback429 = makeFallback(URLS, logger429, 'EL')
+    const seen429: string[] = []
+    const result429 = await fallback429(async (url) => {
+      seen429.push(url)
+      if (url === URLS[0]) throw new HttpException('rate limited', 429)
+      return `ok:${url}`
+    })
+    expect(result429).toBe(`ok:${URLS[1]}`)
+    expect(seen429).toEqual([URLS[0], URLS[1]])
 
     const logger2 = mockLogger()
     const fallback2 = makeFallback(URLS, logger2, 'EL')

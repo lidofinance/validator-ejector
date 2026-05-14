@@ -23,17 +23,18 @@ import {
   depositContractMock,
   genesisMock,
   stateMock,
-  validatorInfoMock,
+  validatorsBatchMock,
 } from './fixtures.js'
 import nock from 'nock'
 import { defaultConfig } from '../../../test/config.js'
 
 const mockEthCLNode = (
   res: { url: string; method: string; result: any },
-  clNode: string
+  clNode: string,
+  status = 200
 ): [string, () => boolean] => {
   const interceptor = nock(clNode).get(res.url)
-  interceptor.reply(200, res.result).persist()
+  interceptor.reply(status, res.result).persist()
 
   return [res.url, () => nock.removeInterceptor(interceptor)]
 }
@@ -47,7 +48,8 @@ export const prepareDeps = (
     previous_version: string
     current_version: string
     epoch: string
-  }
+  },
+  options: { failValidatorsBatch?: boolean } = {}
 ) => {
   const logger = makeLogger({
     level: 'error',
@@ -66,7 +68,11 @@ export const prepareDeps = (
   const serverMocks = [
     mockEthCLNode(depositContractMock('17000'), config.CONSENSUS_NODE[0]),
     mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE[0]),
-    mockEthCLNode(validatorInfoMock(validator), config.CONSENSUS_NODE[0]),
+    mockEthCLNode(
+      validatorsBatchMock(validator),
+      config.CONSENSUS_NODE[0],
+      options.failValidatorsBatch ? 500 : 200
+    ),
     mockEthCLNode(genesisMock(), config.CONSENSUS_NODE[0]),
   ]
 
@@ -80,6 +86,7 @@ export const prepareDeps = (
     logger,
     config
   )
+  vi.spyOn(consensusApi, 'fetchValidatorsInfoBatch')
 
   const forkVersionResolver = makeForkVersionResolver(
     consensusApi,
@@ -135,6 +142,8 @@ export const prepareDeps = (
 
   return {
     messagesProcessor,
+    consensusApi,
+    errorLogger: logger,
     logger: infoLogger,
     forkVersionResolver,
     messageStorage,

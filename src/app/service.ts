@@ -13,8 +13,7 @@ export const makeApp = ({
   appInfoReader,
   consistencyChecker,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, JOB_INTERVAL, OPERATOR_IDENTIFIERS } =
-    config
+  const { BLOCKS_PRELOAD, JOB_INTERVAL, EJECTOR_SCOPE } = config
 
   let ejectorCycleTimer: NodeJS.Timer | null = null
 
@@ -51,9 +50,9 @@ export const makeApp = ({
     const messageStorage = new MessageStorage()
 
     logger.info(
-      `Starting, searching only for requests for operators ${
-        OPERATOR_ID ?? OPERATOR_IDENTIFIERS
-      }`
+      `Starting, searching only for requests in scope ${JSON.stringify(
+        EJECTOR_SCOPE
+      )}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)

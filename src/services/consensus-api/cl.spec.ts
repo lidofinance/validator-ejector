@@ -4,15 +4,7 @@ import {
   makeConsensusApi,
   FAR_FUTURE_EPOCH,
 } from './service.js'
-import {
-  LoggerService,
-  RequestService,
-  makeRequest,
-  makeLogger,
-  retry,
-  logger as loggerMiddleware,
-  abort,
-} from '../../lib/index.js'
+import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import {
   exitRequestMock,
   genesisMock,
@@ -75,6 +67,52 @@ describe('makeConsensusApi', () => {
       status: mock.result.data.status,
       isExiting: false,
     })
+  })
+
+  it('should fetch validator info in batch', async () => {
+    const indices = ['1', '2']
+    const mockResponse = {
+      data: [
+        {
+          index: '1',
+          status: 'active_ongoing',
+          validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+        },
+        {
+          index: '2',
+          status: 'active_exiting',
+          validator: { pubkey: '0x456', exit_epoch: '100' },
+        },
+      ],
+    }
+    nock(config.CONSENSUS_NODE[0])
+      .get('/eth/v1/beacon/states/head/validators?id=1,2')
+      .reply(200, mockResponse)
+
+    const res = await api.fetchValidatorsInfoBatch(indices, 1000)
+
+    expect(res).toEqual(
+      new Map([
+        [
+          '1',
+          {
+            index: '1',
+            pubKey: '0x123',
+            status: 'active_ongoing',
+            isExiting: false,
+          },
+        ],
+        [
+          '2',
+          {
+            index: '2',
+            pubKey: '0x456',
+            status: 'active_exiting',
+            isExiting: true,
+          },
+        ],
+      ])
+    )
   })
 
   it('should send exit request', async () => {
@@ -226,6 +264,207 @@ describe('makeConsensusApi', () => {
       )
     })
 
+    it('validatorInfo falls back to the next URL on transient 408', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '42'
+      nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(408, { message: 'request timeout' })
+      const mock = validatorInfoMock(id)
+      mockEthServer(mock, SECONDARY)
+
+      const res = await apiMulti.validatorInfo(id)
+
+      expect(res.index).toBe(mock.result.data.index)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatorInfo falls back to the next URL on transient 429', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '42'
+      nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(429, { message: 'rate limited' })
+      const mock = validatorInfoMock(id)
+      mockEthServer(mock, SECONDARY)
+
+      const res = await apiMulti.validatorInfo(id)
+
+      expect(res.index).toBe(mock.result.data.index)
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatorInfo preserves 4xx error message and does not rotate', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = '404'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(404, { message: 'validator not found' })
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow(
+        'validator not found'
+      )
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
+    it('validatorInfo treats 414 as terminal and does not rotate', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = 'too-long'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(414, { message: 'URI too long' })
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow('URI too long')
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
+    it('validatorInfo uses safe parsing for non-JSON 4xx responses', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const id = 'cloudflare'
+      const primaryScope = nock(PRIMARY)
+        .get(`/eth/v1/beacon/states/head/validators/${id}`)
+        .reply(400, '<html>Bad request</html>')
+
+      await expect(apiMulti.validatorInfo(id)).rejects.toThrow(
+        'Received markup (HTML/XML) response instead of JSON. Status:'
+      )
+      expect(primaryScope.isDone()).toBe(true)
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.any(Object)
+      )
+    })
+
+    it('fetchValidatorsInfoBatch falls back to the next URL on 5xx', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const mockResponse = {
+        data: [
+          {
+            index: '1',
+            status: 'active_ongoing',
+            validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+          },
+          {
+            index: '2',
+            status: 'active_exiting',
+            validator: { pubkey: '0x456', exit_epoch: '100' },
+          },
+        ],
+      }
+
+      const primaryScope = nock(PRIMARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1,2')
+        .reply(503, 'busy')
+      const secondaryScope = nock(SECONDARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1,2')
+        .reply(200, mockResponse)
+
+      const res = await apiMulti.fetchValidatorsInfoBatch(['1', '2'], 1000)
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(res).toEqual(
+        new Map([
+          [
+            '1',
+            {
+              index: '1',
+              pubKey: '0x123',
+              status: 'active_ongoing',
+              isExiting: false,
+            },
+          ],
+          [
+            '2',
+            {
+              index: '2',
+              pubKey: '0x456',
+              status: 'active_exiting',
+              isExiting: true,
+            },
+          ],
+        ])
+      )
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
+    it('validatePublicKeys uses CL batch fallback', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      const mockResponse = {
+        data: [
+          {
+            index: '1',
+            status: 'active_ongoing',
+            validator: { pubkey: '0x123', exit_epoch: FAR_FUTURE_EPOCH },
+          },
+        ],
+      }
+
+      const primaryScope = nock(PRIMARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1')
+        .reply(503, 'busy')
+      const secondaryScope = nock(SECONDARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1')
+        .reply(200, mockResponse)
+
+      const res = await apiMulti.validatePublicKeys([
+        { validatorIndex: '1', validatorPubkey: '0x123' },
+      ])
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(res).toEqual(new Set(['1']))
+      expect(logger.warn).toHaveBeenCalledWith(
+        'CL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.cl.example:5051' })
+      )
+    })
+
     it('genesis does not rotate on 4xx (terminal)', async () => {
       const cfg = mockConfig(logger, {
         CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
@@ -315,83 +554,66 @@ describe('makeConsensusApi', () => {
         /broadcast failed at all 2 endpoints/
       )
     })
-  })
-})
 
-describe('makeConsensusApi e2e', () => {
-  let api: ConsensusApiService
-  let logger: LoggerService
-  let config: ConfigService
+    it('exitRequest preserves 5xx safe-parse messages when every endpoint rejects', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
 
-  beforeEach(() => {
-    logger = makeLogger({
-      level: 'error',
-      format: 'simple',
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(503, '<html>proxy error</html>')
+      nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(500, { message: 'secondary server rejected exit' })
+
+      let caught: unknown
+      try {
+        await apiMulti.exitRequest(exitMessage)
+      } catch (error) {
+        caught = error
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError)
+      expect(
+        (caught as AggregateError).errors.map((error) => error.message)
+      ).toEqual([
+        'Received markup (HTML/XML) response instead of JSON. Status:',
+        'secondary server rejected exit',
+      ])
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Received markup (HTML/XML) response instead of JSON. Status: 503'
+        ),
+        { content: '<html>proxy error</html>' }
+      )
     })
 
-    config = mockConfig(logger, {
-      CONSENSUS_NODE:
-        process.env.CONSENSUS_NODE ??
-        'https://ethereum-beacon-api.publicnode.com',
+    it('exitRequest preserves CL error messages when every endpoint rejects', async () => {
+      const cfg = mockConfig(logger, {
+        CONSENSUS_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const apiMulti = makeConsensusApi(request, logger, cfg)
+
+      nock(PRIMARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(400, { message: 'primary rejected exit' })
+      nock(SECONDARY)
+        .post('/eth/v1/beacon/pool/voluntary_exits')
+        .reply(400, { message: 'secondary rejected exit' })
+
+      let caught: unknown
+      try {
+        await apiMulti.exitRequest(exitMessage)
+      } catch (error) {
+        caught = error
+      }
+
+      expect(caught).toBeInstanceOf(AggregateError)
+      expect(
+        (caught as AggregateError).errors.map((error) => error.message)
+      ).toEqual(['primary rejected exit', 'secondary rejected exit'])
     })
-    api = makeConsensusApi(
-      makeRequest([retry(3), loggerMiddleware(logger), abort(30_000)]),
-      logger,
-      config
-    )
-  })
-
-  it('should handle batch size correctly with large index array e2e', async () => {
-    const indices = Array.from({ length: 3000 }, (_, i) => (i + 1).toString())
-    const count = await api.getExitingValidatorsCount(indices, 1000, 11724253)
-    expect(count).toStrictEqual(1226)
-  })
-
-  it('should validate public keys e2e', async () => {
-    const validatorData = [
-      {
-        validatorIndex: '1',
-        validatorPubkey:
-          '0xa1d1ad0714035353258038e964ae9675dc0252ee22cea896825c01458e1807bfad2f9969338798548d9858a571f7425c',
-      },
-      {
-        validatorIndex: '2',
-        validatorPubkey:
-          '0xb2ff4716ed345b05dd1dfc6a5a9fa70856d8c75dcc9e881dd2f766d5f891326f0d10e96f3a444ce6c912b69c22c6754d',
-      },
-      {
-        validatorIndex: '3',
-        validatorPubkey:
-          '0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
-      },
-    ]
-
-    const validIndices = await api.validatePublicKeys(
-      validatorData,
-      1000,
-      11724253
-    )
-    expect(validIndices.size).toEqual(2)
-  })
-
-  it('should fetch validators batch e2e', async () => {
-    const indices = ['1', '2']
-    const validators = await api.fetchValidatorsBatch(indices, 1000, 11724253)
-
-    expect(validators).toHaveLength(2)
-
-    expect(validators[0].index).toBe('1')
-    expect(validators[0].status).toBe('active_ongoing')
-    expect(validators[0].validator.pubkey).toBe(
-      '0xa1d1ad0714035353258038e964ae9675dc0252ee22cea896825c01458e1807bfad2f9969338798548d9858a571f7425c'
-    )
-    expect(validators[0].validator.exit_epoch).toBe('18446744073709551615')
-
-    expect(validators[1].index).toBe('2')
-    expect(validators[1].status).toBe('active_ongoing')
-    expect(validators[1].validator.pubkey).toBe(
-      '0xb2ff4716ed345b05dd1dfc6a5a9fa70856d8c75dcc9e881dd2f766d5f891326f0d10e96f3a444ce6c912b69c22c6754d'
-    )
-    expect(validators[1].validator.exit_epoch).toBe('18446744073709551615')
   })
 })

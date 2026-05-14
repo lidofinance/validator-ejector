@@ -6,6 +6,7 @@ import {
   RequestService,
   makeRequest,
   notOkError,
+  retry,
 } from '../../lib/index.js'
 import {
   funcMock,
@@ -18,7 +19,7 @@ import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
-import { NodeNotSyncedError } from './errors.js'
+import { JsonRpcServerError, NodeNotSyncedError } from './errors.js'
 
 describe('makeExecutionApi', () => {
   let api: ExecutionApiService
@@ -114,6 +115,44 @@ describe('makeExecutionApi', () => {
       )
     })
 
+    it('exhausts request retries on the primary before falling back', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: `${PRIMARY},${SECONDARY}`,
+      })
+      const requestWithRetries = makeRequest([
+        retry(2, { ignoreAbort: true, sleep: 0 }),
+        notOkError(),
+      ])
+      const apiMulti = makeExecutionApi(requestWithRetries, logger, cfg)
+
+      let primaryCalls = 0
+      const primaryScope = nock(PRIMARY)
+        .post('/')
+        .times(2)
+        .reply(() => {
+          primaryCalls += 1
+          return [503, 'busy']
+        })
+      nock(PRIMARY)
+        .post('/')
+        .reply(() => {
+          primaryCalls += 1
+          return [418, 'extra retry']
+        })
+      const secondaryScope = mockEthServer(lastBlockNumberMock(), SECONDARY)
+
+      const res = await apiMulti.latestBlockNumber()
+
+      expect(primaryScope.isDone()).toBe(true)
+      expect(primaryCalls).toBe(2)
+      expect(secondaryScope.isDone()).toBe(true)
+      expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
+      expect(logger.warn).toHaveBeenCalledWith(
+        'EL endpoint failed, trying next',
+        expect.objectContaining({ url: 'primary.example:8545' })
+      )
+    })
+
     it('does not rotate to the next URL on a 4xx (terminal) response', async () => {
       const cfg = mockConfig(logger, {
         EXECUTION_NODE: `${PRIMARY},${SECONDARY}`,
@@ -154,8 +193,19 @@ describe('makeExecutionApi', () => {
       expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
       expect(logger.warn).toHaveBeenCalledWith(
         'EL endpoint failed, trying next',
-        expect.objectContaining({ url: 'primary.example:8545' })
+        expect.objectContaining({
+          url: 'primary.example:8545',
+          err: expect.any(JsonRpcServerError),
+        })
       )
+      const warnDetails = vi.mocked(logger.warn).mock.calls[0][1] as {
+        err: JsonRpcServerError
+      }
+      expect(warnDetails.err.statusCode).toBe(502)
+      expect(warnDetails.err.response).toEqual({
+        code: -32603,
+        message: 'internal error',
+      })
     })
 
     it('does not rotate on deterministic JSON-RPC errors (e.g. -32602 invalid params)', async () => {

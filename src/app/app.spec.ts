@@ -1,6 +1,5 @@
 import { makeLogger } from '../lib/index.js'
 import nock from 'nock'
-import { makeConfig as mC } from '../services/config/service.js'
 import { mockEthServer } from '../test/mock-eth-server.js'
 import * as ELMocks from '../services/execution-api/fixtures.js'
 import * as CLMocks from '../services/consensus-api/fixtures.js'
@@ -12,7 +11,7 @@ dotenv.config()
 const mockConfig = async (config) => {
   const { makeConfig } = (await vi.importActual(
     '../services/config/service.js'
-  )) as { makeConfig: typeof mC }
+  )) as typeof import('../services/config/service.js')
 
   vi.doMock('../services/config/service.js', () => {
     return {

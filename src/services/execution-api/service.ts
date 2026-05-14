@@ -18,7 +18,7 @@ import {
   logsDTO,
 } from './dto.js'
 import { RequestConfig } from '../../lib/request/types.js'
-import { HttpException } from '../../lib/request/errors.js'
+import { JsonRpcServerError } from './errors.js'
 
 // JSON-RPC 2.0 server-side error codes: see https://www.jsonrpc.org/specification#error_object
 // and Ethereum geth's commonly-seen variants. Treat as retryable since they're
@@ -74,7 +74,7 @@ export const makeExecutionApi = (
       const json = await safelyParseJsonResponse(res, logger)
       if (isRpcServerError(json)) {
         const rpcErr = (json as { error?: unknown }).error
-        throw new HttpException(rpcErr as any, 502)
+        throw new JsonRpcServerError(rpcErr as any)
       }
       return json
     })

@@ -66,13 +66,16 @@ export const arr = (input: unknown, errorMessage?: string) => {
   throw new ValidationError(errorMessage || `Invalid array input: "${input}"`)
 }
 
-export const url_list = (input: unknown, errorMessage?: string | number) => {
-  const string = str(input, errorMessage)
-  const items = string
+export const normalizeUrlList = (input: string) =>
+  input
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     .map((s) => s.replace(/\/+$/, ''))
+
+export const url_list = (input: unknown, errorMessage?: string | number) => {
+  const string = str(input, errorMessage)
+  const items = normalizeUrlList(string)
   if (items.length === 0)
     throw new ValidationError(
       typeof errorMessage === 'string'
