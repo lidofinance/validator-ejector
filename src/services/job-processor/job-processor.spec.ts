@@ -86,7 +86,9 @@ describe('JobProcessor', () => {
   })
 
   it('should handle job with validators fetched in batches', async () => {
-    config.OPERATOR_IDS = [12345, 67890]
+    config.EJECTOR_SCOPE = [
+      { stakingModuleId: '1', operatorIds: [12345, 67890] },
+    ]
 
     const ackSpy12345 = vi.fn()
     const ackSpy67890 = vi.fn()
@@ -166,7 +168,7 @@ describe('JobProcessor', () => {
     expect(resolveExitBusAddressSpy).toHaveBeenCalled()
     expect(resolveConsensusAddressSpy).toHaveBeenCalled()
     expect(latestBlockNumberSpy).toHaveBeenCalled()
-    expect(getLogsSpy).toHaveBeenCalledWith([12345, 67890], 1000)
+    expect(getLogsSpy).toHaveBeenCalledWith(1000)
     expect(fetchValidatorsBatchSpy).toHaveBeenCalledWith(
       ['12345', '67890'],
       16,

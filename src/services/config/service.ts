@@ -6,13 +6,19 @@ import {
   str,
   optional,
   log_format,
+  arr,
   json_arr,
+  json_obj,
   url_list,
   normalizeUrlList,
 } from '../../lib/index.js'
 import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
+export type EjectorScope = {
+  stakingModuleId: string
+  operatorIds: number[]
+}
 
 export const makeConfig = ({
   env,
@@ -20,6 +26,10 @@ export const makeConfig = ({
   logger: ReturnType<typeof makeLogger>
   env: NodeJS.ProcessEnv
 }) => {
+  const ejectorScope =
+    optional(() => ejector_scope(env.EJECTOR_SCOPE)) ?? ([] as EjectorScope[])
+  const useLegacyScope = ejectorScope.length === 0
+
   const config = {
     EXECUTION_NODE: url_list(
       env.EXECUTION_NODE,
@@ -34,29 +44,27 @@ export const makeConfig = ({
       env.LOCATOR_ADDRESS,
       'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     ),
-    STAKING_MODULE_ID: optional(() =>
-      str(
-        env.STAKING_MODULE_ID,
-        'Please, setup STAKING_MODULE_ID id. Example: 123'
-      )
-    ),
-    STAKING_MODULE_IDENTIFIERS: optional(() =>
-      json_arr(
-        env.STAKING_MODULE_IDENTIFIERS,
-        (modules) => modules.map((module) => String(num(module))),
-        'Please, setup STAKING_MODULE_IDENTIFIERS. Example: [1,2,3]'
-      )
-    ),
-    OPERATOR_ID: optional(() =>
-      num(env.OPERATOR_ID, 'Please, setup OPERATOR_ID id. Example: 123')
-    ),
-    OPERATOR_IDENTIFIERS: optional(() =>
-      json_arr(
-        env.OPERATOR_IDENTIFIERS,
-        (oracles) => oracles.map(num),
-        'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
-      )
-    ),
+    STAKING_MODULE_ID: useLegacyScope
+      ? optional(() =>
+          String(nonNegativeInteger(env.STAKING_MODULE_ID, 'STAKING_MODULE_ID'))
+        )
+      : undefined,
+    EJECTOR_SCOPE: ejectorScope,
+    OPERATOR_ID: useLegacyScope
+      ? optional(() => nonNegativeInteger(env.OPERATOR_ID, 'OPERATOR_ID'))
+      : undefined,
+    OPERATOR_IDENTIFIERS: useLegacyScope
+      ? optional(() =>
+          json_arr(
+            env.OPERATOR_IDENTIFIERS,
+            (oracles) =>
+              oracles.map((oracle) =>
+                nonNegativeInteger(oracle, 'OPERATOR_IDENTIFIERS')
+              ),
+            'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
+          )
+        )
+      : undefined,
     ORACLE_ADDRESSES_ALLOWLIST: json_arr(
       env.ORACLE_ADDRESSES_ALLOWLIST,
       (oracles) => oracles.map(str),
@@ -125,34 +133,26 @@ export const makeConfig = ({
     )
   }
 
-  if (config.STAKING_MODULE_IDENTIFIERS?.length)
-    config.STAKING_MODULE_IDS = config.STAKING_MODULE_IDENTIFIERS
+  if (!config.EJECTOR_SCOPE.length) {
+    if (config.OPERATOR_IDENTIFIERS?.length)
+      config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
 
-  if (!config.STAKING_MODULE_IDS?.length && config.STAKING_MODULE_ID) {
-    config.STAKING_MODULE_IDS = [config.STAKING_MODULE_ID]
-  }
+    if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
+      config.OPERATOR_IDS = [config.OPERATOR_ID]
+    }
 
-  if (!config.STAKING_MODULE_IDS?.length) {
-    throw new Error(
-      'At least one of STAKING_MODULE_ID or STAKING_MODULE_IDENTIFIERS must be provided.'
+    config.EJECTOR_SCOPE = makeLegacyEjectorScope(
+      config.STAKING_MODULE_ID,
+      config.OPERATOR_IDS
     )
   }
 
-  // Populate OPERATOR_IDS from OPERATOR_IDENTIFIERS if available
-  if (config.OPERATOR_IDENTIFIERS?.length)
-    config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
-
-  // Fall back to OPERATOR_ID if OPERATOR_IDS is still empty
-  if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
-    config.OPERATOR_IDS = [config.OPERATOR_ID]
-  }
-
-  // Validate that we have at least one operator ID configured
-  if (!config.OPERATOR_IDS?.length) {
-    throw new Error(
-      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
-    )
-  }
+  config.STAKING_MODULE_IDS = config.EJECTOR_SCOPE.map(
+    (scope) => scope.stakingModuleId
+  )
+  config.OPERATOR_IDS = Array.from(
+    new Set(config.EJECTOR_SCOPE.flatMap((scope) => scope.operatorIds))
+  )
 
   return config
 }
@@ -214,6 +214,76 @@ const LOGGER_SECRET_URL_LIST_ENV_VARS = new Set([
   'EXECUTION_NODE',
   'CONSENSUS_NODE',
 ])
+
+const nonNegativeInteger = (value: unknown, name: string): number => {
+  const parsed = num(value, `${name} must be a non-negative integer`)
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`)
+  }
+  return parsed
+}
+
+const ejector_scope = (input: unknown): EjectorScope[] => {
+  const scopes = json_obj(
+    input,
+    (scope) =>
+      Object.entries(scope).map(([stakingModuleId, operatorIds]) => {
+        const parsedOperatorIds = arr(
+          operatorIds,
+          (ids) =>
+            ids.map((id) =>
+              nonNegativeInteger(
+                id,
+                `EJECTOR_SCOPE operators for staking module ${stakingModuleId}`
+              )
+            ),
+          `Invalid EJECTOR_SCOPE operators for staking module ${stakingModuleId}`
+        )
+
+        if (parsedOperatorIds.length === 0) {
+          throw new Error(
+            `EJECTOR_SCOPE for staking module ${stakingModuleId} must include at least one operator id`
+          )
+        }
+
+        return {
+          stakingModuleId: String(
+            nonNegativeInteger(
+              stakingModuleId,
+              'EJECTOR_SCOPE staking module id'
+            )
+          ),
+          operatorIds: Array.from(new Set(parsedOperatorIds)),
+        }
+      }),
+    'Please, setup EJECTOR_SCOPE. Example: {"1":[123],"2":[7,8]}'
+  )
+
+  if (scopes.length === 0) {
+    throw new Error('EJECTOR_SCOPE must include at least one staking module')
+  }
+
+  return scopes
+}
+
+const makeLegacyEjectorScope = (
+  stakingModuleId: string | undefined,
+  operatorIds: number[]
+): EjectorScope[] => {
+  if (!stakingModuleId) {
+    throw new Error(
+      'At least one of EJECTOR_SCOPE or STAKING_MODULE_ID must be provided.'
+    )
+  }
+
+  if (!operatorIds.length) {
+    throw new Error(
+      'At least one of EJECTOR_SCOPE, OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
+    )
+  }
+
+  return [{ stakingModuleId, operatorIds: Array.from(new Set(operatorIds)) }]
+}
 
 const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (env[envName]) return env[envName]

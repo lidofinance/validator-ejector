@@ -1,6 +1,6 @@
 import { makeLogger } from '../../lib/index.js'
 
-import { ConfigService } from 'services/config/service.js'
+import type { ConfigService } from 'services/config/service.js'
 import { MetricsService } from '../prom/service'
 import { makeVerifier } from './verifier.js'
 
@@ -18,7 +18,6 @@ export const makeExitLogsService = (
   el: ExecutionApiService,
   cl: ConsensusApiService,
   {
-    STAKING_MODULE_IDS,
     ORACLE_ADDRESSES_ALLOWLIST,
     TRUST_MODE,
     BLOCKS_PRELOAD,
@@ -26,6 +25,7 @@ export const makeExitLogsService = (
     EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
     EASY_TRACK_ADDRESS,
+    EJECTOR_SCOPE,
   }: ConfigService,
   metrics: MetricsService
 ) => {
@@ -41,7 +41,6 @@ export const makeExitLogsService = (
     el,
     cl,
     {
-      STAKING_MODULE_IDS,
       TRUST_MODE,
       EASY_TRACK_ADDRESS,
     },
@@ -106,7 +105,7 @@ export const makeExitLogsService = (
     }
   }
 
-  const getLogs = async (operatorIds: number[], lastBlockNumber: number) => {
+  const getLogs = async (lastBlockNumber: number) => {
     const header = cache.getHeader()
     // If data is already fully cached up to the latest block, return cached data
     if (header.endBlock === lastBlockNumber) {
@@ -140,7 +139,7 @@ export const makeExitLogsService = (
       const logs = await fetcher.getLogs(
         block,
         currentBlockTo,
-        operatorIds,
+        EJECTOR_SCOPE,
         motionCreatedEvents,
         votingRequestsHashSubmittedEvents,
         motionEnactedEvents

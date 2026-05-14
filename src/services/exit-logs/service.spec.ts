@@ -78,6 +78,7 @@ describe('ExitLogsService - getLogs', () => {
     config = mockConfig(logger, {
       BLOCKS_PRELOAD: 5000,
       STAKING_MODULE_ID: '1',
+      OPERATOR_ID: '1',
       ORACLE_ADDRESSES_ALLOWLIST: JSON.stringify(['0x123']),
       TRUST_MODE: false,
     })
@@ -101,7 +102,7 @@ describe('ExitLogsService - getLogs', () => {
     mockCache.getAll.mockReturnValue(cachedLogs)
 
     // Call getLogs with the same lastBlockNumber as cached
-    const result = await service.getLogs([1], 100)
+    const result = await service.getLogs(100)
 
     // Verify that we just returned cached data without fetching
     expect(result).toBe(cachedLogs)
@@ -132,7 +133,7 @@ describe('ExitLogsService - getLogs', () => {
     mockFetcher.getMotionEnactedEvents.mockResolvedValue(motionEnactedEvents)
 
     const lastBlockNumber = 100
-    await service.getLogs([1], lastBlockNumber)
+    await service.getLogs(lastBlockNumber)
 
     expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalled()
     expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
@@ -140,7 +141,7 @@ describe('ExitLogsService - getLogs', () => {
     expect(mockFetcher.getLogs).toHaveBeenCalledWith(
       0,
       lastBlockNumber,
-      [1],
+      config.EJECTOR_SCOPE,
       motionCreatedEvents,
       votingEvents,
       motionEnactedEvents
@@ -165,7 +166,7 @@ describe('ExitLogsService - getLogs', () => {
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
 
-    await service.getLogs([1], endBlock)
+    await service.getLogs(endBlock)
 
     expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalledTimes(3)
     expect(mockFetcher.getMotionCreatedEvents).toHaveBeenNthCalledWith(
@@ -219,7 +220,7 @@ describe('ExitLogsService - getLogs', () => {
       1,
       5000,
       14999,
-      [1],
+      config.EJECTOR_SCOPE,
       {},
       {},
       {}
@@ -228,7 +229,7 @@ describe('ExitLogsService - getLogs', () => {
       2,
       15000,
       24999,
-      [1],
+      config.EJECTOR_SCOPE,
       {},
       {},
       {}
@@ -237,7 +238,7 @@ describe('ExitLogsService - getLogs', () => {
       3,
       25000,
       25001,
-      [1],
+      config.EJECTOR_SCOPE,
       {},
       {},
       {}
@@ -251,12 +252,19 @@ describe('ExitLogsService - getLogs', () => {
 
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
-    await service.getLogs([1], 100)
+    await service.getLogs(100)
 
     expect(mockFetcher.getMotionCreatedEvents).toHaveBeenCalled()
     expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
     expect(mockFetcher.getMotionEnactedEvents).toHaveBeenCalled()
-    expect(mockFetcher.getLogs).toHaveBeenCalledWith(51, 100, [1], {}, {}, {})
+    expect(mockFetcher.getLogs).toHaveBeenCalledWith(
+      51,
+      100,
+      config.EJECTOR_SCOPE,
+      {},
+      {},
+      {}
+    )
     expect(logger.info).toHaveBeenCalledWith('Loading new logs from 51 to 100')
   })
 
@@ -270,7 +278,7 @@ describe('ExitLogsService - getLogs', () => {
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
     const lastBlockNumber = 100
-    await service.getLogs([1], lastBlockNumber)
+    await service.getLogs(lastBlockNumber)
 
     expect(mockFetcher.getMotionCreatedEvents).not.toHaveBeenCalled()
     expect(
@@ -280,7 +288,7 @@ describe('ExitLogsService - getLogs', () => {
     expect(mockFetcher.getLogs).toHaveBeenCalledWith(
       0,
       lastBlockNumber,
-      [1],
+      config.EJECTOR_SCOPE,
       {},
       {},
       {}

@@ -27,7 +27,7 @@ import {
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
-import { ConfigService } from '../config/service.js'
+import type { ConfigService, EjectorScope } from '../config/service.js'
 import { MetricsService } from 'services/prom/service.js'
 import { makeExecutionApi } from '../execution-api/service.js'
 import nock from 'nock'
@@ -44,6 +44,10 @@ describe('makeConsensusApi logs', () => {
       inc: vi.fn(),
     },
   } as unknown as MetricsService
+  const scope = (
+    operatorIds: number[] = [1],
+    stakingModuleId = '1'
+  ): EjectorScope[] => [{ stakingModuleId, operatorIds }]
 
   const mockService = (validatorIndices: string[] = ['351636']) => {
     const executionApi = makeExecutionApi(request, logger, config)
@@ -104,7 +108,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -136,7 +140,7 @@ describe('makeConsensusApi logs', () => {
       .reply(503, 'busy')
     const secondaryScope = mockEthServer(validatorExitRequestMock, secondary)
 
-    const res = await api.fetcher.getLogs(123, 123, [1])
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(primaryScope.isDone()).toBe(true)
     expect(secondaryScope.isDone()).toBe(true)
@@ -189,7 +193,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       {},
       {}
@@ -205,28 +209,40 @@ describe('makeConsensusApi logs', () => {
     )
   })
 
-  it('should filter validator exit requests by multiple staking modules', async () => {
+  it('should query each staking module scope separately', async () => {
     config = mockConfig(logger, {
       EXECUTION_NODE: 'http://localhost:4455',
-      STAKING_MODULE_IDENTIFIERS: '[1, 2]',
     })
     mockService([])
 
     const topic = (id: number) =>
       ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
 
-    const logsMock = nock(config.EXECUTION_NODE[0])
+    const firstModuleLogsMock = nock(config.EXECUTION_NODE[0])
       .post('/', (body) => {
         expect(body.method).toBe('eth_getLogs')
-        expect(body.params[0].topics[1]).toEqual([topic(1), topic(2)])
+        expect(body.params[0].topics[1]).toEqual([topic(1)])
         expect(body.params[0].topics[2]).toEqual([topic(1)])
         return true
       })
       .reply(200, { result: [] })
 
-    const res = await api.fetcher.getLogs(123, 123, [1])
+    const secondModuleLogsMock = nock(config.EXECUTION_NODE[0])
+      .post('/', (body) => {
+        expect(body.method).toBe('eth_getLogs')
+        expect(body.params[0].topics[1]).toEqual([topic(2)])
+        expect(body.params[0].topics[2]).toEqual([topic(2), topic(3)])
+        return true
+      })
+      .reply(200, { result: [] })
 
-    expect(logsMock.isDone()).toBe(true)
+    const res = await api.fetcher.getLogs(123, 123, [
+      { stakingModuleId: '1', operatorIds: [1] },
+      { stakingModuleId: '2', operatorIds: [2, 3] },
+    ])
+
+    expect(firstModuleLogsMock.isDone()).toBe(true)
+    expect(secondModuleLogsMock.isDone()).toBe(true)
     expect(res).toHaveLength(0)
   })
 
@@ -257,7 +273,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -295,7 +311,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -331,7 +347,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -377,7 +393,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -427,7 +443,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -467,7 +483,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -494,7 +510,7 @@ describe('makeConsensusApi logs', () => {
     config.EASY_TRACK_ADDRESS = ''
     mockService()
 
-    const res = await api.fetcher.getLogs(123, 123, [1], {}, {}, {})
+    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
 
     expect(votingValidatorExitRequestEvents.isDone()).to.be.true
     expect(res.length).toBe(0)
@@ -510,7 +526,7 @@ describe('makeConsensusApi logs', () => {
     mockService([])
     api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
 
-    const res = await api.fetcher.getLogs(123, 123, [1], {}, {}, {})
+    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
 
     expect(votingValidatorExitRequestEvents.isDone()).to.be.true
     expect(res.length).toBe(0)
@@ -626,7 +642,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -672,7 +688,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -722,7 +738,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
@@ -772,7 +788,7 @@ describe('makeConsensusApi logs', () => {
     const res = await api.fetcher.getLogs(
       123,
       123,
-      [1],
+      scope(),
       motionCreatedEvents,
       votingRequestsHashSubmittedEvents,
       motionEnactedEvents
