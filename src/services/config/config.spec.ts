@@ -1,5 +1,9 @@
 import { configBase } from '../../test/config.js'
-import { makeConfig, makeLoggerConfig } from './service.js'
+import {
+  makeConfig,
+  makeLoggerConfig,
+  makeValidationConfig,
+} from './service.js'
 import { mockLogger } from '../../test/logger.js'
 import { makeLogger } from '../../lib/index.js'
 
@@ -34,6 +38,67 @@ describe('config module', () => {
       makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
     expect(makeConf).not.toThrow()
+  })
+
+  test('defaults validators batch size', () => {
+    const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.VALIDATORS_BATCH_SIZE).toBe(1000)
+  })
+
+  test('accepts validators batch size override', () => {
+    const config = {
+      ...configBase,
+      MESSAGES_LOCATION: 'messages',
+      VALIDATORS_BATCH_SIZE: '32',
+    }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.VALIDATORS_BATCH_SIZE).toBe(32)
+  })
+
+  test('normalizes validators batch size to positive integer', () => {
+    const cases = [
+      ['0', 1000],
+      ['-1', 1],
+      ['1.5', 1],
+    ] as const
+
+    for (const [value, expected] of cases) {
+      const result = makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          VALIDATORS_BATCH_SIZE: value,
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+      expect(result.VALIDATORS_BATCH_SIZE).toBe(expected)
+    }
+  })
+
+  test('validation config includes validators batch size', () => {
+    const config = {
+      ...configBase,
+      MESSAGES_LOCATION: 'messages',
+      VALIDATORS_BATCH_SIZE: '8',
+    }
+
+    const result = makeValidationConfig({
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.VALIDATORS_BATCH_SIZE).toBe(8)
   })
 
   describe('operator identification validation', () => {

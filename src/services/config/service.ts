@@ -85,6 +85,10 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    VALIDATORS_BATCH_SIZE: Math.max(
+      1,
+      Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
+    ),
     VOTING_EVENTS_FRAME_BLOCKS:
       optional(() => num(env.VOTING_EVENTS_FRAME_BLOCKS)) ?? 216000, // ~30 days
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
@@ -161,6 +165,10 @@ export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
     ),
     MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
+    VALIDATORS_BATCH_SIZE: Math.max(
+      1,
+      Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
+    ),
   }
   return config
 }

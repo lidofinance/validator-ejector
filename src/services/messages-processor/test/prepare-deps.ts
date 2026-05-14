@@ -86,6 +86,7 @@ export const prepareDeps = (
     logger,
     config
   )
+  vi.spyOn(consensusApi, 'fetchValidatorsInfoBatch')
 
   const forkVersionResolver = makeForkVersionResolver(
     consensusApi,

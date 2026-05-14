@@ -93,7 +93,7 @@ export const makeJobProcessor = ({
 
     const validatorsHead = await consensusApi.fetchValidatorsBatch(
       validatorIndices,
-      1000,
+      config.VALIDATORS_BATCH_SIZE,
       'head'
     )
     const exitingValidatorsRecord =
@@ -101,7 +101,7 @@ export const makeJobProcessor = ({
 
     const validatorsFinalized = await consensusApi.fetchValidatorsBatch(
       validatorIndices,
-      1000,
+      config.VALIDATORS_BATCH_SIZE,
       'finalized'
     )
     const exitingValidatorsFinalizedRecord =
@@ -155,7 +155,8 @@ export const makeJobProcessor = ({
         (msg) => msg.message.validator_index
       )
       const exitingCount = await consensusApi.getExitingValidatorsCount(
-        validatorIndices
+        validatorIndices,
+        config.VALIDATORS_BATCH_SIZE
       )
       metrics.updateLeftMessages(messageStorage, exitingCount)
     } catch (e) {

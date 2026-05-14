@@ -51,6 +51,10 @@ describe('messages processor', () => {
     expect(
       di.messageStorage.messagesMetadata.get(VALIDATOR_INDEX)?.meta.forkVersion
     ).toBe(CAPELLA_FORK_VERSION)
+    expect(di.consensusApi.fetchValidatorsInfoBatch).toHaveBeenCalledWith(
+      [VALIDATOR_INDEX],
+      1000
+    )
 
     di.changeForkState({
       previous_version: CAPELLA_FORK_VERSION,

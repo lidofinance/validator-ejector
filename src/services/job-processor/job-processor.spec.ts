@@ -31,6 +31,7 @@ describe('JobProcessor', () => {
       STAKING_MODULE_ID: '1',
       DRY_RUN: true,
       TRUST_MODE: true, // Verifying logic tested inside fetcher.spec.ts
+      VALIDATORS_BATCH_SIZE: '16',
     })
 
     const request = makeRequest([])
@@ -168,15 +169,15 @@ describe('JobProcessor', () => {
     expect(getLogsSpy).toHaveBeenCalledWith([12345, 67890], 1000)
     expect(fetchValidatorsBatchSpy).toHaveBeenCalledWith(
       ['12345', '67890'],
-      1000,
+      16,
       'head'
     )
     expect(fetchValidatorsBatchSpy).toHaveBeenCalledWith(
       ['12345', '67890'],
-      1000,
+      16,
       'finalized'
     )
-    expect(getExitingValidatorsCountSpy).toHaveBeenCalledWith([])
+    expect(getExitingValidatorsCountSpy).toHaveBeenCalledWith([], 16)
     expect(isValidatorExitingSpy).toHaveBeenCalled()
     expect(ackSpy12345).not.toHaveBeenCalled()
     expect(ackSpy67890).toHaveBeenCalled()

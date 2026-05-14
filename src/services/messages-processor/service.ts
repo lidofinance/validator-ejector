@@ -20,6 +20,7 @@ import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { ExitMessageWithMetadata } from '../job-processor/service.js'
+import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
   message: {
@@ -46,7 +47,10 @@ export const makeMessagesProcessor = ({
   gsService,
 }: {
   logger: LoggerService
-  config: { MESSAGES_LOCATION?: string | undefined; MESSAGES_PASSWORD?: string }
+  config: Pick<
+    ConfigService,
+    'MESSAGES_LOCATION' | 'MESSAGES_PASSWORD' | 'VALIDATORS_BATCH_SIZE'
+  >
   localFileReader: LocalFileReaderService
   consensusApi: ConsensusApiService
   metrics: MetricsService
@@ -182,7 +186,8 @@ export const makeMessagesProcessor = ({
       new Set(messages.map((m) => m.data.message.validator_index))
     )
     const validatorsInfoMap = await consensusApi.fetchValidatorsInfoBatch(
-      validatorIndices
+      validatorIndices,
+      config.VALIDATORS_BATCH_SIZE
     )
 
     const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
