@@ -11,6 +11,8 @@ const URLS = [
   'http://tertiary.example:8545',
 ]
 
+class RetryableHttpException extends HttpException {}
+
 describe('makeFallback', () => {
   test('happy path: hits the primary URL and returns its result', async () => {
     const logger = mockLogger()
@@ -58,6 +60,28 @@ describe('makeFallback', () => {
 
     await expect(fallback(op)).rejects.toBeInstanceOf(HttpException)
     expect(seen).toEqual([URLS[0]])
+  })
+
+  test('rotates when retryable error is an HttpException subclass', async () => {
+    const logger = mockLogger()
+    const fallback = makeFallback(URLS, logger, 'EL')
+
+    const seen: string[] = []
+    const result = await fallback(async (url) => {
+      seen.push(url)
+      if (url === URLS[0]) throw new RetryableHttpException('boom', 502)
+      return `ok:${url}`
+    })
+
+    expect(result).toBe(`ok:${URLS[1]}`)
+    expect(seen).toEqual([URLS[0], URLS[1]])
+    expect(logger.warn).toHaveBeenCalledWith(
+      'EL endpoint failed, trying next',
+      expect.objectContaining({
+        err: expect.any(RetryableHttpException),
+        url: 'primary.example:8545',
+      })
+    )
   })
 
   test('FetchError and AbortError are retryable', async () => {

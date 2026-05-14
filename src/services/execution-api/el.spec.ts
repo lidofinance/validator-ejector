@@ -19,7 +19,7 @@ import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
 import { ConfigService } from '../config/service.js'
-import { NodeNotSyncedError } from './errors.js'
+import { JsonRpcServerError, NodeNotSyncedError } from './errors.js'
 
 describe('makeExecutionApi', () => {
   let api: ExecutionApiService
@@ -193,8 +193,19 @@ describe('makeExecutionApi', () => {
       expect(res).toEqual(Number(lastBlockNumberMock().result.result.number))
       expect(logger.warn).toHaveBeenCalledWith(
         'EL endpoint failed, trying next',
-        expect.objectContaining({ url: 'primary.example:8545' })
+        expect.objectContaining({
+          url: 'primary.example:8545',
+          err: expect.any(JsonRpcServerError),
+        })
       )
+      const warnDetails = vi.mocked(logger.warn).mock.calls[0][1] as {
+        err: JsonRpcServerError
+      }
+      expect(warnDetails.err.statusCode).toBe(502)
+      expect(warnDetails.err.response).toEqual({
+        code: -32603,
+        message: 'internal error',
+      })
     })
 
     it('does not rotate on deterministic JSON-RPC errors (e.g. -32602 invalid params)', async () => {
