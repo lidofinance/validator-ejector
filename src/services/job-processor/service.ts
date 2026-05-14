@@ -68,11 +68,8 @@ export const makeJobProcessor = ({
     eventsNumber: number
     messageStorage: MessageStorage
   }) => {
-    const operatorIds = config.OPERATOR_IDS
-
     logger.info('Job started', {
-      operatorIds,
-      stakingModuleIds: config.STAKING_MODULE_IDS,
+      ejectorScope: config.EJECTOR_SCOPE,
     })
 
     await messageReloader.reloadAndVerifyMessages(messageStorage)
@@ -83,7 +80,7 @@ export const makeJobProcessor = ({
 
     const lastBlockNumber = await executionApi.latestBlockNumber()
 
-    const eventsForEject = await exitLogs.getLogs(operatorIds, lastBlockNumber)
+    const eventsForEject = await exitLogs.getLogs(lastBlockNumber)
 
     logger.info('Handling ejection requests', {
       amount: eventsForEject.length,

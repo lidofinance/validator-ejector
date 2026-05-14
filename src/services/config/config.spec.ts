@@ -195,7 +195,6 @@ describe('config module', () => {
         ...configBase,
         VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
         STAKING_MODULE_ID: '123',
-        STAKING_MODULE_IDENTIFIERS: undefined,
       }
 
       const makeConf = () =>
@@ -207,56 +206,129 @@ describe('config module', () => {
       expect(configResult.STAKING_MODULE_IDS).toEqual(['123'])
     })
 
-    test('should not throw when only STAKING_MODULE_IDENTIFIERS with values is provided', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { STAKING_MODULE_ID, ...configWithoutStakingModuleId } = configBase
-      const config = {
-        ...configWithoutStakingModuleId,
-        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
-        STAKING_MODULE_IDENTIFIERS: '[1, 2, 3]',
-      }
-
-      const makeConf = () =>
-        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
-
-      expect(makeConf).not.toThrow()
-
-      const configResult = makeConf()
-      expect(configResult.STAKING_MODULE_IDS).toEqual(['1', '2', '3'])
-    })
-
-    test('if both values are set, STAKING_MODULE_IDENTIFIERS must be selected', () => {
+    test('should throw when STAKING_MODULE_ID is missing in legacy mode', () => {
       const config = {
         ...configBase,
         VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
-        STAKING_MODULE_IDENTIFIERS: '[1, 2, 3]',
-        STAKING_MODULE_ID: '2222',
+        STAKING_MODULE_ID: undefined,
       }
 
       const makeConf = () =>
         makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
-      expect(makeConf).not.toThrow()
+      expect(makeConf).toThrow(/EJECTOR_SCOPE or STAKING_MODULE_ID/)
+    })
+  })
 
-      const configResult = makeConf()
-      expect(configResult.STAKING_MODULE_IDS).toEqual(['1', '2', '3'])
+  describe('ejector scope normalization', () => {
+    const makeConf = (config: Record<string, unknown>) =>
+      makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+    test('normalizes EJECTOR_SCOPE and derives compatibility ids', () => {
+      const config = {
+        ...configBase,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        EJECTOR_SCOPE: '{"1":[0,1],"4":[2]}',
+      }
+
+      const result = makeConf(config)
+
+      expect(result.EJECTOR_SCOPE).toEqual([
+        { stakingModuleId: '1', operatorIds: [0, 1] },
+        { stakingModuleId: '4', operatorIds: [2] },
+      ])
+      expect(result.STAKING_MODULE_IDS).toEqual(['1', '4'])
+      expect(result.OPERATOR_IDS).toEqual([0, 1, 2])
     })
 
-    test('should throw when STAKING_MODULE_IDENTIFIERS is empty array', () => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { STAKING_MODULE_ID, ...configWithoutStakingModuleId } = configBase
+    test('EJECTOR_SCOPE wins over legacy module and operator vars', () => {
       const config = {
-        ...configWithoutStakingModuleId,
+        ...configBase,
         VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
-        STAKING_MODULE_IDENTIFIERS: '[]',
+        STAKING_MODULE_ID: '99',
+        OPERATOR_ID: '99',
+        OPERATOR_IDENTIFIERS: '[98, 99]',
+        EJECTOR_SCOPE: '{"1":[0],"4":[2]}',
       }
 
-      const makeConf = () =>
-        makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+      const result = makeConf(config)
 
-      expect(makeConf).toThrow(
-        'At least one of STAKING_MODULE_ID or STAKING_MODULE_IDENTIFIERS must be provided.'
-      )
+      expect(result.EJECTOR_SCOPE).toEqual([
+        { stakingModuleId: '1', operatorIds: [0] },
+        { stakingModuleId: '4', operatorIds: [2] },
+      ])
+      expect(result.STAKING_MODULE_IDS).toEqual(['1', '4'])
+      expect(result.OPERATOR_IDS).toEqual([0, 2])
+    })
+
+    test('EJECTOR_SCOPE ignores invalid legacy module and operator vars', () => {
+      const config = {
+        ...configBase,
+        VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        STAKING_MODULE_ID: 'bad',
+        OPERATOR_ID: 'bad',
+        OPERATOR_IDENTIFIERS: 'not-json',
+        EJECTOR_SCOPE: '{"1":[0],"4":[2]}',
+      }
+
+      const result = makeConf(config)
+
+      expect(result.EJECTOR_SCOPE).toEqual([
+        { stakingModuleId: '1', operatorIds: [0] },
+        { stakingModuleId: '4', operatorIds: [2] },
+      ])
+      expect(result.STAKING_MODULE_IDS).toEqual(['1', '4'])
+      expect(result.OPERATOR_IDS).toEqual([0, 2])
+    })
+
+    test('rejects invalid EJECTOR_SCOPE values', () => {
+      const cases = [
+        ['{}', /at least one staking module/],
+        ['{"1":[]}', /at least one operator id/],
+        ['{"abc":[1]}', /staking module id must be a non-negative integer/],
+        ['{"-1":[1]}', /staking module id must be a non-negative integer/],
+        ['{"1.5":[1]}', /staking module id must be a non-negative integer/],
+        ['{"1":["bad"]}', /operators for staking module 1/],
+        ['{"1":[-1]}', /operators for staking module 1/],
+        ['{"1":[1.5]}', /operators for staking module 1/],
+      ] as const
+
+      for (const [scope, error] of cases) {
+        expect(() =>
+          makeConf({
+            ...configBase,
+            VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+            EJECTOR_SCOPE: scope,
+          })
+        ).toThrow(error)
+      }
+    })
+
+    test('throws when legacy module or operator config is missing', () => {
+      const withoutStakingModule = { ...configBase }
+      delete (withoutStakingModule as Partial<typeof configBase>)
+        .STAKING_MODULE_ID
+
+      const withoutOperator = {
+        ...configBase,
+      } as typeof configBase & { OPERATOR_IDENTIFIERS?: string }
+      delete (withoutOperator as Partial<typeof withoutOperator>).OPERATOR_ID
+      delete (withoutOperator as Partial<typeof withoutOperator>)
+        .OPERATOR_IDENTIFIERS
+
+      expect(() =>
+        makeConf({
+          ...withoutStakingModule,
+          VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        })
+      ).toThrow(/EJECTOR_SCOPE or STAKING_MODULE_ID/)
+
+      expect(() =>
+        makeConf({
+          ...withoutOperator,
+          VALIDATOR_EXIT_WEBHOOK: 'http://webhook',
+        })
+      ).toThrow(/EJECTOR_SCOPE, OPERATOR_ID or OPERATOR_IDENTIFIERS/)
     })
   })
 })

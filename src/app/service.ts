@@ -13,8 +13,7 @@ export const makeApp = ({
   appInfoReader,
   consistencyChecker,
 }: Dependencies) => {
-  const { BLOCKS_PRELOAD, JOB_INTERVAL, OPERATOR_IDS, STAKING_MODULE_IDS } =
-    config
+  const { BLOCKS_PRELOAD, JOB_INTERVAL, EJECTOR_SCOPE } = config
 
   let ejectorCycleTimer: NodeJS.Timer | null = null
 
@@ -51,7 +50,9 @@ export const makeApp = ({
     const messageStorage = new MessageStorage()
 
     logger.info(
-      `Starting, searching only for requests for staking modules ${STAKING_MODULE_IDS} and operators ${OPERATOR_IDS}`
+      `Starting, searching only for requests in scope ${JSON.stringify(
+        EJECTOR_SCOPE
+      )}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
