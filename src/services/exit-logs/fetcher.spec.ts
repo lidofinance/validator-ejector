@@ -117,6 +117,7 @@ describe('makeConsensusApi logs', () => {
     expect(oracleValidatorExitRequestEvents.isDone()).to.be.true
     expect(votingValidatorExitRequestEvents.isDone()).to.be.false
     expect(res.length).toBe(1)
+    expect(res[0].stakingModuleId).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
     expect(res[0].validatorPubkey).toBe(
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'

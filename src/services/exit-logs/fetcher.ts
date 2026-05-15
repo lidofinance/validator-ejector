@@ -150,14 +150,20 @@ export const makeExitLogsFetcherService = (
 
     const events = logs.map((log) => {
       const parsedLog = iface.parseLog(log)
-      const { validatorIndex, validatorPubkey, nodeOperatorId } =
-        parsedLog.args as unknown as {
-          validatorIndex: ethers.BigNumber
-          validatorPubkey: string
-          nodeOperatorId: ethers.BigNumber
-        }
+      const {
+        stakingModuleId,
+        validatorIndex,
+        validatorPubkey,
+        nodeOperatorId,
+      } = parsedLog.args as unknown as {
+        stakingModuleId: ethers.BigNumber
+        validatorIndex: ethers.BigNumber
+        validatorPubkey: string
+        nodeOperatorId: ethers.BigNumber
+      }
 
       return {
+        stakingModuleId,
         validatorIndex: validatorIndex.toString(),
         validatorPubkey,
         nodeOperatorId,
@@ -202,6 +208,7 @@ export const makeExitLogsFetcherService = (
       )
 
       const {
+        stakingModuleId,
         validatorIndex,
         validatorPubkey,
         nodeOperatorId,
@@ -237,6 +244,7 @@ export const makeExitLogsFetcherService = (
         validatorIndex,
         validatorPubkey,
         blockNumber: blockNumber,
+        stakingModuleId: stakingModuleId.toNumber(),
         nodeOperatorId: nodeOperatorId.toNumber(),
         acknowledged: false,
         ack() {
