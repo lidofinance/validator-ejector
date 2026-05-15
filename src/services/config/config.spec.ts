@@ -40,6 +40,18 @@ describe('config module', () => {
     expect(makeConf).not.toThrow()
   })
 
+  test('invalid optional bool config includes env var name', () => {
+    const config = {
+      ...configBase,
+      TRUST_MODE: '',
+    }
+
+    const makeConf = () =>
+      makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+    expect(makeConf).toThrow('Invalid TRUST_MODE value: expected true or false')
+  })
+
   test('defaults validators batch size', () => {
     const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
 

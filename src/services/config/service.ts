@@ -102,18 +102,45 @@ export const makeConfig = ({
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
-    RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
-    RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? true,
+    RUN_METRICS:
+      optional(() =>
+        bool(
+          env.RUN_METRICS,
+          'Invalid RUN_METRICS value: expected true or false'
+        )
+      ) ?? false,
+    RUN_HEALTH_CHECK:
+      optional(() =>
+        bool(
+          env.RUN_HEALTH_CHECK,
+          'Invalid RUN_HEALTH_CHECK value: expected true or false'
+        )
+      ) ?? true,
 
-    DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
+    DRY_RUN:
+      optional(() =>
+        bool(env.DRY_RUN, 'Invalid DRY_RUN value: expected true or false')
+      ) ?? false,
     TRUST_MODE:
-      optional(() => bool(env.TRUST_MODE)) ??
-      optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
+      optional(() =>
+        bool(env.TRUST_MODE, 'Invalid TRUST_MODE value: expected true or false')
+      ) ??
+      optional(() =>
+        bool(
+          env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+          'Invalid DISABLE_SECURITY_DONT_USE_IN_PRODUCTION value: expected true or false'
+        )
+      ) ??
       false,
     PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
 
     FORCE_DENCUN_FORK_MODE:
-      optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
+      optional(() =>
+        bool(
+          env.FORCE_DENCUN_FORK_MODE,
+          'Invalid FORCE_DENCUN_FORK_MODE value: expected true or false'
+        )
+      ) ?? false,
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
 
