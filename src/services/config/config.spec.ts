@@ -350,6 +350,20 @@ describe('logger config module', () => {
     expect(config.LOGGER_SECRETS).toEqual(['secret'])
   })
 
+  test('invalid logger secrets config', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["secret"`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).toThrowError(
+      'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
+    )
+  })
+
   test('dynamic secret values', () => {
     const env = {
       LOGGER_LEVEL: 'info',

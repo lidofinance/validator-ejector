@@ -179,7 +179,11 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
     LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
     LOGGER_SECRETS:
       optional(() =>
-        json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+        json_arr(
+          env.LOGGER_SECRETS,
+          (secrets) => secrets.map(str),
+          'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
+        )
       ) ?? [],
   }
 
