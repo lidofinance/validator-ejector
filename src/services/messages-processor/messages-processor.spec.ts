@@ -6,6 +6,7 @@ import {
   BELLATRIX_MESSAGE,
 } from './test/messages.js'
 import { prepareDeps } from './test/prepare-deps.js'
+import { HttpException } from '../../lib/request/errors.js'
 
 const CAPELLA_FORK_VERSION = '0x04017000'
 const BELLATRIX_FORK_VERSION = '0x04017000'
@@ -50,6 +51,10 @@ describe('messages processor', () => {
     expect(
       di.messageStorage.messagesMetadata.get(VALIDATOR_INDEX)?.meta.forkVersion
     ).toBe(CAPELLA_FORK_VERSION)
+    expect(di.consensusApi.fetchValidatorsInfoBatch).toHaveBeenCalledWith(
+      [VALIDATOR_INDEX],
+      1000
+    )
 
     di.changeForkState({
       previous_version: CAPELLA_FORK_VERSION,
@@ -100,6 +105,77 @@ describe('messages processor', () => {
     expect(isDencun).toBeTruthy()
     expect(capellaVersion).toBe(CAPELLA_FORK_VERSION)
     expect(currentVersion).toBe(DENCUN_FORK_VERSION)
+
+    di.restore()
+  })
+
+  it('logs exit request failures as error objects', async () => {
+    const di = prepareDeps(
+      [CAPELLA_MESSAGE],
+      {
+        pubKey: VALIDATOR_PUB_KEY,
+        id: VALIDATOR_INDEX,
+      },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    const error = new AggregateError(
+      [new HttpException('primary rejected exit', 400)],
+      'CL broadcast failed at all 1 endpoints'
+    )
+    const loggerErrorSpy = vi
+      .spyOn(di.errorLogger, 'error')
+      .mockImplementation(() => undefined)
+    vi.spyOn(di.consensusApi, 'exitRequest').mockRejectedValue(error)
+    di.messageStorage.updateMessages([
+      {
+        data: JSON.parse(CAPELLA_MESSAGE.content),
+        meta: {
+          fileChecksum: 'checksum',
+          filename: CAPELLA_MESSAGE.filename,
+          forkVersion: CAPELLA_FORK_VERSION,
+        },
+      },
+    ])
+
+    await di.messagesProcessor.exit(di.messageStorage, {
+      validatorPubkey: VALIDATOR_PUB_KEY,
+      validatorIndex: VALIDATOR_INDEX,
+    })
+
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      'Failed to send out exit message',
+      error
+    )
+
+    di.restore()
+  })
+
+  it('propagates batch validator info failures', async () => {
+    const di = prepareDeps(
+      [CAPELLA_MESSAGE],
+      {
+        pubKey: VALIDATOR_PUB_KEY,
+        id: VALIDATOR_INDEX,
+      },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      },
+      { failValidatorsBatch: true }
+    )
+
+    await expect(
+      di.messagesProcessor.loadToMemoryStorage(di.messageStorage, {
+        isDencun: false,
+        capellaVersion: CAPELLA_FORK_VERSION,
+        currentVersion: CAPELLA_FORK_VERSION,
+      })
+    ).rejects.toThrow()
 
     di.restore()
   })

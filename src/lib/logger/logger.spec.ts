@@ -1,6 +1,7 @@
 import { makeLogger, LOG_LEVELS } from './index.js'
 import { dateFormat } from './printer.js'
 import type { LogLevelsUnion } from './types.js'
+import { HttpException } from '../request/errors.js'
 
 const mockConsole = () => {
   const log = LOG_LEVELS.reduce<Record<LogLevelsUnion, any>>((acc, level) => {
@@ -163,6 +164,70 @@ describe('Logger', () => {
       expect(loggedError.details.cause.cause).toEqual({
         message: 'Max depth reached',
       })
+
+      restore()
+    })
+
+    test('HttpException should be serialized with message and response', () => {
+      const { restore, log } = mockConsole()
+      const logger = makeLogger({ format: 'json', level: 'error' })
+
+      const error = new HttpException({ message: 'bad request' }, 400)
+
+      logger.error('HTTP request failed', error)
+
+      expect(log.error).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+
+      expect(loggedError.message).toBe('HTTP request failed')
+      expect(loggedError.details).toEqual(
+        expect.objectContaining({
+          message: 'bad request',
+          name: 'HttpException',
+          response: { message: 'bad request' },
+          statusCode: 400,
+        })
+      )
+
+      restore()
+    })
+
+    test('AggregateError should include serialized causes', () => {
+      const { restore, log } = mockConsole()
+      const logger = makeLogger({ format: 'json', level: 'error' })
+
+      const error = new AggregateError(
+        [
+          new HttpException('primary failed', 503),
+          new Error('secondary failed'),
+        ],
+        'CL broadcast failed at all 2 endpoints'
+      )
+
+      logger.error('Failed to send out exit message', error)
+
+      expect(log.error).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+
+      expect(loggedError.message).toBe('Failed to send out exit message')
+      expect(loggedError.details.message).toBe(
+        'CL broadcast failed at all 2 endpoints'
+      )
+      expect(loggedError.details.errors).toHaveLength(2)
+      expect(loggedError.details.errors[0]).toEqual(
+        expect.objectContaining({
+          message: 'primary failed',
+          name: 'HttpException',
+          response: 'primary failed',
+          statusCode: 503,
+        })
+      )
+      expect(loggedError.details.errors[1]).toEqual(
+        expect.objectContaining({
+          message: 'secondary failed',
+          name: 'Error',
+        })
+      )
 
       restore()
     })

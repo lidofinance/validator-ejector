@@ -21,30 +21,32 @@ export const depositContractMock = (chainId: string) => ({
   },
 })
 
-export const validatorInfoMock = ({
+const validatorData = ({ id, pubKey }: { id: string; pubKey: string }) => ({
+  index: id,
+  status: 'active',
+  validator: {
+    pubkey: pubKey,
+    withdrawal_credentials: '0x0001111222',
+    effective_balance: '32000000000',
+    slashed: false,
+    activation_eligibility_epoch: '0',
+    activation_epoch: '0',
+    exit_epoch: '18446744073709551615',
+    withdrawable_epoch: '18446744073709551615',
+  },
+})
+
+export const validatorsBatchMock = ({
   id,
   pubKey,
 }: {
   id: string
   pubKey: string
 }) => ({
-  url: `/eth/v1/beacon/states/head/validators/${id}`,
+  url: `/eth/v1/beacon/states/head/validators?id=${id}`,
   method: 'GET',
   result: {
-    data: {
-      index: '1',
-      status: 'active',
-      validator: {
-        pubkey: pubKey,
-        withdrawal_credentials: '0x0001111222',
-        effective_balance: '32000000000',
-        slashed: false,
-        activation_eligibility_epoch: '0',
-        activation_epoch: '0',
-        exit_epoch: '18446744073709551615',
-        withdrawable_epoch: '18446744073709551615',
-      },
-    },
+    data: [validatorData({ id, pubKey })],
   },
 })
 

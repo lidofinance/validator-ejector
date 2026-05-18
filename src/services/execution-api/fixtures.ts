@@ -60,3 +60,14 @@ export const funcMock = (hash = '0x0001111') => ({
     id: 1,
   },
 })
+
+export const chainIdMock = (chainIdHex = '0x1') => ({
+  url: '/',
+  method: 'POST',
+  result: {
+    jsonrpc: '2.0',
+    id: 1,
+    result: chainIdHex,
+  },
+  body: { jsonrpc: '2.0', method: 'eth_chainId', params: [], id: 1 },
+})

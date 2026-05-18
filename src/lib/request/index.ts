@@ -38,7 +38,12 @@ export const extractErrorBody = async (
 }
 
 export const isNotServerError = (error: Error) =>
-  !(error instanceof HttpException) && !(error instanceof FetchError)
+  (error instanceof HttpException &&
+    !isRetryableHttpStatus(error.statusCode)) ||
+  (!(error instanceof HttpException) && !(error instanceof FetchError))
+
+export const isRetryableHttpStatus = (status: number) =>
+  status >= 500 || status === 408 || status === 429
 
 const fetchCall = ({ url, baseUrl, ...rest }: InternalConfig) =>
   fetch(getUrl(baseUrl, url), rest)

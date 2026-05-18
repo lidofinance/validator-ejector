@@ -99,6 +99,11 @@ describe('exitLogs e2e', () => {
       ]),
       OPERATOR_IDENTIFIERS: JSON.stringify([0]),
       BLOCKS_PRELOAD: 1,
+      // Test default of 216_000 blocks (~30 days) takes minutes against a real
+      // RPC. Narrow the motion-event security-verification window to the same
+      // span as BLOCKS_PRELOAD so each test makes O(BLOCKS_PRELOAD/10k) RPC
+      // calls instead of O(216k/10k). Production keeps the 216k default.
+      VOTING_EVENTS_FRAME_BLOCKS: 1,
       STAKING_MODULE_ID: '1',
       DRY_RUN: true,
       LOCATOR_ADDRESS: '0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb',
@@ -114,28 +119,35 @@ describe('exitLogs e2e', () => {
     await executionApi.resolveExitBusAddress()
     await executionApi.resolveConsensusAddress()
 
-    const frame1 = await api.getLogs([0], frame1Block)
+    const frame1 = await api.getLogs(frame1Block)
 
     expect(frame1.length).toBe(20)
 
-    const frame2 = await api.getLogs([0], frame2Block)
+    const frame2 = await api.getLogs(frame2Block)
 
     expect(frame2.length).toBe(42)
   })
 
   it('should fetch and parse exit logs correctly from multiple blocks and multiple operators', async () => {
     config.BLOCKS_PRELOAD = frame1Block - startBlock
+    config.EJECTOR_SCOPE = [{ stakingModuleId: '1', operatorIds: [0, 1, 2] }]
 
     loadServices()
 
     await executionApi.resolveExitBusAddress()
     await executionApi.resolveConsensusAddress()
 
-    const frame1 = await api.getLogs([0, 1, 2], frame1Block)
+    const frame1 = await api.getLogs(frame1Block)
 
     expect(frame1.length).toBe(40)
 
-    const frame2 = await api.getLogs([0, 1], frame2Block)
+    config.EJECTOR_SCOPE = [{ stakingModuleId: '1', operatorIds: [0, 1] }]
+    loadServices()
+
+    await executionApi.resolveExitBusAddress()
+    await executionApi.resolveConsensusAddress()
+
+    const frame2 = await api.getLogs(frame2Block)
 
     expect(frame2.length).toBe(62)
   })

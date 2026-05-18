@@ -1,4 +1,5 @@
 export interface ValidatorsToEject {
+  stakingModuleId: number
   validatorIndex: string
   validatorPubkey: string
   blockNumber: number

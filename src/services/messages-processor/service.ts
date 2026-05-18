@@ -20,6 +20,7 @@ import type { S3StoreService } from '../s3-store/service.js'
 import type { GsStoreService } from '../gs-store/service.js'
 import type { MessageStorage } from '../job-processor/message-storage.js'
 import type { ExitMessageWithMetadata } from '../job-processor/service.js'
+import type { ConfigService } from '../config/service.js'
 
 type ExitMessage = {
   message: {
@@ -46,7 +47,10 @@ export const makeMessagesProcessor = ({
   gsService,
 }: {
   logger: LoggerService
-  config: { MESSAGES_LOCATION?: string | undefined; MESSAGES_PASSWORD?: string }
+  config: Pick<
+    ConfigService,
+    'MESSAGES_LOCATION' | 'MESSAGES_PASSWORD' | 'VALIDATORS_BATCH_SIZE'
+  >
   localFileReader: LocalFileReaderService
   consensusApi: ConsensusApiService
   metrics: MetricsService
@@ -178,6 +182,14 @@ export const makeMessagesProcessor = ({
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
+    const validatorIndices = Array.from(
+      new Set(messages.map((m) => m.data.message.validator_index))
+    )
+    const validatorsInfoMap = await consensusApi.fetchValidatorsInfoBatch(
+      validatorIndices,
+      config.VALIDATORS_BATCH_SIZE
+    )
+
     const validMessagesWithMetadata: ExitMessageWithMetadata[] = []
 
     for (const [ix, m] of messages.entries()) {
@@ -186,14 +198,10 @@ export const makeMessagesProcessor = ({
       const { message, signature: rawSignature } = m.data
       const { validator_index: validatorIndex, epoch } = message
 
-      let validatorInfo: { pubKey: string; isExiting: boolean }
-      try {
-        validatorInfo = await consensusApi.validatorInfo(validatorIndex)
-      } catch (e) {
-        logger.error(
-          `Failed to get validator info for index ${validatorIndex}`,
-          e
-        )
+      const validatorInfo = validatorsInfoMap.get(validatorIndex)
+
+      if (!validatorInfo) {
+        logger.error(`Failed to get validator info for index ${validatorIndex}`)
         invalidExitMessageFiles.add(m.meta.filename)
         continue
       }
@@ -289,10 +297,7 @@ export const makeMessagesProcessor = ({
       )
       metrics.exitActions.inc({ result: 'success' })
     } catch (e) {
-      logger.error(
-        'Failed to send out exit message',
-        e instanceof Error ? e.message : e
-      )
+      logger.error('Failed to send out exit message', e)
       metrics.exitActions.inc({ result: 'error' })
     }
   }

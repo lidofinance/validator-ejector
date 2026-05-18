@@ -12,6 +12,7 @@ import {
 import { AbortError } from 'node-fetch'
 
 import { makeLogger } from '../logger/index.js'
+import { HttpException } from './errors.js'
 
 import { Registry, Histogram } from 'prom-client'
 
@@ -80,7 +81,7 @@ describe('Fetcher Middlewares', () => {
       err = e
     }
 
-    expect(err).toMatchInlineSnapshot('[HttpException]')
+    expect(err).toBeInstanceOf(HttpException)
 
     const metric = await registry.getSingleMetricAsString('histogram')
 
@@ -128,7 +129,7 @@ describe('Fetcher Middlewares', () => {
   })
 
   test('notOk - should throw on bad status codes', async () => {
-    const no = nock(URL).get('/').reply(500, 'oops')
+    const no = nock(URL).get('/').reply(400, { message: 'bad request' })
 
     let requestsReceived = 0
     no.on('request', () => requestsReceived++)
@@ -142,7 +143,12 @@ describe('Fetcher Middlewares', () => {
       err = e
     }
 
-    expect(err).toMatchInlineSnapshot('[HttpException]')
+    expect(err).toBeInstanceOf(HttpException)
+    expect(err?.message).toBe('bad request')
+    expect((err as HttpException).response).toEqual({
+      message: 'bad request',
+    })
+    expect((err as HttpException).statusCode).toBe(400)
     expect(requestsReceived).toBe(1)
   })
 
@@ -164,8 +170,83 @@ describe('Fetcher Middlewares', () => {
       err = e
     }
 
-    expect(err).toMatchInlineSnapshot('[HttpException]')
+    expect(err).toBeInstanceOf(HttpException)
 
+    expect(requestsReceived).toBe(3)
+  })
+
+  test('retry - should not retry terminal 4xx errors', async () => {
+    const no = nock(URL).get('/').reply(404, { message: 'not found' })
+
+    let requestsReceived = 0
+    no.on('request', () => requestsReceived++)
+
+    const request = makeRequest([
+      retry(3, { ignoreAbort: true, sleep: 0 }),
+      notOkError(),
+    ])
+
+    let err: Error | undefined
+    try {
+      await request(URL)
+    } catch (e) {
+      err = e
+    }
+
+    expect(err).toBeInstanceOf(HttpException)
+    expect(err?.message).toBe('not found')
+    expect(requestsReceived).toBe(1)
+  })
+
+  test('retry - should retry transient 408 errors', async () => {
+    const no = nock(URL)
+      .get('/')
+      .times(3)
+      .reply(408, { message: 'request timeout' })
+
+    let requestsReceived = 0
+    no.on('request', () => requestsReceived++)
+
+    const request = makeRequest([
+      retry(3, { ignoreAbort: true, sleep: 0 }),
+      notOkError(),
+    ])
+
+    let err: Error | undefined
+    try {
+      await request(URL)
+    } catch (e) {
+      err = e
+    }
+
+    expect(err).toBeInstanceOf(HttpException)
+    expect(err?.message).toBe('request timeout')
+    expect(requestsReceived).toBe(3)
+  })
+
+  test('retry - should retry transient 429 errors', async () => {
+    const no = nock(URL)
+      .get('/')
+      .times(3)
+      .reply(429, { message: 'rate limited' })
+
+    let requestsReceived = 0
+    no.on('request', () => requestsReceived++)
+
+    const request = makeRequest([
+      retry(3, { ignoreAbort: true, sleep: 0 }),
+      notOkError(),
+    ])
+
+    let err: Error | undefined
+    try {
+      await request(URL)
+    } catch (e) {
+      err = e
+    }
+
+    expect(err).toBeInstanceOf(HttpException)
+    expect(err?.message).toBe('rate limited')
     expect(requestsReceived).toBe(3)
   })
 
