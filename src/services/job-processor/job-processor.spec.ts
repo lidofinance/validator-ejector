@@ -95,6 +95,7 @@ describe('JobProcessor', () => {
 
     const getLogsSpy = vi.spyOn(exitLogs, 'getLogs').mockResolvedValue([
       {
+        stakingModuleId: 1,
         validatorIndex: '12345',
         validatorPubkey: 'pubkey1',
         blockNumber: 1000,
@@ -103,6 +104,7 @@ describe('JobProcessor', () => {
         ack: ackSpy12345,
       },
       {
+        stakingModuleId: 1,
         validatorIndex: '67890',
         validatorPubkey: 'pubkey2',
         blockNumber: 950,

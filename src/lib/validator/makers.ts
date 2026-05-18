@@ -32,8 +32,14 @@ export const makeJson = <T>(
       throw new ValidationEmptyError(errorMessage || 'Empty value', input)
     if (typeof input !== 'string')
       throw new ValidationError(errorMessage || 'Input must be a string', input)
+    let parsed: unknown
     try {
-      return cb(parseFn(JSON.parse(input), errorMessage))
+      parsed = JSON.parse(input)
+    } catch (error) {
+      throw new ValidationError(errorMessage || error.message, input)
+    }
+    try {
+      return cb(parseFn(parsed, errorMessage))
     } catch (error) {
       throw new ValidationError(error.message, input)
     }

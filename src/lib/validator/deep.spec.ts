@@ -69,6 +69,14 @@ describe('deep data casting', () => {
       }
     })
 
+    test('json object custom error message', () => {
+      const value = '{'
+      const cast = () =>
+        json_obj(value, (value) => value, 'Please, setup JSON config')
+
+      expect(cast).toThrowError('Please, setup JSON config')
+    })
+
     test('json array numbers', () => {
       const value = '[1'
       const cast = () => json_arr(value, (array) => array.map(num))

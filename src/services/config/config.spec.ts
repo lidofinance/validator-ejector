@@ -40,6 +40,18 @@ describe('config module', () => {
     expect(makeConf).not.toThrow()
   })
 
+  test('invalid optional bool config includes env var name', () => {
+    const config = {
+      ...configBase,
+      TRUST_MODE: '',
+    }
+
+    const makeConf = () =>
+      makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
+
+    expect(makeConf).toThrow('Invalid TRUST_MODE value: expected true or false')
+  })
+
   test('defaults validators batch size', () => {
     const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
 
@@ -348,6 +360,20 @@ describe('logger config module', () => {
     const config = makeConf()
 
     expect(config.LOGGER_SECRETS).toEqual(['secret'])
+  })
+
+  test('invalid logger secrets config', () => {
+    const env = {
+      LOGGER_LEVEL: 'info',
+      LOGGER_FORMAT: 'simple',
+      LOGGER_SECRETS: `["secret"`,
+    } as NodeJS.ProcessEnv
+
+    const makeConf = () => makeLoggerConfig({ env })
+
+    expect(makeConf).toThrowError(
+      'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
+    )
   })
 
   test('dynamic secret values', () => {
