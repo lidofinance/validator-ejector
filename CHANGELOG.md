@@ -1,3 +1,38 @@
+# [2.1.0](https://github.com/lidofinance/validator-ejector/compare/1.9.0...2.1.0) (2026-05-26)
+
+
+### Bug Fixes
+
+* update documentation for environment variables to clarify logging and event handling ([d93b9de](https://github.com/lidofinance/validator-ejector/commit/d93b9de0bfcde484299f7b101340b241e530120e))
+* update nock configuration to use the first URL from the consensus and execution nodes ([f985420](https://github.com/lidofinance/validator-ejector/commit/f9854205298520a8e51ea6e07187ece9296943d4))
+* update Node.js version in workflow files ([7b5f682](https://github.com/lidofinance/validator-ejector/commit/7b5f682f5a5ab34264b5ab641ea5d449d525a8eb))
+
+
+### Features
+
+* add EJECTOR_SCOPE to сompose and stakingModuleId to eject logs ([4f3b514](https://github.com/lidofinance/validator-ejector/commit/4f3b51483cf1f85fb610c371851e65b014780043))
+* add support for multiple staking modules in configuration and services ([853ea0b](https://github.com/lidofinance/validator-ejector/commit/853ea0bcf150184f299e66a97339e12739c5f3cb))
+* add VALIDATORS_BATCH_SIZE configuration and update related logic in services and tests ([d364c68](https://github.com/lidofinance/validator-ejector/commit/d364c6895558bb9e61cb8d25b8508863bcb50b82))
+* **consistency:** chain-id consistency check at startup ([0da3ca8](https://github.com/lidofinance/validator-ejector/commit/0da3ca82c7f43df363789fbe34932acf6958e5cd))
+* **el:** treat JSON-RPC server errors as fallbackable ([14305ba](https://github.com/lidofinance/validator-ejector/commit/14305baa905d951b2d1e107b8ef7665632576dcc))
+* enhance error handling and logging for HTTP requests, including retry logic for transient errors ([22b710c](https://github.com/lidofinance/validator-ejector/commit/22b710cf1c2cffe05d9fb0db0064a9216d2c2ec6))
+* enhance error handling in JSON parsing ([3a36f62](https://github.com/lidofinance/validator-ejector/commit/3a36f629aa65495efe586e0fd577a0f05599727d))
+* enhance logger configuration to normalize and redact multi-url secrets in logs ([9649fd4](https://github.com/lidofinance/validator-ejector/commit/9649fd4d11bf7a3fc381d4b2454fb1a2612f51fe))
+* enhance testing setup with new e2e configurations ([94cbb65](https://github.com/lidofinance/validator-ejector/commit/94cbb655ddd719917c644e420e11aea81a99ea7e))
+* **exit-logs:** plumb VOTING_EVENTS_FRAME_BLOCKS through from config ([d64de93](https://github.com/lidofinance/validator-ejector/commit/d64de93f88ec523576a505c1269ce7b4b9395cfa))
+* **fallback:** include URL index in fallback log lines ([cd6d284](https://github.com/lidofinance/validator-ejector/commit/cd6d284884fe33474534f76c458d80fe9609f822))
+* **fallback:** preserve every per-endpoint cause via AggregateError ([4ef76c0](https://github.com/lidofinance/validator-ejector/commit/4ef76c0f65c6e0e5b135bb61af36e70f60c33ced))
+* implement batch fetching of validator info and update tests ([0d07afc](https://github.com/lidofinance/validator-ejector/commit/0d07afc4cba511c51f8ca0706c16d969b367ac38))
+* implement EJECTOR_SCOPE for multi-module support and refactor related configurations and services ([3bed896](https://github.com/lidofinance/validator-ejector/commit/3bed896c7b86419fae078e0c0ae1d8d2a29d2822))
+* improve validation for boolean config options in makeConfig ([b7a6401](https://github.com/lidofinance/validator-ejector/commit/b7a64018c4e3b58e79cd8abb893793eb5305277e))
+* introduce JsonRpcServerError for improved error handling and update related logic in execution API ([c48ac53](https://github.com/lidofinance/validator-ejector/commit/c48ac53d5609d0e568f61e547e6545550d292043))
+* **rpc:** introduce url_list validator and string[] node config ([a6638f9](https://github.com/lidofinance/validator-ejector/commit/a6638f9644d25b04ec16c2e90fe9eb7986d6c16e))
+* **scripts:** manual fallback e2e harness ([a8dd27c](https://github.com/lidofinance/validator-ejector/commit/a8dd27c108f3452a19c895be1805c9b87f56307a))
+* update configuration for EJECTOR_SCOPE and deprecate legacy options in environment files ([eee66dd](https://github.com/lidofinance/validator-ejector/commit/eee66dd20668149b84b50ab5c5a90a3111659f33))
+* update version to 2.0.0 in package.json ([87cf864](https://github.com/lidofinance/validator-ejector/commit/87cf86457d4b29080fc730fb5761bbb377883218))
+
+
+
 # [1.9.0](https://github.com/lidofinance/validator-ejector/compare/1.8.0...1.9.0) (2025-08-21)
 
 
