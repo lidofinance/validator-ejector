@@ -11,9 +11,9 @@ export const makeApp = ({
   executionApi,
   consensusApi,
   appInfoReader,
+  consistencyChecker,
 }: Dependencies) => {
-  const { OPERATOR_ID, BLOCKS_PRELOAD, JOB_INTERVAL, OPERATOR_IDENTIFIERS } =
-    config
+  const { BLOCKS_PRELOAD, JOB_INTERVAL, EJECTOR_SCOPE } = config
 
   let ejectorCycleTimer: NodeJS.Timer | null = null
 
@@ -36,6 +36,12 @@ export const makeApp = ({
       })
       .inc()
 
+    // Cross-endpoint chain-id consistency must run BEFORE any
+    // chain-specific behaviour: if the operator pasted mismatched-network
+    // URLs, we want to refuse boot rather than rotate between chains and
+    // sign exits against the wrong fork-version digest.
+    await consistencyChecker.checkChainIds()
+
     await executionApi.checkSync()
     await consensusApi.checkSync()
 
@@ -44,9 +50,9 @@ export const makeApp = ({
     const messageStorage = new MessageStorage()
 
     logger.info(
-      `Starting, searching only for requests for operators ${
-        OPERATOR_ID ?? OPERATOR_IDENTIFIERS
-      }`
+      `Starting, searching only for requests in scope ${JSON.stringify(
+        EJECTOR_SCOPE
+      )}`
     )
 
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)

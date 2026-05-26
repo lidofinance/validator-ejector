@@ -68,11 +68,8 @@ export const makeJobProcessor = ({
     eventsNumber: number
     messageStorage: MessageStorage
   }) => {
-    const operatorIds = config.OPERATOR_IDS
-
     logger.info('Job started', {
-      operatorIds,
-      stakingModuleId: config.STAKING_MODULE_ID,
+      ejectorScope: config.EJECTOR_SCOPE,
     })
 
     await messageReloader.reloadAndVerifyMessages(messageStorage)
@@ -83,7 +80,7 @@ export const makeJobProcessor = ({
 
     const lastBlockNumber = await executionApi.latestBlockNumber()
 
-    const eventsForEject = await exitLogs.getLogs(operatorIds, lastBlockNumber)
+    const eventsForEject = await exitLogs.getLogs(lastBlockNumber)
 
     logger.info('Handling ejection requests', {
       amount: eventsForEject.length,
@@ -93,7 +90,7 @@ export const makeJobProcessor = ({
 
     const validatorsHead = await consensusApi.fetchValidatorsBatch(
       validatorIndices,
-      1000,
+      config.VALIDATORS_BATCH_SIZE,
       'head'
     )
     const exitingValidatorsRecord =
@@ -101,7 +98,7 @@ export const makeJobProcessor = ({
 
     const validatorsFinalized = await consensusApi.fetchValidatorsBatch(
       validatorIndices,
-      1000,
+      config.VALIDATORS_BATCH_SIZE,
       'finalized'
     )
     const exitingValidatorsFinalizedRecord =
@@ -155,7 +152,8 @@ export const makeJobProcessor = ({
         (msg) => msg.message.validator_index
       )
       const exitingCount = await consensusApi.getExitingValidatorsCount(
-        validatorIndices
+        validatorIndices,
+        config.VALIDATORS_BATCH_SIZE
       )
       metrics.updateLeftMessages(messageStorage, exitingCount)
     } catch (e) {

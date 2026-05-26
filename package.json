@@ -1,6 +1,6 @@
 {
   "name": "validator-ejector",
-  "version": "1.9.0",
+  "version": "2.0.0",
   "private": true,
   "main": "index.js",
   "license": "MIT",
@@ -26,8 +26,10 @@
   "type": "module",
   "scripts": {
     "dev": "node --loader ts-node/esm --disable-warning=ExperimentalWarning src/index.ts",
-    "test": "vitest",
-    "coverage": "vitest run --coverage",
+    "test": "vitest run --config vite.config.ts",
+    "test:watch": "vitest --config vite.config.ts",
+    "test:e2e": "vitest run --config vite.e2e.config.ts",
+    "coverage": "vitest run --coverage --config vite.config.ts",
     "lint": "eslint --ext ts .",
     "start": "node dist/src/index.js",
     "build": "tsc --build",

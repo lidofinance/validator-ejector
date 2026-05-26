@@ -6,11 +6,19 @@ import {
   str,
   optional,
   log_format,
+  arr,
   json_arr,
+  json_obj,
+  url_list,
+  normalizeUrlList,
 } from '../../lib/index.js'
 import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
+export type EjectorScope = {
+  stakingModuleId: string
+  operatorIds: number[]
+}
 
 export const makeConfig = ({
   env,
@@ -18,34 +26,45 @@ export const makeConfig = ({
   logger: ReturnType<typeof makeLogger>
   env: NodeJS.ProcessEnv
 }) => {
+  const ejectorScope =
+    optional(() => ejector_scope(env.EJECTOR_SCOPE)) ?? ([] as EjectorScope[])
+  const useLegacyScope = ejectorScope.length === 0
+
   const config = {
-    EXECUTION_NODE: str(
+    EXECUTION_NODE: url_list(
       env.EXECUTION_NODE,
-      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545'
+      'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545 or http://primary:8545,http://backup:8545'
     ),
-    CONSENSUS_NODE: str(
+    CONSENSUS_NODE: url_list(
       env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051 or http://primary:5051,http://backup:5051'
     ),
     JWT_SECRET_PATH: optional(() => str(env.JWT_SECRET_PATH)),
     LOCATOR_ADDRESS: str(
       env.LOCATOR_ADDRESS,
       'Please, setup LOCATOR_ADDRESS address. Example: 0xXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     ),
-    STAKING_MODULE_ID: str(
-      env.STAKING_MODULE_ID,
-      'Please, setup STAKING_MODULE_ID id. Example: 123'
-    ),
-    OPERATOR_ID: optional(() =>
-      num(env.OPERATOR_ID, 'Please, setup OPERATOR_ID id. Example: 123')
-    ),
-    OPERATOR_IDENTIFIERS: optional(() =>
-      json_arr(
-        env.OPERATOR_IDENTIFIERS,
-        (oracles) => oracles.map(num),
-        'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
-      )
-    ),
+    STAKING_MODULE_ID: useLegacyScope
+      ? optional(() =>
+          String(nonNegativeInteger(env.STAKING_MODULE_ID, 'STAKING_MODULE_ID'))
+        )
+      : undefined,
+    EJECTOR_SCOPE: ejectorScope,
+    OPERATOR_ID: useLegacyScope
+      ? optional(() => nonNegativeInteger(env.OPERATOR_ID, 'OPERATOR_ID'))
+      : undefined,
+    OPERATOR_IDENTIFIERS: useLegacyScope
+      ? optional(() =>
+          json_arr(
+            env.OPERATOR_IDENTIFIERS,
+            (oracles) =>
+              oracles.map((oracle) =>
+                nonNegativeInteger(oracle, 'OPERATOR_IDENTIFIERS')
+              ),
+            'Please, setup OPERATOR_IDENTIFIERS. Example: [1,2,3]'
+          )
+        )
+      : undefined,
     ORACLE_ADDRESSES_ALLOWLIST: json_arr(
       env.ORACLE_ADDRESSES_ALLOWLIST,
       (oracles) => oracles.map(str),
@@ -74,25 +93,59 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    VALIDATORS_BATCH_SIZE: Math.max(
+      1,
+      Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
+    ),
+    VOTING_EVENTS_FRAME_BLOCKS:
+      optional(() => num(env.VOTING_EVENTS_FRAME_BLOCKS)) ?? 216000, // ~30 days
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
-    RUN_METRICS: optional(() => bool(env.RUN_METRICS)) ?? false,
-    RUN_HEALTH_CHECK: optional(() => bool(env.RUN_HEALTH_CHECK)) ?? true,
+    RUN_METRICS:
+      optional(() =>
+        bool(
+          env.RUN_METRICS,
+          'Invalid RUN_METRICS value: expected true or false'
+        )
+      ) ?? false,
+    RUN_HEALTH_CHECK:
+      optional(() =>
+        bool(
+          env.RUN_HEALTH_CHECK,
+          'Invalid RUN_HEALTH_CHECK value: expected true or false'
+        )
+      ) ?? true,
 
-    DRY_RUN: optional(() => bool(env.DRY_RUN)) ?? false,
+    DRY_RUN:
+      optional(() =>
+        bool(env.DRY_RUN, 'Invalid DRY_RUN value: expected true or false')
+      ) ?? false,
     TRUST_MODE:
-      optional(() => bool(env.TRUST_MODE)) ??
-      optional(() => bool(env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION)) ??
+      optional(() =>
+        bool(env.TRUST_MODE, 'Invalid TRUST_MODE value: expected true or false')
+      ) ??
+      optional(() =>
+        bool(
+          env.DISABLE_SECURITY_DONT_USE_IN_PRODUCTION,
+          'Invalid DISABLE_SECURITY_DONT_USE_IN_PRODUCTION value: expected true or false'
+        )
+      ) ??
       false,
     PROM_PREFIX: optional(() => str(env.PROM_PREFIX)),
 
     FORCE_DENCUN_FORK_MODE:
-      optional(() => bool(env.FORCE_DENCUN_FORK_MODE)) ?? false,
+      optional(() =>
+        bool(
+          env.FORCE_DENCUN_FORK_MODE,
+          'Invalid FORCE_DENCUN_FORK_MODE value: expected true or false'
+        )
+      ) ?? false,
 
     CAPELLA_FORK_VERSION: optional(() => str(env.CAPELLA_FORK_VERSION)),
 
     OPERATOR_IDS: [] as number[],
+    STAKING_MODULE_IDS: [] as string[],
   }
 
   if (config.MESSAGES_LOCATION && config.VALIDATOR_EXIT_WEBHOOK) {
@@ -107,33 +160,42 @@ export const makeConfig = ({
     )
   }
 
-  // Populate OPERATOR_IDS from OPERATOR_IDENTIFIERS if available
-  if (config.OPERATOR_IDENTIFIERS?.length)
-    config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
+  if (!config.EJECTOR_SCOPE.length) {
+    if (config.OPERATOR_IDENTIFIERS?.length)
+      config.OPERATOR_IDS = config.OPERATOR_IDENTIFIERS
 
-  // Fall back to OPERATOR_ID if OPERATOR_IDS is still empty
-  if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
-    config.OPERATOR_IDS = [config.OPERATOR_ID]
-  }
+    if (!config.OPERATOR_IDS?.length && config.OPERATOR_ID !== undefined) {
+      config.OPERATOR_IDS = [config.OPERATOR_ID]
+    }
 
-  // Validate that we have at least one operator ID configured
-  if (!config.OPERATOR_IDS?.length) {
-    throw new Error(
-      'At least one of OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
+    config.EJECTOR_SCOPE = makeLegacyEjectorScope(
+      config.STAKING_MODULE_ID,
+      config.OPERATOR_IDS
     )
   }
+
+  config.STAKING_MODULE_IDS = config.EJECTOR_SCOPE.map(
+    (scope) => scope.stakingModuleId
+  )
+  config.OPERATOR_IDS = Array.from(
+    new Set(config.EJECTOR_SCOPE.flatMap((scope) => scope.operatorIds))
+  )
 
   return config
 }
 
 export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
-    CONSENSUS_NODE: str(
+    CONSENSUS_NODE: url_list(
       env.CONSENSUS_NODE,
-      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051'
+      'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051 or http://primary:5051,http://backup:5051'
     ),
     MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
+    VALIDATORS_BATCH_SIZE: Math.max(
+      1,
+      Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
+    ),
   }
   return config
 }
@@ -144,13 +206,22 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
     LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
     LOGGER_SECRETS:
       optional(() =>
-        json_arr(env.LOGGER_SECRETS, (secrets) => secrets.map(str))
+        json_arr(
+          env.LOGGER_SECRETS,
+          (secrets) => secrets.map(str),
+          'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
+        )
       ) ?? [],
   }
 
-  // Resolve the value of an env var if such exists
-  config.LOGGER_SECRETS = config.LOGGER_SECRETS.map(
-    (envVar) => envOrFile(env, envVar) ?? envVar
+  // Resolve the value of an env var if such exists. RPC endpoints are stored
+  // as arrays in config logs, so include each comma-separated endpoint too.
+  config.LOGGER_SECRETS = Array.from(
+    new Set(
+      config.LOGGER_SECRETS.flatMap((envVar) =>
+        resolveLoggerSecretValues(env, envVar)
+      )
+    )
   )
 
   return config
@@ -170,6 +241,81 @@ export const makeWebhookProcessorConfig = ({
   return config
 }
 
+const LOGGER_SECRET_URL_LIST_ENV_VARS = new Set([
+  'EXECUTION_NODE',
+  'CONSENSUS_NODE',
+])
+
+const nonNegativeInteger = (value: unknown, name: string): number => {
+  const parsed = num(value, `${name} must be a non-negative integer`)
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`)
+  }
+  return parsed
+}
+
+const ejector_scope = (input: unknown): EjectorScope[] => {
+  const scopes = json_obj(
+    input,
+    (scope) =>
+      Object.entries(scope).map(([stakingModuleId, operatorIds]) => {
+        const parsedOperatorIds = arr(
+          operatorIds,
+          (ids) =>
+            ids.map((id) =>
+              nonNegativeInteger(
+                id,
+                `EJECTOR_SCOPE operators for staking module ${stakingModuleId}`
+              )
+            ),
+          `Invalid EJECTOR_SCOPE operators for staking module ${stakingModuleId}`
+        )
+
+        if (parsedOperatorIds.length === 0) {
+          throw new Error(
+            `EJECTOR_SCOPE for staking module ${stakingModuleId} must include at least one operator id`
+          )
+        }
+
+        return {
+          stakingModuleId: String(
+            nonNegativeInteger(
+              stakingModuleId,
+              'EJECTOR_SCOPE staking module id'
+            )
+          ),
+          operatorIds: Array.from(new Set(parsedOperatorIds)),
+        }
+      }),
+    'Please, setup EJECTOR_SCOPE. Example: {"1":[123],"2":[7,8]}'
+  )
+
+  if (scopes.length === 0) {
+    throw new Error('EJECTOR_SCOPE must include at least one staking module')
+  }
+
+  return scopes
+}
+
+const makeLegacyEjectorScope = (
+  stakingModuleId: string | undefined,
+  operatorIds: number[]
+): EjectorScope[] => {
+  if (!stakingModuleId) {
+    throw new Error(
+      'At least one of EJECTOR_SCOPE or STAKING_MODULE_ID must be provided.'
+    )
+  }
+
+  if (!operatorIds.length) {
+    throw new Error(
+      'At least one of EJECTOR_SCOPE, OPERATOR_ID or OPERATOR_IDENTIFIERS must be provided.'
+    )
+  }
+
+  return [{ stakingModuleId, operatorIds: Array.from(new Set(operatorIds)) }]
+}
+
 const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   if (env[envName]) return env[envName]
 
@@ -184,4 +330,15 @@ const envOrFile = (env: NodeJS.ProcessEnv, envName: string) => {
   }
 
   return undefined
+}
+
+const resolveLoggerSecretValues = (env: NodeJS.ProcessEnv, envVar: string) => {
+  const value = envOrFile(env, envVar)
+  if (!value) return [envVar]
+
+  if (!LOGGER_SECRET_URL_LIST_ENV_VARS.has(envVar)) {
+    return [value]
+  }
+
+  return [value, ...normalizeUrlList(value)]
 }

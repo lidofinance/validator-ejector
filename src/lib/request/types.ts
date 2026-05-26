@@ -4,7 +4,6 @@ import type {
   RequestInfo as FetchRequestInfo,
 } from 'node-fetch'
 export interface RequestConfig extends RequestInit {
-  // To be used in the future in the balancer mechanism
   baseUrl?: FetchRequestInfo
   middlewares?: Middleware[]
 }

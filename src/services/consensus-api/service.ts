@@ -1,9 +1,13 @@
 import {
+  broadcastAll,
+  makeFallback,
   makeLogger,
   makeRequest,
   notOkError,
+  isRetryableHttpStatus,
   safelyParseJsonResponse,
 } from '../../lib/index.js'
+import { Middleware, RequestConfig } from '../../lib/request/types.js'
 import {
   syncingDTO,
   genesisDTO,
@@ -13,6 +17,7 @@ import {
   depositContractDTO,
   validatorsBatchDTO,
 } from './dto.js'
+import { HttpException } from '../../lib/request/errors.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
@@ -21,17 +26,40 @@ export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 export const makeConsensusApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { CONSENSUS_NODE }: { CONSENSUS_NODE: string }
+  { CONSENSUS_NODE }: { CONSENSUS_NODE: string[] }
 ) => {
-  const normalizedUrl = CONSENSUS_NODE.endsWith('/')
-    ? CONSENSUS_NODE.slice(0, -1)
-    : CONSENSUS_NODE
+  const fallback = makeFallback(CONSENSUS_NODE, logger, 'CL')
+
+  const clRequest = (path: string, cfg?: RequestConfig) =>
+    fallback((url) => request(`${url}${path}`, cfg))
+
+  const clErrorMessage = (): Middleware => async (config, next) => {
+    const res = await next(config)
+    if (!res.ok) {
+      const isRetryable = isRetryableHttpStatus(res.status)
+      let message = `Consensus API request failed with status ${res.status}`
+      try {
+        const json = (await safelyParseJsonResponse(res, logger)) as {
+          message?: unknown
+        }
+        if (typeof json.message === 'string') message = json.message
+      } catch (error) {
+        if (!isRetryable) throw error
+        if (error instanceof Error) message = error.message
+      }
+      if (isRetryable) {
+        throw new HttpException(message, res.status)
+      }
+      throw new Error(message)
+    }
+    return res
+  }
 
   const isValidatorExiting = (exitEpoch: string) =>
     exitEpoch !== FAR_FUTURE_EPOCH
 
   const syncing = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/node/syncing`, {
+    const res = await clRequest('/eth/v1/node/syncing', {
       middlewares: [notOkError()],
     })
     const { data } = syncingDTO(await safelyParseJsonResponse(res, logger))
@@ -46,7 +74,7 @@ export const makeConsensusApi = (
   }
 
   const genesis = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/beacon/genesis`, {
+    const res = await clRequest('/eth/v1/beacon/genesis', {
       middlewares: [notOkError()],
     })
     const { data } = genesisDTO(await safelyParseJsonResponse(res, logger))
@@ -55,19 +83,16 @@ export const makeConsensusApi = (
   }
 
   const state = async () => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/finalized/fork`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
+    const res = await clRequest('/eth/v1/beacon/states/finalized/fork', {
+      middlewares: [notOkError()],
+    })
     const { data } = stateDTO(await safelyParseJsonResponse(res, logger))
     logger.debug('fetched state data')
     return data
   }
 
   const spec = async () => {
-    const res = await request(`${normalizedUrl}/eth/v1/config/spec`, {
+    const res = await clRequest('/eth/v1/config/spec', {
       middlewares: [notOkError()],
     })
     const { data } = specDTO(await safelyParseJsonResponse(res, logger))
@@ -79,19 +104,10 @@ export const makeConsensusApi = (
     id: string,
     tag: 'head' | 'finalized' = 'head'
   ) => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/states/${tag}/validators/${id}`
+    const res = await clRequest(
+      `/eth/v1/beacon/states/${tag}/validators/${id}`,
+      { middlewares: [clErrorMessage()] }
     )
-
-    if (!res.ok) {
-      const { message } = (await await safelyParseJsonResponse(
-        res,
-        logger
-      )) as {
-        message: string
-      }
-      throw new Error(message)
-    }
 
     const result = validatorInfoDTO(await safelyParseJsonResponse(res, logger))
 
@@ -112,30 +128,27 @@ export const makeConsensusApi = (
     }
     signature: string
   }) => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/beacon/pool/voluntary_exits`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message),
-      }
+    // Voluntary exits are broadcast to *every* configured CL endpoint in
+    // parallel so the message reaches gossip via the widest possible path.
+    // Succeeds if any one endpoint accepts; throws only if all reject.
+    await broadcastAll(
+      CONSENSUS_NODE,
+      (url) =>
+        request(`${url}/eth/v1/beacon/pool/voluntary_exits`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(message),
+          middlewares: [clErrorMessage()],
+        }),
+      logger,
+      'CL'
     )
-
-    if (!res.ok) {
-      const { message } = (await safelyParseJsonResponse(res, logger)) as {
-        message: string
-      }
-      throw new Error(message)
-    }
   }
 
   const depositContract = async () => {
-    const res = await request(
-      `${normalizedUrl}/eth/v1/config/deposit_contract`,
-      {
-        middlewares: [notOkError()],
-      }
-    )
+    const res = await clRequest('/eth/v1/config/deposit_contract', {
+      middlewares: [notOkError()],
+    })
     const { data } = depositContractDTO(await res.json())
     logger.debug('fetched deposit contract data')
     return data
@@ -153,10 +166,10 @@ export const makeConsensusApi = (
     const allValidators: ReturnType<typeof validatorsBatchDTO>['data'] = []
     for (let i = 0; i < indices.length; i += batchSize) {
       const batch = indices.slice(i, i + batchSize)
-      const url = `${normalizedUrl}/eth/v1/beacon/states/${state}/validators?id=${batch.join(
+      const path = `/eth/v1/beacon/states/${state}/validators?id=${batch.join(
         ','
       )}`
-      const res = await request(url, { middlewares: [notOkError()] })
+      const res = await clRequest(path, { middlewares: [notOkError()] })
       const json = await safelyParseJsonResponse(res, logger)
       const { data } = validatorsBatchDTO(json)
       allValidators.push(...data)
@@ -174,6 +187,32 @@ export const makeConsensusApi = (
       (v) =>
         v.validator?.exit_epoch && isValidatorExiting(v.validator.exit_epoch)
     ).length
+  }
+
+  const fetchValidatorsInfoBatch = async (
+    indices: string[],
+    batchSize = 1000,
+    tag: 'head' | 'finalized' = 'head'
+  ) => {
+    const validators = await fetchValidatorsBatch(indices, batchSize, tag)
+
+    const result = new Map<
+      string,
+      { index: string; pubKey: string; status: string; isExiting: boolean }
+    >()
+
+    for (const v of validators) {
+      result.set(v.index, {
+        index: v.index,
+        pubKey: v.validator.pubkey,
+        status: v.status,
+        isExiting: isValidatorExiting(v.validator.exit_epoch),
+      })
+    }
+
+    logger.debug(`Fetched info for ${result.size} validators in batch`)
+
+    return result
   }
 
   const validatePublicKeys = async (
@@ -235,6 +274,7 @@ export const makeConsensusApi = (
     getExitingValidatorsCount,
     validatePublicKeys,
     fetchValidatorsBatch,
+    fetchValidatorsInfoBatch,
     isValidatorExiting,
   }
 }

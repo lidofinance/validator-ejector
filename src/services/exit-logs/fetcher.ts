@@ -8,10 +8,14 @@ import { VerifierService } from './verifier.js'
 import { ValidatorsToEjectCache } from './types.js'
 import { ConsensusApiService } from '../consensus-api/service.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
+import type { EjectorScope } from '../config/service.js'
 
 export type ExitLogsFetcherService = ReturnType<
   typeof makeExitLogsFetcherService
 >
+type ElLog = Awaited<
+  ReturnType<ExecutionApiService['getLogs']>
+>['result'][number]
 
 export const makeExitLogsFetcherService = (
   logger: ReturnType<typeof makeLogger>,
@@ -19,11 +23,9 @@ export const makeExitLogsFetcherService = (
   el: ExecutionApiService,
   cl: ConsensusApiService,
   {
-    STAKING_MODULE_ID,
     TRUST_MODE,
     EASY_TRACK_ADDRESS,
   }: {
-    STAKING_MODULE_ID: string
     TRUST_MODE: boolean
     EASY_TRACK_ADDRESS: string
   },
@@ -121,39 +123,47 @@ export const makeExitLogsFetcherService = (
   const getValidatorExitRequestEvents = async (
     fromBlock: number,
     toBlock: number,
-    operatorIds: number[]
+    ejectorScope: EjectorScope[]
   ) => {
     const event = ethers.utils.Fragment.from(
       'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)'
     )
     const iface = new ethers.utils.Interface([event])
     const eventTopic = iface.getEventTopic(event.name)
+    const topic = (id: string | number) =>
+      ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
 
-    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
-      eventTopic,
-      ethers.utils.hexZeroPad(
-        ethers.BigNumber.from(STAKING_MODULE_ID).toHexString(),
-        32
-      ),
-      operatorIds.map((id) =>
-        ethers.utils.hexZeroPad(ethers.BigNumber.from(id).toHexString(), 32)
-      ),
-    ])
+    const logs: ElLog[] = []
+    for (const { stakingModuleId, operatorIds } of ejectorScope) {
+      const { result } = await el.getLogs(
+        fromBlock,
+        toBlock,
+        el.exitBusAddress,
+        [eventTopic, [topic(stakingModuleId)], operatorIds.map(topic)]
+      )
+      logs.push(...result)
+    }
 
     logger.info('Loaded ValidatorExitRequest events', {
-      amount: result.length,
+      amount: logs.length,
     })
 
-    const events = result.map((log) => {
+    const events = logs.map((log) => {
       const parsedLog = iface.parseLog(log)
-      const { validatorIndex, validatorPubkey, nodeOperatorId } =
-        parsedLog.args as unknown as {
-          validatorIndex: ethers.BigNumber
-          validatorPubkey: string
-          nodeOperatorId: ethers.BigNumber
-        }
+      const {
+        stakingModuleId,
+        validatorIndex,
+        validatorPubkey,
+        nodeOperatorId,
+      } = parsedLog.args as unknown as {
+        stakingModuleId: ethers.BigNumber
+        validatorIndex: ethers.BigNumber
+        validatorPubkey: string
+        nodeOperatorId: ethers.BigNumber
+      }
 
       return {
+        stakingModuleId,
         validatorIndex: validatorIndex.toString(),
         validatorPubkey,
         nodeOperatorId,
@@ -175,7 +185,7 @@ export const makeExitLogsFetcherService = (
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
-    operatorIds: number[],
+    ejectorScope: EjectorScope[],
     motionCreatedEvents: Record<string, string> = {},
     votingRequestsHashSubmittedEvents: Record<string, string> = {},
     motionEnactedEvents: Record<string, string> = {}
@@ -183,7 +193,7 @@ export const makeExitLogsFetcherService = (
     const validatorExitRequestEvents = await getValidatorExitRequestEvents(
       fromBlock,
       toBlock,
-      operatorIds
+      ejectorScope
     )
 
     const validatorsToEject: ValidatorsToEjectCache = []
@@ -198,6 +208,7 @@ export const makeExitLogsFetcherService = (
       )
 
       const {
+        stakingModuleId,
         validatorIndex,
         validatorPubkey,
         nodeOperatorId,
@@ -233,6 +244,7 @@ export const makeExitLogsFetcherService = (
         validatorIndex,
         validatorPubkey,
         blockNumber: blockNumber,
+        stakingModuleId: stakingModuleId.toNumber(),
         nodeOperatorId: nodeOperatorId.toNumber(),
         acknowledged: false,
         ack() {

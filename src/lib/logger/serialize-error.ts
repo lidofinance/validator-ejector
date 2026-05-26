@@ -9,9 +9,16 @@ export function serializeErrorWithCause(
   }
 
   const serializedError: Record<string, unknown> = {
+    ...error,
     message: error.message,
     name: error.name,
     stack: error.stack,
+  }
+
+  if (error instanceof AggregateError) {
+    serializedError.errors = error.errors.map((err) =>
+      serializeErrorWithCause(err, maxDepth, currentDepth + 1)
+    )
   }
 
   if (error.cause) {

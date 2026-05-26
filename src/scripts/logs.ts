@@ -30,8 +30,6 @@ const run = async () => {
 
   const config = makeConfig({ logger, env: process.env })
 
-  const operatorIds = config.OPERATOR_IDS
-
   const metrics = makeMetrics({ PREFIX: config.PROM_PREFIX })
 
   const executionApi = makeExecutionApi(
@@ -70,7 +68,7 @@ const run = async () => {
   const fetchTimeStart = performance.now()
   const lastBlockNumber = await executionApi.latestBlockNumber()
 
-  const logs = await exitLogs.getLogs(operatorIds, lastBlockNumber)
+  const logs = await exitLogs.getLogs(lastBlockNumber)
 
   logger.info('logs fetched', { count: logs.length })
 

@@ -1,4 +1,8 @@
-import { makeLogger, safelyParseJsonResponse } from '../../lib/index.js'
+import {
+  makeFallback,
+  makeLogger,
+  safelyParseJsonResponse,
+} from '../../lib/index.js'
 import { makeRequest } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
@@ -14,6 +18,26 @@ import {
   logsDTO,
 } from './dto.js'
 import { RequestConfig } from '../../lib/request/types.js'
+import { JsonRpcServerError } from './errors.js'
+
+// JSON-RPC 2.0 server-side error codes: see https://www.jsonrpc.org/specification#error_object
+// and Ethereum geth's commonly-seen variants. Treat as retryable since they're
+// endpoint-specific or transient, not request-validation errors.
+const RPC_SERVER_ERROR_CODES = new Set([
+  -32603, // internal error
+  -32005, // limit exceeded (throttling)
+  -32000, // server error (generic)
+])
+
+const isRpcServerError = (json: unknown): boolean => {
+  if (!json || typeof json !== 'object') return false
+  const err = (json as { error?: { code?: number } }).error
+  return (
+    err != null &&
+    typeof err.code === 'number' &&
+    RPC_SERVER_ERROR_CODES.has(err.code)
+  )
+}
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
@@ -23,9 +47,7 @@ export const makeExecutionApi = (
   { EXECUTION_NODE, LOCATOR_ADDRESS, JWT_SECRET_PATH }: ConfigService,
   jwtService?: JwtService
 ) => {
-  const normalizedUrl = EXECUTION_NODE.endsWith('/')
-    ? EXECUTION_NODE.slice(0, -1)
-    : EXECUTION_NODE
+  const fallback = makeFallback(EXECUTION_NODE, logger, 'EL')
 
   let exitBusAddress: string
   let consensusAddress: string
@@ -45,11 +67,17 @@ export const makeExecutionApi = (
     return headers
   }
 
-  const elRequest = async (requestConfig: RequestConfig) => {
-    const headers = createRequestHeaders()
-    const res = await request(normalizedUrl, { ...requestConfig, headers })
-    return await safelyParseJsonResponse(res, logger)
-  }
+  const elRequest = (requestConfig: RequestConfig) =>
+    fallback(async (url) => {
+      const headers = createRequestHeaders()
+      const res = await request(url, { ...requestConfig, headers })
+      const json = await safelyParseJsonResponse(res, logger)
+      if (isRpcServerError(json)) {
+        const rpcErr = (json as { error?: unknown }).error
+        throw new JsonRpcServerError(rpcErr as any)
+      }
+      return json
+    })
 
   const checkSync = async () => {
     const json = await elRequest({
