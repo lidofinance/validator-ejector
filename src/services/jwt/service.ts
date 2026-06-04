@@ -23,8 +23,16 @@ export const makeJwtService = (
 
       // Read hex format secret
       const hexSecret = await fs.readFile(JWT_SECRET_PATH, 'utf8')
+      const cleanHexSecret = hexSecret.trim().replace(/^0x/, '')
+
+      // Validate hex format
+      if (!/^[0-9a-fA-F]+$/.test(cleanHexSecret)) {
+         throw new Error(`Invalid hex format in JWT secret file: ${JWT_SECRET_PATH}`)
+      }
+
       // Convert hex to buffer
-      secretBuffer = Buffer.from(hexSecret.trim(), 'hex')
+      secretBuffer = Buffer.from(cleanHexSecret, 'hex')
+      logger.debug(`JWT secret loaded: ${cleanHexSecret.length} hex characters, ${secretBuffer.length} bytes`)
 
       logger.info('JWT secret loaded successfully')
       return true
@@ -42,11 +50,18 @@ export const makeJwtService = (
       logger.warn('JWT secret not initialized, unable to generate token')
       return null
     }
-
-    // Create payload with current timestamp
-    const payload = { iat: Math.floor(Date.now() / 1000) }
-    // Sign using buffer
-    return jwt.sign(payload, secretBuffer, { algorithm: 'HS256' })
+    
+    try {
+      // Create payload with current timestamp
+      const payload = { iat: Math.floor(Date.now() / 1000) }
+      // Sign using buffer
+      const token = jwt.sign(payload, secretBuffer, { algorithm: 'HS256' })
+      logger.debug('JWT token generated successfully')
+      return token
+    } catch (error) {
+      logger.error('Failed to generate JWT token', error)
+      return null
+    }
   }
 
   return {
