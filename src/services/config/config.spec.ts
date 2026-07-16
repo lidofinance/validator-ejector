@@ -533,6 +533,22 @@ describe('webhook processor config', () => {
     }
   })
 
+  test('header defaults to Authorization', () => {
+    const config = makeWebhookProcessorConfig({
+      env: {} as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_HEADER).toBe('Authorization')
+  })
+
+  test('header from WEBHOOK_HEADER', () => {
+    const config = makeWebhookProcessorConfig({
+      env: { WEBHOOK_HEADER: 'X-Api-Key' } as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_HEADER).toBe('X-Api-Key')
+  })
+
   test('unreadable WEBHOOK_TOKEN_FILE throws', () => {
     const makeConf = () =>
       makeWebhookProcessorConfig({

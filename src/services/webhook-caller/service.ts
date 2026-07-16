@@ -15,6 +15,7 @@ export const makeWebhookProcessor = (
     WEBHOOK_ABORT_TIMEOUT_MS: number
     WEBHOOK_MAX_RETRIES: number
     WEBHOOK_TOKEN?: string
+    WEBHOOK_HEADER?: string
   },
   logger: LoggerService,
   metrics: MetricsService
@@ -35,7 +36,13 @@ export const makeWebhookProcessor = (
     'Content-Type': 'application/json',
   }
   if (config.WEBHOOK_TOKEN) {
-    headers.Authorization = `Bearer ${config.WEBHOOK_TOKEN}`
+    const headerName = config.WEBHOOK_HEADER ?? 'Authorization'
+    // The Bearer scheme only applies to the standard Authorization header,
+    // custom headers (e.g. X-Api-Key) expect the raw token
+    headers[headerName] =
+      headerName.toLowerCase() === 'authorization'
+        ? `Bearer ${config.WEBHOOK_TOKEN}`
+        : config.WEBHOOK_TOKEN
   }
 
   const send = async (
