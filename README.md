@@ -32,6 +32,8 @@ In this mode, Ejector will make a request to a specified endpoint when an exit n
 
 Mode is activated by setting the VALIDATOR_EXIT_WEBHOOK variable.
 
+Requests can optionally be authenticated with a bearer token by setting either the WEBHOOK_TOKEN variable or the WEBHOOK_TOKEN_FILE variable pointing to a file with the token inside. The token is sent in the `Authorization: Bearer <token>` header.
+
 This allows NOs to implement JIT approach by offloading exiting logic to an external service and using the Ejector as a secure exit events reader.
 
 On the endpoint, JSON will be POSTed with the following structure:
@@ -83,6 +85,8 @@ Options are configured via environment variables.
 | FORCE_DENCUN_FORK_MODE                        | No       | false                 | Start the service in Dencun fork mode                                                                                                                                                                                                                                           |
 | WEBHOOK_ABORT_TIMEOUT_MS                      | No       | 10_000                | Timeout for webhook response                                                                                                                                                                                                                                                    |
 | WEBHOOK_MAX_RETRIES                           | No       | 0                     | Maximum retries for webhook                                                                                                                                                                                                                                                     |
+| WEBHOOK_TOKEN                                 | No       | token                 | Bearer token sent in the Authorization header of webhook requests. Add it to LOGGER_SECRETS in order to be sanitized                                                                                                                                                            |
+| WEBHOOK_TOKEN_FILE                            | No       | token_inside.txt      | Path to a file with the webhook bearer token inside. Ignored if WEBHOOK_TOKEN is set. If used, WEBHOOK_TOKEN (not WEBHOOK_TOKEN_FILE) needs to be added to LOGGER_SECRETS in order to be sanitized                                                                              |
 | CAPELLA_FORK_VERSION                          | No       | 0x03000000            | Optional parameter to specify Capella fork version                                                                                                                                                                                                                              |
 
 Messages can also be loaded from remote storages: AWS S3 and Google Cloud Storage.

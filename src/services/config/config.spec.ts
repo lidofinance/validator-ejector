@@ -3,9 +3,13 @@ import {
   makeConfig,
   makeLoggerConfig,
   makeValidationConfig,
+  makeWebhookProcessorConfig,
 } from './service.js'
 import { mockLogger } from '../../test/logger.js'
 import { makeLogger } from '../../lib/index.js'
+import { writeFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 let logger = mockLogger()
 
@@ -476,5 +480,67 @@ describe('logger config module', () => {
     } finally {
       info.mockRestore()
     }
+  })
+})
+
+describe('webhook processor config', () => {
+  test('no token by default', () => {
+    const config = makeWebhookProcessorConfig({
+      env: {} as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_TOKEN).toBeUndefined()
+  })
+
+  test('token from WEBHOOK_TOKEN', () => {
+    const config = makeWebhookProcessorConfig({
+      env: { WEBHOOK_TOKEN: 'secret-token' } as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_TOKEN).toBe('secret-token')
+  })
+
+  test('token from WEBHOOK_TOKEN_FILE file', () => {
+    const tokenPath = join(tmpdir(), `webhook-token-${process.pid}.txt`)
+    writeFileSync(tokenPath, 'secret-token-from-file\n')
+
+    try {
+      const config = makeWebhookProcessorConfig({
+        env: { WEBHOOK_TOKEN_FILE: tokenPath } as NodeJS.ProcessEnv,
+      })
+
+      expect(config.WEBHOOK_TOKEN).toBe('secret-token-from-file')
+    } finally {
+      rmSync(tokenPath)
+    }
+  })
+
+  test('WEBHOOK_TOKEN takes precedence over WEBHOOK_TOKEN_FILE', () => {
+    const tokenPath = join(tmpdir(), `webhook-token-${process.pid}.txt`)
+    writeFileSync(tokenPath, 'secret-token-from-file')
+
+    try {
+      const config = makeWebhookProcessorConfig({
+        env: {
+          WEBHOOK_TOKEN: 'secret-token',
+          WEBHOOK_TOKEN_FILE: tokenPath,
+        } as NodeJS.ProcessEnv,
+      })
+
+      expect(config.WEBHOOK_TOKEN).toBe('secret-token')
+    } finally {
+      rmSync(tokenPath)
+    }
+  })
+
+  test('unreadable WEBHOOK_TOKEN_FILE throws', () => {
+    const makeConf = () =>
+      makeWebhookProcessorConfig({
+        env: {
+          WEBHOOK_TOKEN_FILE: '/nonexistent/webhook-token.txt',
+        } as NodeJS.ProcessEnv,
+      })
+
+    expect(makeConf).toThrow('Unable to load WEBHOOK_TOKEN_FILE')
   })
 })
