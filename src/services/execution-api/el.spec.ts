@@ -92,6 +92,82 @@ describe('makeExecutionApi', () => {
     expect(true).toBe(true)
   })
 
+  describe('getLogs chunking', () => {
+    const ADDRESS = '0x0De4Ea0184c2ad0BacA7183356Aea5B8d5Bf5c6e'
+    const TOPIC =
+      '0x96395f55c4997466e5035d777f0e1ba82b8cae217aaad05cf07839eb7c75bcf2'
+
+    const logsReply = (blockNumber: string) => ({
+      jsonrpc: '2.0',
+      id: 1,
+      result: [
+        {
+          topics: [TOPIC],
+          data: '0x',
+          blockNumber,
+          transactionHash: '0xabc',
+        },
+      ],
+    })
+
+    it('splits ranges wider than LOAD_LOGS_STEP into sequential requests', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      const ranges: [string, string][] = []
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => body.method === 'eth_getLogs')
+        .times(3)
+        .reply(200, (_uri, body: any) => {
+          const { fromBlock, toBlock } = body.params[0]
+          ranges.push([fromBlock, toBlock])
+          // Distinct event per chunk to verify nothing is lost in the merge
+          const reply = logsReply(fromBlock)
+          reply.result[0].transactionHash = `0xtx-${fromBlock}`
+          return reply
+        })
+
+      const { result } = await apiChunked.getLogs(1, 251, ADDRESS, [TOPIC])
+
+      expect(ranges).toEqual([
+        ['0x1', '0x64'], // 1-100
+        ['0x65', '0xc8'], // 101-200
+        ['0xc9', '0xfb'], // 201-251
+      ])
+      // All chunk events survive the merge, in chunk order
+      expect(result.map((log) => log.transactionHash)).toEqual([
+        '0xtx-0x1',
+        '0xtx-0x65',
+        '0xtx-0xc9',
+      ])
+    })
+
+    it('sends a single request when the range fits into LOAD_LOGS_STEP', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      const ranges: [string, string][] = []
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => {
+          if (body.method !== 'eth_getLogs') return false
+          ranges.push([body.params[0].fromBlock, body.params[0].toBlock])
+          return true
+        })
+        .reply(200, logsReply('0x5'))
+
+      const { result } = await apiChunked.getLogs(5, 104, ADDRESS, [TOPIC])
+
+      expect(ranges).toEqual([['0x5', '0x68']]) // 5-104, exactly 100 blocks
+      expect(result).toHaveLength(1)
+    })
+  })
+
   describe('multi-URL fallback', () => {
     const PRIMARY = 'http://primary.example:8545'
     const SECONDARY = 'http://secondary.example:8545'

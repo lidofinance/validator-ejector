@@ -287,6 +287,74 @@ describe('makeConsensusApi logs', () => {
     )
   })
 
+  it('should find ConsensusReached in the chunked ORACLE_FRAME_BLOCKS window when LOAD_LOGS_STEP is small', async () => {
+    config = mockConfig(logger, {
+      EXECUTION_NODE: 'http://localhost:4455',
+      LOAD_LOGS_STEP: 500,
+    })
+    config.ORACLE_ADDRESSES_ALLOWLIST = [
+      '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+    mockService()
+
+    mockEthServer(
+      oracleValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+
+    const consensusMock = oracleConsensusReachedEventsMock()
+    const consensusTopic = consensusMock.result.result[0].topics[0]
+    const consensusEventBlock = parseInt(
+      consensusMock.result.result[0].blockNumber,
+      16
+    )
+    // Verifier window: exit request event block (0x855ad2) minus
+    // ORACLE_FRAME_BLOCKS (7200), split by LOAD_LOGS_STEP=500 into 15 chunks
+    const expectedChunks = 15
+    const ranges: [number, number][] = []
+    nock(config.EXECUTION_NODE[0])
+      .post(
+        '/',
+        (body) =>
+          body.method === 'eth_getLogs' &&
+          body.params[0].topics[0] === consensusTopic
+      )
+      .times(expectedChunks)
+      .reply(200, (_uri, body: any) => {
+        const from = parseInt(body.params[0].fromBlock, 16)
+        const to = parseInt(body.params[0].toBlock, 16)
+        ranges.push([from, to])
+        // Only the chunk actually covering the event block returns it
+        return from <= consensusEventBlock && consensusEventBlock <= to
+          ? consensusMock.result
+          : { result: [] }
+      })
+
+    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
+
+    // The event survives even though 14 of 15 chunks are empty
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+
+    // The chunks cover the whole window contiguously — no gaps, no overlaps
+    expect(ranges.length).toBe(expectedChunks)
+    for (let i = 1; i < ranges.length; i++) {
+      expect(ranges[i][0]).toBe(ranges[i - 1][1] + 1)
+    }
+    expect(
+      ranges.filter(
+        ([from, to]) => from <= consensusEventBlock && consensusEventBlock <= to
+      ).length
+    ).toBe(1)
+  })
+
   it('should not verify withdrawal via oracle if recoveredAddress not in ORACLE_ADDRESSES_ALLOWLIST', async () => {
     mockEthServer(
       oracleValidatorExitRequestEventsMock(),
