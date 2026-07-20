@@ -343,8 +343,15 @@ describe('makeConsensusApi logs', () => {
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
 
-    // The chunks cover the whole window contiguously — no gaps, no overlaps
+    // The chunks cover exactly the toBlock-7200..toBlock window,
+    // contiguously — no gaps, no overlaps, pinned endpoints
+    const exitEventBlock = parseInt(
+      oracleValidatorExitRequestEventsMock().result.result[0].blockNumber,
+      16
+    )
     expect(ranges.length).toBe(expectedChunks)
+    expect(ranges[0][0]).toBe(exitEventBlock - 7200)
+    expect(ranges[ranges.length - 1][1]).toBe(exitEventBlock)
     for (let i = 1; i < ranges.length; i++) {
       expect(ranges[i][0]).toBe(ranges[i - 1][1] + 1)
     }

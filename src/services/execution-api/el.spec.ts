@@ -145,6 +145,53 @@ describe('makeExecutionApi', () => {
       ])
     })
 
+    it('handles a single-block range as one request with equal bounds', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      const ranges: [string, string][] = []
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => {
+          if (body.method !== 'eth_getLogs') return false
+          ranges.push([body.params[0].fromBlock, body.params[0].toBlock])
+          return true
+        })
+        .reply(200, logsReply('0x2a'))
+
+      const { result } = await apiChunked.getLogs(42, 42, ADDRESS, [TOPIC])
+
+      expect(ranges).toEqual([['0x2a', '0x2a']])
+      expect(result).toHaveLength(1)
+    })
+
+    it('rejects on a failing middle chunk without returning a partial result', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      let requests = 0
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => body.method === 'eth_getLogs')
+        .times(3)
+        .reply(200, () => {
+          requests += 1
+          // Second chunk returns a malformed body that fails DTO validation
+          return requests === 2 ? { unexpected: true } : logsReply('0x1')
+        })
+
+      await expect(
+        apiChunked.getLogs(1, 251, ADDRESS, [TOPIC])
+      ).rejects.toThrow()
+
+      // The loop stops at the failing chunk — the third is never requested
+      expect(requests).toBe(2)
+    })
+
     it('sends a single request when the range fits into LOAD_LOGS_STEP', async () => {
       const cfg = mockConfig(logger, {
         EXECUTION_NODE: 'http://localhost:4455',

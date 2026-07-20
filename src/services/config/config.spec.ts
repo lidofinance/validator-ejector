@@ -103,6 +103,67 @@ describe('config module', () => {
     }
   })
 
+  test('defaults load logs step', () => {
+    const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.LOAD_LOGS_STEP).toBe(10000)
+  })
+
+  test('accepts load logs step override', () => {
+    const config = {
+      ...configBase,
+      MESSAGES_LOCATION: 'messages',
+      LOAD_LOGS_STEP: '500',
+    }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.LOAD_LOGS_STEP).toBe(500)
+  })
+
+  test('normalizes load logs step to positive integer', () => {
+    const cases = [
+      ['0', 10000],
+      ['-1', 1],
+      ['1.5', 1],
+    ] as const
+
+    for (const [value, expected] of cases) {
+      const result = makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          LOAD_LOGS_STEP: value,
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+      expect(result.LOAD_LOGS_STEP).toBe(expected)
+    }
+  })
+
+  test('rejects non-numeric load logs step', () => {
+    const makeConf = () =>
+      makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          LOAD_LOGS_STEP: 'not-a-number',
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+    expect(makeConf).toThrow('Invalid number input')
+  })
+
   test('validation config includes validators batch size', () => {
     const config = {
       ...configBase,

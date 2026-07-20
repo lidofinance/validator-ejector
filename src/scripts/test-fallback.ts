@@ -40,6 +40,7 @@ const buildEl = (urls: string[], logger: ReturnType<typeof makeLogger>) => {
     EXECUTION_NODE: urls,
     LOCATOR_ADDRESS: '0x0000000000000000000000000000000000000000',
     JWT_SECRET_PATH: undefined,
+    LOAD_LOGS_STEP: 10000,
   } as any)
 }
 
