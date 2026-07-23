@@ -93,6 +93,10 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    LOAD_LOGS_STEP: Math.max(
+      1,
+      Math.floor(optional(() => num(env.LOAD_LOGS_STEP)) || 10000)
+    ),
     VALIDATORS_BATCH_SIZE: Math.max(
       1,
       Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
