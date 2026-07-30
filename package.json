@@ -3,6 +3,12 @@
   "version": "2.1.0",
   "private": true,
   "main": "index.js",
+  "bin": {
+    "validator-ejector": "dist/src/index.js"
+  },
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "dependencies": {
     "@aws-sdk/client-s3": "3.297.0",
