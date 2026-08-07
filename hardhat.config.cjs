@@ -12,7 +12,9 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: process.env.EXECUTION_NODE ?? 'https://eth.drpc.org',
+        // An unset CI secret arrives as an empty string, which must also
+        // fall back to the public node
+        url: process.env.EXECUTION_NODE || 'https://ethereum-rpc.publicnode.com',
       },
     },
   },

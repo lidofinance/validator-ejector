@@ -67,9 +67,9 @@ describe('exitLogs e2e', () => {
 
   beforeEach(async () => {
     const nodes = {
-      EXECUTION_NODE: process.env.EXECUTION_NODE ?? 'https://eth.drpc.org',
+      EXECUTION_NODE: process.env.EXECUTION_NODE || 'https://eth.drpc.org',
       CONSENSUS_NODE:
-        process.env.CONSENSUS_NODE ??
+        process.env.CONSENSUS_NODE ||
         'https://ethereum-beacon-api.publicnode.com',
     }
 
