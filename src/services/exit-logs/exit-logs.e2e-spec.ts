@@ -139,6 +139,7 @@ describe('exitLogs e2e', () => {
 
     const frame1 = await api.getLogs(frame1Block)
 
+    // 40 mainnet exit requests for operators 0-2 in blocks 22024255..22044254
     expect(frame1.length).toBe(40)
 
     config.EJECTOR_SCOPE = [{ stakingModuleId: '1', operatorIds: [0, 1] }]
@@ -149,6 +150,8 @@ describe('exitLogs e2e', () => {
 
     const frame2 = await api.getLogs(frame2Block)
 
-    expect(frame2.length).toBe(62)
+    // 22 mainnet exit requests for operators 0-1 in blocks 22044255..22064254.
+    // loadServices() rebuilt the cache, so frame1 events are not included
+    expect(frame2.length).toBe(22)
   })
 })
