@@ -33,6 +33,7 @@ export const txDTO = (json: unknown) =>
     (json) => ({
       result: obj(json.result, (result) => ({
         from: str(result.from),
+        blockNumber: optional(() => str(result.blockNumber)),
         gas: str(result.gas),
         gasPrice: optional(() => str(result.gasPrice)),
         maxFeePerGas: optional(() => str(result.maxFeePerGas)),

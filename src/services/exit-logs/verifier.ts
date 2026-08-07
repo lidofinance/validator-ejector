@@ -3,13 +3,42 @@ import { makeLogger } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { txDTO } from './dto.js'
+import { funcDTO, txDTO } from './dto.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 // This is the number of blocks to look back when searching for
 // the ConsensusReached event. It should be more than the VEBO frame
 const ORACLE_FRAME_BLOCKS = 7200
 const LRU_CACHE_MAX_SIZE = 50
+
+// Every calldata shape the verifier can walk. The 4-byte selector of a
+// transaction input is the explicit gate that picks the branch.
+const submitReportDataIface = new ethers.utils.Interface([
+  'function submitReportData(tuple(uint256 consensusVersion, uint256 refSlot, uint256 requestsCount, uint256 dataFormat, bytes data) data, uint256 contractVersion)',
+])
+const submitExitRequestsDataIface = new ethers.utils.Interface([
+  'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)',
+])
+const submitReportIface = new ethers.utils.Interface([
+  'function submitReport(uint256 slot, bytes32 report, uint256 consensusVersion)',
+])
+// EDF (LIP-37): the oracle member is a DelegationContract and its delegate
+// key submits the report wrapped in execute()
+const executeIface = new ethers.utils.Interface([
+  'function execute(address target, bytes data)',
+])
+const getDelegateIface = new ethers.utils.Interface([
+  'function getDelegate() view returns (address)',
+])
+
+const SUBMIT_REPORT_DATA_SELECTOR =
+  submitReportDataIface.getSighash('submitReportData')
+const SUBMIT_EXIT_REQUESTS_DATA_SELECTOR =
+  submitExitRequestsDataIface.getSighash('submitExitRequestsData')
+const SUBMIT_REPORT_SELECTOR = submitReportIface.getSighash('submitReport')
+const EXECUTE_SELECTOR = executeIface.getSighash('execute')
+
+const selectorOf = (input: string) => input.slice(0, 10).toLowerCase()
 
 export type VerifierService = ReturnType<typeof makeVerifier>
 
@@ -141,6 +170,109 @@ export const makeVerifier = (
     return ethers.utils.recoverAddress(hash, sig)
   }
 
+  // EDF (LIP-37): an oracle member can be a DelegationContract instead of an
+  // EOA. The member's hot key (delegate) then submits the report through
+  // DelegationContract.execute(), so the transaction sender is the delegate
+  // and the allowlisted address is the DelegationContract itself.
+  const getDelegate = async (
+    delegationContract: string,
+    blockNumber?: string
+  ) => {
+    const call = async (block: string) => {
+      const json = await el.elRequest({
+        method: 'POST',
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [
+            {
+              from: null,
+              to: delegationContract,
+              data: getDelegateIface.encodeFunctionData('getDelegate'),
+            },
+            block,
+          ],
+          id: 1,
+        }),
+      })
+      const { result } = funcDTO(json)
+      return getDelegateIface.decodeFunctionResult(
+        'getDelegate',
+        result
+      )[0] as string
+    }
+
+    // The delegate active when the report was submitted is the one that
+    // legitimizes it, so resolve at the report block. This read needs an
+    // EXECUTION_NODE with archive state for older blocks. Falling back to
+    // the latest block is not an option: after a rotation it would reject
+    // every pre-rotation report and it would hide real errors.
+    try {
+      return await call(blockNumber ?? 'latest')
+    } catch (e) {
+      logger.error('getDelegate call at the report block failed', {
+        delegationContract,
+        blockNumber,
+      })
+      throw new Error(
+        `Unable to resolve the delegate of ${delegationContract} at block ${blockNumber}: EDF verification requires an archive-capable EXECUTION_NODE`,
+        { cause: e }
+      )
+    }
+  }
+
+  // Decodes the consensus report transaction. The selector is the explicit
+  // gate between the two member kinds:
+  // - submitReport: the member is an EOA and signed the transaction itself
+  // - execute: the member is an EDF DelegationContract and its delegate
+  //   signed a wrapped submitReport
+  const decodeSubmitReport = (tx: ReturnType<typeof txDTO>['result']) => {
+    switch (selectorOf(tx.input)) {
+      case SUBMIT_REPORT_SELECTOR:
+        return {
+          memberType: 'eoa' as const,
+          decoded: submitReportIface.decodeFunctionData(
+            'submitReport',
+            tx.input
+          ),
+          delegationContract: null,
+        }
+
+      case EXECUTE_SELECTOR: {
+        const executeDecoded = executeIface.decodeFunctionData(
+          'execute',
+          tx.input
+        )
+        if (
+          (executeDecoded.target as string).toLowerCase() !==
+          el.consensusAddress.toLowerCase()
+        ) {
+          throw new Error(
+            `execute() in the ConsensusReached transaction targets ${executeDecoded.target} instead of the consensus contract (tx: ${tx.hash})`
+          )
+        }
+        if (selectorOf(executeDecoded.data) !== SUBMIT_REPORT_SELECTOR) {
+          throw new Error(
+            `execute() in the ConsensusReached transaction wraps an unknown function (tx: ${tx.hash})`
+          )
+        }
+        return {
+          memberType: 'delegation' as const,
+          decoded: submitReportIface.decodeFunctionData(
+            'submitReport',
+            executeDecoded.data
+          ),
+          delegationContract: tx.to,
+        }
+      }
+
+      default:
+        throw new Error(
+          `ConsensusReached transaction calls an unknown function (tx: ${tx.hash})`
+        )
+    }
+  }
+
   const verifyTransactionIntegrity = (
     tx: ReturnType<typeof txDTO>['result'],
     expectedHash: string
@@ -180,57 +312,54 @@ export const makeVerifier = (
   ) => {
     const tx = await getTransaction(transactionHash)
 
-    const submitReportDataFragment = ethers.utils.Fragment.from(
-      'function submitReportData(tuple(uint256 consensusVersion, uint256 refSlot, uint256 requestsCount, uint256 dataFormat, bytes data) data, uint256 contractVersion)'
-    )
-    const submitReportDataIface = new ethers.utils.Interface([
-      submitReportDataFragment,
-    ])
-
-    let isEventEmittedByOracle = true
-
-    let decodedReportData = {} as ethers.utils.Result
-    try {
-      decodedReportData = submitReportDataIface.decodeFunctionData(
-        submitReportDataFragment.name,
-        tx.input
-      )
-    } catch (e) {
-      isEventEmittedByOracle = false
+    // EDF (LIP-37): an oracle member that is a DelegationContract submits
+    // the Exit Bus report wrapped in execute(); unwrap it before gating on
+    // the report function. The trust decision does not rest on this
+    // transaction: verifyOracleEvent re-derives it from the consensus report
+    let input = tx.input
+    if (selectorOf(input) === EXECUTE_SELECTOR) {
+      const executeDecoded = executeIface.decodeFunctionData('execute', input)
+      if (
+        (executeDecoded.target as string).toLowerCase() !==
+        el.exitBusAddress.toLowerCase()
+      ) {
+        throw new Error(
+          `execute() in the ValidatorExitRequest transaction targets ${executeDecoded.target} instead of the Exit Bus (tx: ${tx.hash})`
+        )
+      }
+      input = executeDecoded.data
     }
 
-    if (isEventEmittedByOracle) {
-      await verifyOracleEvent(validatorPubkey, decodedReportData, toBlock)
-      return
+    // Explicit gate: which contract function produced ValidatorExitRequest
+    switch (selectorOf(input)) {
+      case SUBMIT_REPORT_DATA_SELECTOR:
+        // Oracle report finalized on the Exit Bus
+        await verifyOracleEvent(
+          validatorPubkey,
+          submitReportDataIface.decodeFunctionData('submitReportData', input),
+          toBlock
+        )
+        return
+
+      case SUBMIT_EXIT_REQUESTS_DATA_SELECTOR:
+        // Exit request placed by governance (Easy Track or Aragon)
+        await verifyVotingEvent(
+          validatorPubkey,
+          submitExitRequestsDataIface.decodeFunctionData(
+            'submitExitRequestsData',
+            input
+          ),
+          votingRequestsHashSubmittedEvents,
+          motionCreatedEvents,
+          motionEnactedEvents
+        )
+        return
+
+      default:
+        throw new Error(
+          `ValidatorExitRequest was emitted by unknown contract function (tx: ${tx.hash})`
+        )
     }
-
-    const submitExitRequestsDataFragment = ethers.utils.Fragment.from(
-      'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)'
-    )
-    const submitExitRequestsDataIface = new ethers.utils.Interface([
-      submitExitRequestsDataFragment,
-    ])
-
-    let decodedExitRequestsData = {} as ethers.utils.Result
-    try {
-      decodedExitRequestsData = submitExitRequestsDataIface.decodeFunctionData(
-        submitExitRequestsDataFragment.name,
-        tx.input
-      )
-    } catch (e) {
-      throw new Error(
-        `ValidatorExitRequest was emitted by unknown contract function (tx: ${tx.hash})`,
-        { cause: e }
-      )
-    }
-
-    await verifyVotingEvent(
-      validatorPubkey,
-      decodedExitRequestsData,
-      votingRequestsHashSubmittedEvents,
-      motionCreatedEvents,
-      motionEnactedEvents
-    )
   }
 
   const verifyOracleEvent = async (
@@ -268,18 +397,16 @@ export const makeVerifier = (
 
     const originTx = await getTransaction(originTxHash)
 
-    const hashConsensusFragment = ethers.utils.Fragment.from(
-      'function submitReport(uint256 slot, bytes32 report, uint256 consensusVersion)'
-    )
+    // Bind the transaction body to the log-derived hash before trusting any
+    // of its fields (to, input, signature). Without this the delegation
+    // branch would rest on an unauthenticated RPC response
+    verifyTransactionIntegrity(originTx, originTxHash)
 
-    const hashConsensusIface = new ethers.utils.Interface([
-      hashConsensusFragment,
-    ])
-
-    const submitReportDecoded = hashConsensusIface.decodeFunctionData(
-      hashConsensusFragment.name,
-      originTx.input
-    )
+    const {
+      memberType,
+      decoded: submitReportDecoded,
+      delegationContract,
+    } = decodeSubmitReport(originTx)
 
     if (submitReportDecoded.report !== dataHash) {
       logger.error(
@@ -299,10 +426,45 @@ export const makeVerifier = (
     const allowlist = ORACLE_ADDRESSES_ALLOWLIST.map((address) =>
       address.toLowerCase()
     )
-    if (!allowlist.includes(recoveredAddress.toLowerCase())) {
+
+    // Explicit gate per member kind, decided above by the calldata selector
+    if (memberType === 'eoa') {
+      // Pre-EDF member: its own key signed the report transaction
+      if (!allowlist.includes(recoveredAddress.toLowerCase())) {
+        logger.error('Transaction is not signed by a trusted Oracle', {
+          address: recoveredAddress,
+        })
+        throw new Error('Transaction is not signed by a trusted Oracle')
+      }
+      return
+    }
+
+    // EDF member: the allowlisted address is the DelegationContract and
+    // the signer must be its delegate at the report block
+    if (
+      !delegationContract ||
+      !allowlist.includes(delegationContract.toLowerCase())
+    ) {
       logger.error('Transaction is not signed by a trusted Oracle', {
         address: recoveredAddress,
+        delegationContract,
       })
+      throw new Error('Transaction is not signed by a trusted Oracle')
+    }
+
+    const delegate = await getDelegate(
+      delegationContract,
+      originTx.blockNumber
+    )
+    if (delegate.toLowerCase() !== recoveredAddress.toLowerCase()) {
+      logger.error(
+        'Transaction is not signed by the delegate of the trusted Oracle DelegationContract',
+        {
+          address: recoveredAddress,
+          delegationContract,
+          delegate,
+        }
+      )
       throw new Error('Transaction is not signed by a trusted Oracle')
     }
   }
