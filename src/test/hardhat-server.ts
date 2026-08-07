@@ -21,7 +21,6 @@ export class HardhatServer {
   }
 
   public async start(timeoutMs = DEFAULT_START_TIMEOUT_MS) {
-    await this.compile(timeoutMs)
     return new Promise<void>((resolve, reject) => {
       this.hardhatProcess = spawn(
         process.execPath,
@@ -65,35 +64,6 @@ export class HardhatServer {
             )
           )
         }
-      })
-    })
-  }
-
-  // Build the test contracts so the specs can read their artifacts
-  private async compile(timeoutMs: number) {
-    return new Promise<void>((resolve, reject) => {
-      const compileProcess = spawn(
-        process.execPath,
-        [HARDHAT_CLI_PATH, 'compile'],
-        { env: { ...process.env } }
-      )
-      const timeout = setTimeout(() => {
-        compileProcess.kill('SIGKILL')
-        reject(
-          new Error(`hardhat compile did not finish within ${timeoutMs} ms`)
-        )
-      }, timeoutMs)
-      compileProcess.stderr.on('data', (data) => {
-        console.error(`Hardhat compile stderr: ${data}`)
-      })
-      compileProcess.on('error', (error) => {
-        clearTimeout(timeout)
-        reject(error)
-      })
-      compileProcess.on('close', (code) => {
-        clearTimeout(timeout)
-        if (code === 0) resolve()
-        else reject(new Error(`hardhat compile exited with code ${code}`))
       })
     })
   }

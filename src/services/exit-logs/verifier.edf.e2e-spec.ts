@@ -1,5 +1,4 @@
 import dotenv from 'dotenv'
-import { readFileSync } from 'fs'
 import { ethers } from 'ethers'
 
 import { makeVerifier } from './verifier.js'
@@ -60,19 +59,6 @@ const exitBusIface = new ethers.utils.Interface([
   'function getContractVersion() view returns (uint256)',
   'function submitReportData(tuple(uint256 consensusVersion, uint256 refSlot, uint256 requestsCount, uint256 dataFormat, bytes data) data, uint256 contractVersion)',
 ])
-
-// Test double for the signer-vs-delegate check, compiled by `hardhat node`
-// on start from src/test/contracts/PermissiveDelegation.sol: execute()
-// forwards for ANY caller and getDelegate() names a fixed, unrelated
-// address, so the chain enforces nothing and only the verifier check
-// stands between an arbitrary signer and acceptance.
-const permissiveDelegationArtifact = () =>
-  JSON.parse(
-    readFileSync(
-      'artifacts/src/test/contracts/PermissiveDelegation.sol/PermissiveDelegation.json',
-      'utf8'
-    )
-  )
 
 const norIface = new ethers.utils.Interface([
   'function getSigningKeys(uint256 nodeOperatorId, uint256 fromIndex, uint256 keysCount) view returns (bytes pubkeys, bytes signatures, bool[] used)',
@@ -369,29 +355,29 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       ).wait()
     }, 120_000)
 
-    it('accepts a report submitted by the delegate through execute() when the DelegationContract is allowlisted', async () => {
+    it('accepts a report submitted through execute() when the delegate is allowlisted', async () => {
       const report = await publishExitRequest(
         sendAsDelegate(delegationContract, firstDelegate)
       )
 
-      const verifier = makeAllowlistedVerifier([delegationContract.address])
+      const verifier = makeAllowlistedVerifier([firstDelegateAddress])
       await expect(verify(verifier, report)).resolves.toBeUndefined()
     })
 
-    it('rejects a delegate report when the DelegationContract is not allowlisted', async () => {
+    it('rejects a delegate report when the delegate is not allowlisted', async () => {
       const report = await publishExitRequest(
         sendAsDelegate(delegationContract, firstDelegate)
       )
 
-      const verifier = makeAllowlistedVerifier([
-        ethers.Wallet.createRandom().address,
-      ])
+      // The DelegationContract address alone does not make the report
+      // trusted: the signer must be listed
+      const verifier = makeAllowlistedVerifier([delegationContract.address])
       await expect(verify(verifier, report)).rejects.toThrow(
         'Transaction is not signed by a trusted Oracle'
       )
     })
 
-    it('keeps accepting old reports and accepts the new delegate after a rotation, without an allowlist change', async () => {
+    it('verifies reports across a rotation while both delegates are allowlisted, and drops the old ones when the old delegate is removed', async () => {
       const firstReport = await publishExitRequest(
         sendAsDelegate(delegationContract, firstDelegate)
       )
@@ -407,54 +393,24 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       await provider.send('evm_mine', [])
       expect(await delegationContract.getDelegate()).toBe(secondDelegateAddress)
 
-      // The rotated-out delegate can no longer submit at all
-      await expect(
-        delegationContract
-          .connect(firstDelegate)
-          .execute(consensus.address, '0x')
-      ).rejects.toThrow()
-
       const secondReport = await publishExitRequest(
         sendAsDelegate(delegationContract, secondDelegate)
       )
 
-      const verifier = makeAllowlistedVerifier([delegationContract.address])
-      // New delegate verifies with the same allowlist entry
-      await expect(verify(verifier, secondReport)).resolves.toBeUndefined()
-      // The report of the previous delegate stays valid: the delegate is
-      // resolved at the report block, not at the head
-      await expect(verify(verifier, firstReport)).resolves.toBeUndefined()
-    })
+      const bothDelegates = makeAllowlistedVerifier([
+        firstDelegateAddress,
+        secondDelegateAddress,
+      ])
+      await expect(verify(bothDelegates, secondReport)).resolves.toBeUndefined()
+      await expect(verify(bothDelegates, firstReport)).resolves.toBeUndefined()
 
-    it('rejects a report from an allowlisted contract whose execute() does not gate the sender', async () => {
-      const namedDelegate = ethers.Wallet.createRandom().address
-      const artifact = permissiveDelegationArtifact()
-      const permissive = await new ethers.ContractFactory(
-        artifact.abi,
-        artifact.bytecode,
-        owner
-      ).deploy(namedDelegate)
-      await permissive.deployed()
-
-      // The permissive contract takes the member seat
-      await (
-        await consensus
-          .connect(admin)
-          .removeMember(delegationContract.address, 1)
-      ).wait()
-      await (
-        await consensus.connect(admin).addMember(permissive.address, 1)
-      ).wait()
-
-      const outsider = provider.getSigner(5)
-      const report = await publishExitRequest(
-        sendAsDelegate(permissive, outsider)
-      )
-
-      // On-chain everything passed; only the verifier's signer-vs-delegate
-      // check can reject the outsider's report
-      const verifier = makeAllowlistedVerifier([permissive.address])
-      await expect(verify(verifier, report)).rejects.toThrow(
+      // Removing the old delegate from the allowlist invalidates the
+      // reports it signed
+      const newDelegateOnly = makeAllowlistedVerifier([secondDelegateAddress])
+      await expect(
+        verify(newDelegateOnly, secondReport)
+      ).resolves.toBeUndefined()
+      await expect(verify(newDelegateOnly, firstReport)).rejects.toThrow(
         'Transaction is not signed by a trusted Oracle'
       )
     })

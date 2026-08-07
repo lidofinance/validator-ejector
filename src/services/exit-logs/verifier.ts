@@ -3,7 +3,7 @@ import { makeLogger } from '../../lib/index.js'
 
 import { ethers } from 'ethers'
 
-import { funcDTO, txDTO } from './dto.js'
+import { txDTO } from './dto.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 
 // This is the number of blocks to look back when searching for
@@ -26,9 +26,6 @@ const submitReportIface = new ethers.utils.Interface([
 // key submits the report wrapped in execute()
 const executeIface = new ethers.utils.Interface([
   'function execute(address target, bytes data)',
-])
-const getDelegateIface = new ethers.utils.Interface([
-  'function getDelegate() view returns (address)',
 ])
 
 const SUBMIT_REPORT_DATA_SELECTOR =
@@ -170,73 +167,15 @@ export const makeVerifier = (
     return ethers.utils.recoverAddress(hash, sig)
   }
 
-  // EDF (LIP-37): an oracle member can be a DelegationContract instead of an
-  // EOA. The member's hot key (delegate) then submits the report through
-  // DelegationContract.execute(), so the transaction sender is the delegate
-  // and the allowlisted address is the DelegationContract itself.
-  const getDelegate = async (
-    delegationContract: string,
-    blockNumber?: string
-  ) => {
-    const call = async (block: string) => {
-      const json = await el.elRequest({
-        method: 'POST',
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_call',
-          params: [
-            {
-              from: null,
-              to: delegationContract,
-              data: getDelegateIface.encodeFunctionData('getDelegate'),
-            },
-            block,
-          ],
-          id: 1,
-        }),
-      })
-      const { result } = funcDTO(json)
-      return getDelegateIface.decodeFunctionResult(
-        'getDelegate',
-        result
-      )[0] as string
-    }
-
-    // The delegate active when the report was submitted is the one that
-    // legitimizes it, so resolve at the report block. This read needs an
-    // EXECUTION_NODE with archive state for older blocks. Falling back to
-    // the latest block is not an option: after a rotation it would reject
-    // every pre-rotation report and it would hide real errors.
-    try {
-      return await call(blockNumber ?? 'latest')
-    } catch (e) {
-      logger.error('getDelegate call at the report block failed', {
-        delegationContract,
-        blockNumber,
-      })
-      throw new Error(
-        `Unable to resolve the delegate of ${delegationContract} at block ${blockNumber}: EDF verification requires an archive-capable EXECUTION_NODE`,
-        { cause: e }
-      )
-    }
-  }
-
-  // Decodes the consensus report transaction. The selector is the explicit
-  // gate between the two member kinds:
-  // - submitReport: the member is an EOA and signed the transaction itself
-  // - execute: the member is an EDF DelegationContract and its delegate
-  //   signed a wrapped submitReport
+  // Decodes the consensus report transaction. A pre-EDF member calls
+  // submitReport itself; an EDF (LIP-37) member is a DelegationContract
+  // whose delegate key wraps the same call in execute(). In both cases the
+  // trusted identity is the transaction signer, checked later against the
+  // allowlist.
   const decodeSubmitReport = (tx: ReturnType<typeof txDTO>['result']) => {
     switch (selectorOf(tx.input)) {
       case SUBMIT_REPORT_SELECTOR:
-        return {
-          memberType: 'eoa' as const,
-          decoded: submitReportIface.decodeFunctionData(
-            'submitReport',
-            tx.input
-          ),
-          delegationContract: null,
-        }
+        return submitReportIface.decodeFunctionData('submitReport', tx.input)
 
       case EXECUTE_SELECTOR: {
         const executeDecoded = executeIface.decodeFunctionData(
@@ -256,14 +195,10 @@ export const makeVerifier = (
             `execute() in the ConsensusReached transaction wraps an unknown function (tx: ${tx.hash})`
           )
         }
-        return {
-          memberType: 'delegation' as const,
-          decoded: submitReportIface.decodeFunctionData(
-            'submitReport',
-            executeDecoded.data
-          ),
-          delegationContract: tx.to,
-        }
+        return submitReportIface.decodeFunctionData(
+          'submitReport',
+          executeDecoded.data
+        )
       }
 
       default:
@@ -402,11 +337,7 @@ export const makeVerifier = (
     // branch would rest on an unauthenticated RPC response
     verifyTransactionIntegrity(originTx, originTxHash)
 
-    const {
-      memberType,
-      decoded: submitReportDecoded,
-      delegationContract,
-    } = decodeSubmitReport(originTx)
+    const submitReportDecoded = decodeSubmitReport(originTx)
 
     if (submitReportDecoded.report !== dataHash) {
       logger.error(
@@ -423,45 +354,18 @@ export const makeVerifier = (
 
     const recoveredAddress = await recoverAddress(originTx)
 
+    // The signature is the only anchor a lying RPC cannot forge, so the
+    // signer is checked against the allowlist for both member kinds. For an
+    // EDF member the allowlist holds its delegate keys; a rotation adds the
+    // new delegate and keeps the old one until its reports leave the
+    // lookback window.
     const allowlist = ORACLE_ADDRESSES_ALLOWLIST.map((address) =>
       address.toLowerCase()
     )
-
-    // Explicit gate per member kind, decided above by the calldata selector
-    if (memberType === 'eoa') {
-      // Pre-EDF member: its own key signed the report transaction
-      if (!allowlist.includes(recoveredAddress.toLowerCase())) {
-        logger.error('Transaction is not signed by a trusted Oracle', {
-          address: recoveredAddress,
-        })
-        throw new Error('Transaction is not signed by a trusted Oracle')
-      }
-      return
-    }
-
-    // EDF member: the allowlisted address is the DelegationContract and
-    // the signer must be its delegate at the report block
-    if (
-      !delegationContract ||
-      !allowlist.includes(delegationContract.toLowerCase())
-    ) {
+    if (!allowlist.includes(recoveredAddress.toLowerCase())) {
       logger.error('Transaction is not signed by a trusted Oracle', {
         address: recoveredAddress,
-        delegationContract,
       })
-      throw new Error('Transaction is not signed by a trusted Oracle')
-    }
-
-    const delegate = await getDelegate(delegationContract, originTx.blockNumber)
-    if (delegate.toLowerCase() !== recoveredAddress.toLowerCase()) {
-      logger.error(
-        'Transaction is not signed by the delegate of the trusted Oracle DelegationContract',
-        {
-          address: recoveredAddress,
-          delegationContract,
-          delegate,
-        }
-      )
       throw new Error('Transaction is not signed by a trusted Oracle')
     }
   }

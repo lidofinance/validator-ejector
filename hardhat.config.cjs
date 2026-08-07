@@ -4,11 +4,6 @@
 require('dotenv').config()
 
 module.exports = {
-  // Test doubles for the e2e suite; `hardhat node` compiles them on start
-  solidity: '0.8.24',
-  paths: {
-    sources: './src/test/contracts',
-  },
   networks: {
     hardhat: {
       forking: {
