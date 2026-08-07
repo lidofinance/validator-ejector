@@ -190,7 +190,8 @@ describe('verifier EDF e2e (mainnet fork)', () => {
   }
 
   const sendAsEoa =
-    (signer: ethers.providers.JsonRpcSigner) => (to: string, calldata: string) =>
+    (signer: ethers.providers.JsonRpcSigner) =>
+    (to: string, calldata: string) =>
       signer.sendTransaction({ to, data: calldata })
 
   const sendAsDelegate =
@@ -404,9 +405,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
         activeFrom.toNumber() + 1,
       ])
       await provider.send('evm_mine', [])
-      expect(await delegationContract.getDelegate()).toBe(
-        secondDelegateAddress
-      )
+      expect(await delegationContract.getDelegate()).toBe(secondDelegateAddress)
 
       // The rotated-out delegate can no longer submit at all
       await expect(

@@ -452,10 +452,7 @@ export const makeVerifier = (
       throw new Error('Transaction is not signed by a trusted Oracle')
     }
 
-    const delegate = await getDelegate(
-      delegationContract,
-      originTx.blockNumber
-    )
+    const delegate = await getDelegate(delegationContract, originTx.blockNumber)
     if (delegate.toLowerCase() !== recoveredAddress.toLowerCase()) {
       logger.error(
         'Transaction is not signed by the delegate of the trusted Oracle DelegationContract',

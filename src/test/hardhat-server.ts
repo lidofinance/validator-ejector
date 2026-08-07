@@ -35,9 +35,7 @@ export class HardhatServer {
 
       const timeout = setTimeout(() => {
         this.hardhatProcess?.kill('SIGTERM')
-        reject(
-          new Error(`Hardhat did not become ready within ${timeoutMs} ms`)
-        )
+        reject(new Error(`Hardhat did not become ready within ${timeoutMs} ms`))
       }, timeoutMs)
 
       this.hardhatProcess.stdout.on('data', (data) => {
@@ -81,7 +79,9 @@ export class HardhatServer {
       )
       const timeout = setTimeout(() => {
         compileProcess.kill('SIGKILL')
-        reject(new Error(`hardhat compile did not finish within ${timeoutMs} ms`))
+        reject(
+          new Error(`hardhat compile did not finish within ${timeoutMs} ms`)
+        )
       }, timeoutMs)
       compileProcess.stderr.on('data', (data) => {
         console.error(`Hardhat compile stderr: ${data}`)
