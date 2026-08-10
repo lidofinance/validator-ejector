@@ -160,13 +160,6 @@
   },
   {
     "type": "function",
-    "name": "revokeNomination",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "supportsInterface",
     "inputs": [
       {
@@ -238,19 +231,6 @@
   },
   {
     "type": "event",
-    "name": "NominationRevoked",
-    "inputs": [
-      {
-        "name": "revokedNomination",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "Terminated",
     "inputs": [],
     "anonymous": false
@@ -273,11 +253,6 @@
   {
     "type": "error",
     "name": "ContractTerminated",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NoPendingDelegate",
     "inputs": []
   },
   {
