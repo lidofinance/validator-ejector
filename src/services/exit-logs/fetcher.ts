@@ -29,34 +29,6 @@ export const makeExitLogsFetcherService = (
   },
   { eventSecurityVerification }: MetricsService
 ) => {
-  const getVotingRequestsHashSubmittedEvents = async (
-    fromBlock: number,
-    toBlock: number
-  ) => {
-    const event = ethers.utils.Fragment.from(
-      'event RequestsHashSubmitted(bytes32 exitRequestsHash)'
-    )
-    const iface = new ethers.utils.Interface([event])
-    const eventTopic = iface.getEventTopic(event.name)
-
-    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
-      eventTopic,
-    ])
-
-    logger.info('Loaded RequestsHashSubmitted events', {
-      amount: result.length,
-    })
-
-    const eventsMap: Record<string, string> = {}
-
-    for (const log of result) {
-      const parsed = iface.parseLog(log)
-      eventsMap[parsed.args.exitRequestsHash] = log.transactionHash
-    }
-
-    return eventsMap
-  }
-
   const getValidatorExitRequestEvents = async (
     fromBlock: number,
     toBlock: number,
@@ -122,8 +94,7 @@ export const makeExitLogsFetcherService = (
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
-    ejectorScope: EjectorScope[],
-    votingRequestsHashSubmittedEvents: Record<string, string> = {}
+    ejectorScope: EjectorScope[]
   ) => {
     const validatorExitRequestEvents = await getValidatorExitRequestEvents(
       fromBlock,
@@ -156,8 +127,7 @@ export const makeExitLogsFetcherService = (
           await verifier.verifyEvent(
             validatorPubkey,
             transactionHash,
-            blockNumber,
-            votingRequestsHashSubmittedEvents
+            blockNumber
           )
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })
@@ -191,6 +161,5 @@ export const makeExitLogsFetcherService = (
 
   return {
     getLogs,
-    getVotingRequestsHashSubmittedEvents,
   }
 }

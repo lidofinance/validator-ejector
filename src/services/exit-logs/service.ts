@@ -21,7 +21,6 @@ export const makeExitLogsService = (
     ORACLE_ADDRESSES_ALLOWLIST,
     TRUST_MODE,
     BLOCKS_PRELOAD,
-    VOTING_EVENTS_FRAME_BLOCKS,
     SUBMIT_TX_HASH_ALLOWLIST,
     EJECTOR_SCOPE,
   }: ConfigService,
@@ -45,41 +44,6 @@ export const makeExitLogsService = (
 
   const cache = makeExitLogsCacheService()
 
-  const fetchVotingEvents = async (blockFrom: number, blockTo: number) => {
-    let votingRequestsHashSubmittedEvents: Record<string, string> = {}
-
-    if (!TRUST_MODE) {
-      const votingFromBlock = Math.max(
-        0,
-        blockFrom - VOTING_EVENTS_FRAME_BLOCKS
-      )
-
-      logger.info(`Loading voting events from ${votingFromBlock} to ${blockTo}`)
-      for (
-        let block = votingFromBlock;
-        block <= blockTo;
-        block += LOAD_LOGS_STEP
-      ) {
-        const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
-        logger.info(
-          `Fetching voting events from block ${block} to ${currentBlockTo}`
-        )
-
-        const batchVotingEvents =
-          await fetcher.getVotingRequestsHashSubmittedEvents(
-            block,
-            currentBlockTo
-          )
-        votingRequestsHashSubmittedEvents = {
-          ...votingRequestsHashSubmittedEvents,
-          ...batchVotingEvents,
-        }
-      }
-    }
-
-    return { votingRequestsHashSubmittedEvents }
-  }
-
   const getLogs = async (lastBlockNumber: number) => {
     const header = cache.getHeader()
     // If data is already fully cached up to the latest block, return cached data
@@ -101,21 +65,11 @@ export const makeExitLogsService = (
         : `Initial load from ${blockFrom} to ${blockTo}`
     )
 
-    const { votingRequestsHashSubmittedEvents } = await fetchVotingEvents(
-      blockFrom,
-      blockTo
-    )
-
     for (let block = blockFrom; block <= blockTo; block += LOAD_LOGS_STEP) {
       const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
       logger.info(`Fetching logs from block ${block} to ${currentBlockTo}`)
 
-      const logs = await fetcher.getLogs(
-        block,
-        currentBlockTo,
-        EJECTOR_SCOPE,
-        votingRequestsHashSubmittedEvents
-      )
+      const logs = await fetcher.getLogs(block, currentBlockTo, EJECTOR_SCOPE)
       logs.forEach((log) => cache.push(log))
 
       cache.setHeader(block, currentBlockTo)

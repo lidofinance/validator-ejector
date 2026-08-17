@@ -88,8 +88,6 @@ export const makeConfig = ({
       1,
       Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
     ),
-    VOTING_EVENTS_FRAME_BLOCKS:
-      optional(() => num(env.VOTING_EVENTS_FRAME_BLOCKS)) ?? 216000, // ~30 days
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,

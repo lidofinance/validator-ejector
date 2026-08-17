@@ -11,13 +11,12 @@ import {
   oracleSubmitReportDataTransactionMock,
   oracleSubmitReportTransactionMock,
   oracleConsensusReachedEventsMock,
-  votingRequestsHashSubmittedEventsMock,
-  votingValidatorExitRequestEventsMock,
-  votingSubmitExitRequestsDataTransactionMock,
-  voteSubmitHashTransactionMock,
-  voteSubmitHashTransactionWithWrongHashMock,
-  legacySubmitHashTransactionMock,
-  legacySubmitHashTransactionMissingGasPriceMock,
+  hoodiValidatorExitRequestEventsMock,
+  hoodiSubmitExitRequestsDataTransactionMock,
+  HOODI_EXIT_VALIDATOR_INDEX,
+  HOODI_EXIT_VALIDATOR_PUBKEY,
+  HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT,
+  HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -83,24 +82,12 @@ describe('makeConsensusApi logs', () => {
       oracleValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
-    const votingValidatorExitRequestEvents = mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-
     config.TRUST_MODE = true
     mockService()
 
-    const votingRequestsHashSubmittedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(oracleValidatorExitRequestEvents.isDone()).to.be.true
-    expect(votingValidatorExitRequestEvents.isDone()).to.be.false
     expect(res.length).toBe(1)
     expect(res[0].stakingModuleId).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -172,7 +159,7 @@ describe('makeConsensusApi logs', () => {
     mockEthServer(oracleConsensusReachedEventsMock(), primary)
     mockEthServer(oracleSubmitReportTransactionMock(), primary)
 
-    const res = await api.fetcher.getLogs(123, 123, scope(), {})
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(primaryTxScope.isDone()).toBe(true)
     expect(secondaryTxScope.isDone()).toBe(true)
@@ -239,13 +226,7 @@ describe('makeConsensusApi logs', () => {
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
-    const votingRequestsHashSubmittedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -270,235 +251,129 @@ describe('makeConsensusApi logs', () => {
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
-    const votingRequestsHashSubmittedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(res.length).toBe(0)
   })
 
-  it('should verify withdrawal via vote successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
+  it('should verify a real Hoodi submitExitRequestsData transaction', async () => {
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
+      hoodiSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE[0]
     )
-    mockEthServer(voteSubmitHashTransactionMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    ]
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
-    )
+    expect(res).toHaveLength(1)
+    expect(res[0].validatorIndex).toBe(HOODI_EXIT_VALIDATOR_INDEX)
+    expect(res[0].validatorPubkey).toBe(HOODI_EXIT_VALIDATOR_PUBKEY)
   })
 
-  it('should throw transaction hash mismatch error when verifying transaction integrity when SUBMIT_TX_HASH_ALLOWLIST used', async () => {
+  it('should ignore submitExitRequestsData transaction not in allowlist', async () => {
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      voteSubmitHashTransactionWithWrongHashMock(),
+      hoodiSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    ]
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    }
-    const loggerErrorSpy = vi.spyOn(logger, 'error')
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
-
-    expect(res.length).toBe(0)
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
-        computedHash: expect.any(String),
-        expectedHash: expect.any(String),
+        message:
+          '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted',
       })
     )
   })
 
-  it('should ignore an Easy Track voting exit', async () => {
+  it('should reject calldata changed by the RPC provider', async () => {
+    const tamperedInput = HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT.replace(
+      HOODI_EXIT_VALIDATOR_PUBKEY.slice(2),
+      '00'.repeat(48)
+    )
+
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
+      hoodiSubmitExitRequestsDataTransactionMock({ input: tamperedInput }),
       config.EXECUTION_NODE[0]
     )
+
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = []
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
+
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+      {
+        computedHash: expect.any(String),
+        expectedHash: HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
+      }
+    )
+  })
+
+  it('should reject event pubkey missing from authenticated calldata', async () => {
+    const forgedPubkey = `0x${'11'.repeat(48)}`
+    mockEthServer(
+      hoodiValidatorExitRequestEventsMock(forgedPubkey),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(
+      hoodiSubmitExitRequestsDataTransactionMock(),
+      config.EXECUTION_NODE[0]
     )
 
-    expect(res.length).toBe(0)
+    config.ORACLE_ADDRESSES_ALLOWLIST = []
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
+
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
+
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
+      expect.objectContaining({
+        message:
+          '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
+      })
+    )
   })
 
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {
-    const votingValidatorExitRequestEvents = mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+    const validatorExitRequestEvents = mockEthServer(
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
 
     mockService([])
     api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
 
-    const res = await api.fetcher.getLogs(123, 123, scope(), {})
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    expect(votingValidatorExitRequestEvents.isDone()).to.be.true
+    expect(validatorExitRequestEvents.isDone()).to.be.true
     expect(res.length).toBe(0)
     expect(api.verifier.verifyEvent).not.toHaveBeenCalled()
-  })
-
-  describe('getVotingRequestsHashSubmittedEvents', () => {
-    it('should fetch and parse voting requests hash submitted events', async () => {
-      const votingRequestsHashSubmittedEvents = mockEthServer(
-        votingRequestsHashSubmittedEventsMock(),
-        config.EXECUTION_NODE[0]
-      )
-
-      mockService()
-
-      const result = await api.fetcher.getVotingRequestsHashSubmittedEvents(
-        123,
-        123
-      )
-
-      expect(votingRequestsHashSubmittedEvents.isDone()).to.be.true
-      expect(result).toEqual({
-        '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-          '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-      })
-    })
-  })
-
-  it('should verify legacy transaction successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(legacySubmitHashTransactionMock(), config.EXECUTION_NODE[0])
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    ]
-    mockService()
-
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
-
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
-    )
-  })
-
-  it('should not verify when legacy transaction missing gasPrice', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      legacySubmitHashTransactionMissingGasPriceMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    ]
-    mockService()
-
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    }
-    const loggerErrorSpy = vi.spyOn(logger, 'error')
-
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      votingRequestsHashSubmittedEvents
-    )
-
-    expect(res.length).toBe(0)
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Event security check failed for'),
-      expect.objectContaining({
-        message:
-          '[validateTransactionType] Legacy transaction missing gasPrice',
-      })
-    )
   })
 })

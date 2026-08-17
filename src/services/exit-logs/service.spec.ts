@@ -17,7 +17,6 @@ const mockCache = {
 
 const mockFetcher = {
   getLogs: vi.fn(),
-  getVotingRequestsHashSubmittedEvents: vi.fn(() => Promise.resolve({})),
 }
 
 // Mock cache implementation
@@ -83,8 +82,6 @@ describe('ExitLogsService - getLogs', () => {
 
     makeTestingService()
     vi.clearAllMocks()
-
-    mockFetcher.getVotingRequestsHashSubmittedEvents.mockResolvedValue({})
   })
 
   it('should return cached logs if data is fully cached', async () => {
@@ -117,21 +114,13 @@ describe('ExitLogsService - getLogs', () => {
     const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
 
-    const votingEvents = { '0xhash1': '0xvotingtx1' }
-
-    mockFetcher.getVotingRequestsHashSubmittedEvents.mockResolvedValue(
-      votingEvents
-    )
-
     const lastBlockNumber = 100
     await service.getLogs(lastBlockNumber)
 
-    expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
     expect(mockFetcher.getLogs).toHaveBeenCalledWith(
       0,
       lastBlockNumber,
-      config.EJECTOR_SCOPE,
-      votingEvents
+      config.EJECTOR_SCOPE
     )
     expect(mockCache.push).toHaveBeenCalled()
     expect(mockCache.setHeader).toHaveBeenCalled()
@@ -155,40 +144,24 @@ describe('ExitLogsService - getLogs', () => {
 
     await service.getLogs(endBlock)
 
-    expect(
-      mockFetcher.getVotingRequestsHashSubmittedEvents
-    ).toHaveBeenCalledTimes(3)
-    expect(
-      mockFetcher.getVotingRequestsHashSubmittedEvents
-    ).toHaveBeenNthCalledWith(1, 0, 9999)
-    expect(
-      mockFetcher.getVotingRequestsHashSubmittedEvents
-    ).toHaveBeenNthCalledWith(2, 10000, 19999)
-    expect(
-      mockFetcher.getVotingRequestsHashSubmittedEvents
-    ).toHaveBeenNthCalledWith(3, 20000, 25001)
-
     expect(mockFetcher.getLogs).toHaveBeenCalledTimes(3)
     expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
       1,
       5000,
       14999,
-      config.EJECTOR_SCOPE,
-      {}
+      config.EJECTOR_SCOPE
     )
     expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
       2,
       15000,
       24999,
-      config.EJECTOR_SCOPE,
-      {}
+      config.EJECTOR_SCOPE
     )
     expect(mockFetcher.getLogs).toHaveBeenNthCalledWith(
       3,
       25000,
       25001,
-      config.EJECTOR_SCOPE,
-      {}
+      config.EJECTOR_SCOPE
     )
   })
 
@@ -201,38 +174,11 @@ describe('ExitLogsService - getLogs', () => {
     mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
     await service.getLogs(100)
 
-    expect(mockFetcher.getVotingRequestsHashSubmittedEvents).toHaveBeenCalled()
     expect(mockFetcher.getLogs).toHaveBeenCalledWith(
       51,
       100,
-      config.EJECTOR_SCOPE,
-      {}
+      config.EJECTOR_SCOPE
     )
     expect(logger.info).toHaveBeenCalledWith('Loading new logs from 51 to 100')
-  })
-
-  it('should not fetch voting events when TRUST_MODE is enabled', async () => {
-    config.TRUST_MODE = true
-    makeTestingService()
-
-    mockCache.getHeader.mockReturnValue({ startBlock: 0, endBlock: -1 })
-    mockCache.getAll.mockReturnValue([])
-
-    const fetchedLogs = [{ validatorIndex: '1', validatorPubkey: '0x123' }]
-    mockFetcher.getLogs.mockResolvedValue(fetchedLogs)
-    const lastBlockNumber = 100
-    await service.getLogs(lastBlockNumber)
-
-    expect(
-      mockFetcher.getVotingRequestsHashSubmittedEvents
-    ).not.toHaveBeenCalled()
-    expect(mockFetcher.getLogs).toHaveBeenCalledWith(
-      0,
-      lastBlockNumber,
-      config.EJECTOR_SCOPE,
-      {}
-    )
-    expect(mockCache.push).toHaveBeenCalled()
-    expect(mockCache.setHeader).toHaveBeenCalled()
   })
 })

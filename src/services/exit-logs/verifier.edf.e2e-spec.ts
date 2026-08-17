@@ -191,12 +191,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     verifier: ReturnType<typeof makeVerifier>,
     report: { pubkey: string; finalizedTxHash: string; toBlock: number }
   ) =>
-    verifier.verifyEvent(
-      report.pubkey,
-      report.finalizedTxHash,
-      report.toBlock,
-      {}
-    )
+    verifier.verifyEvent(report.pubkey, report.finalizedTxHash, report.toBlock)
 
   beforeAll(async () => {
     hardhat = new HardhatServer(FORK_PORT)

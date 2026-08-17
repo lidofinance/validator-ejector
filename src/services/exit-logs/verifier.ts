@@ -238,8 +238,7 @@ export const makeVerifier = (
   const verifyEvent = async (
     validatorPubkey: string,
     transactionHash: string,
-    toBlock: number,
-    votingRequestsHashSubmittedEvents: Record<string, string>
+    toBlock: number
   ) => {
     const tx = await getTransaction(transactionHash)
 
@@ -273,14 +272,13 @@ export const makeVerifier = (
         return
 
       case SUBMIT_EXIT_REQUESTS_DATA_SELECTOR:
-        // Exit request placed by an explicitly allowlisted governance tx.
-        await verifyVotingEvent(
+        // This transaction contains the full exit requests data. Its hash,
+        // unlike the hash of execute(proposalId), commits to that data.
+        await verifySubmitExitRequestsDataTransaction(
           validatorPubkey,
-          submitExitRequestsDataIface.decodeFunctionData(
-            'submitExitRequestsData',
-            input
-          ),
-          votingRequestsHashSubmittedEvents
+          tx,
+          transactionHash,
+          input
         )
         return
 
@@ -364,57 +362,34 @@ export const makeVerifier = (
     }
   }
 
-  const verifyVotingEvent = async (
+  const verifySubmitExitRequestsDataTransaction = async (
     validatorPubkey: string,
-    decoded: ethers.utils.Result,
-    votingRequestsHashSubmittedEvents: Record<string, string>
+    tx: ReturnType<typeof txDTO>['result'],
+    transactionHash: string,
+    input: string
   ) => {
-    const { data, dataFormat } = decoded.request as {
-      data: string
-      dataFormat: ethers.BigNumber
+    if (!SUBMIT_TX_HASH_ALLOWLIST.includes(transactionHash.toLowerCase())) {
+      throw new Error(
+        '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted'
+      )
     }
+
+    // Authenticate the calldata before using the submitted exit requests.
+    verifyTransactionIntegrity(tx, transactionHash)
+
+    const decoded = submitExitRequestsDataIface.decodeFunctionData(
+      'submitExitRequestsData',
+      input
+    )
+    const { data } = decoded.request as { data: string }
 
     if (!data.includes((validatorPubkey as string).slice(2)))
       throw new Error(
-        '[verifyVotingEvent] Pubkey for exit was not found in finalized tx data'
+        '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data'
       )
 
-    const exitRequestsHash = ethers.utils.keccak256(
-      ethers.utils.defaultAbiCoder.encode(
-        ['bytes', 'uint256'],
-        [data, dataFormat]
-      )
-    )
-
-    const submitExitRequestsHashTxHash =
-      votingRequestsHashSubmittedEvents[exitRequestsHash]
-    if (!submitExitRequestsHashTxHash) {
-      logger.error(
-        '[verifyVotingEvent] No corresponding RequestsHashSubmitted event found',
-        {
-          exitRequestsHash: exitRequestsHash,
-        }
-      )
-      throw new Error(
-        '[verifyVotingEvent] No corresponding RequestsHashSubmitted event found'
-      )
-    }
-
-    if (
-      SUBMIT_TX_HASH_ALLOWLIST.includes(
-        submitExitRequestsHashTxHash.toLowerCase()
-      )
-    ) {
-      logger.info(
-        '[verifyVotingEvent] submitExitRequestsHash transaction found in allowlist, verification passed'
-      )
-      const tx = await getTransaction(submitExitRequestsHashTxHash)
-      verifyTransactionIntegrity(tx, submitExitRequestsHashTxHash)
-      return
-    }
-
-    throw new Error(
-      '[verifyVotingEvent] submitExitRequestsHash transaction is not allowlisted'
+    logger.info(
+      '[verifySubmitExitRequestsDataTransaction] transaction found in allowlist, verification passed'
     )
   }
 
