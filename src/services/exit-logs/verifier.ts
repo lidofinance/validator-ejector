@@ -44,11 +44,9 @@ export const makeVerifier = (
   el: ExecutionApiService,
   {
     ORACLE_ADDRESSES_ALLOWLIST,
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
   }: {
     ORACLE_ADDRESSES_ALLOWLIST: string[]
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST: string[]
     SUBMIT_TX_HASH_ALLOWLIST: string[]
   }
 ) => {
@@ -241,9 +239,7 @@ export const makeVerifier = (
     validatorPubkey: string,
     transactionHash: string,
     toBlock: number,
-    votingRequestsHashSubmittedEvents: Record<string, string>,
-    motionCreatedEvents: Record<string, string>,
-    motionEnactedEvents: Record<string, string>
+    votingRequestsHashSubmittedEvents: Record<string, string>
   ) => {
     const tx = await getTransaction(transactionHash)
 
@@ -277,16 +273,14 @@ export const makeVerifier = (
         return
 
       case SUBMIT_EXIT_REQUESTS_DATA_SELECTOR:
-        // Exit request placed by governance (Easy Track or Aragon)
+        // Exit request placed by an explicitly allowlisted governance tx.
         await verifyVotingEvent(
           validatorPubkey,
           submitExitRequestsDataIface.decodeFunctionData(
             'submitExitRequestsData',
             input
           ),
-          votingRequestsHashSubmittedEvents,
-          motionCreatedEvents,
-          motionEnactedEvents
+          votingRequestsHashSubmittedEvents
         )
         return
 
@@ -373,9 +367,7 @@ export const makeVerifier = (
   const verifyVotingEvent = async (
     validatorPubkey: string,
     decoded: ethers.utils.Result,
-    votingRequestsHashSubmittedEvents: Record<string, string>,
-    motionCreatedEvents: Record<string, string>,
-    motionEnactedEvents: Record<string, string>
+    votingRequestsHashSubmittedEvents: Record<string, string>
   ) => {
     const { data, dataFormat } = decoded.request as {
       data: string
@@ -408,8 +400,6 @@ export const makeVerifier = (
       )
     }
 
-    // SUBMIT_TX_HASH_ALLOWLIST is designed for use with Aragon
-    // but can also be used for Easy Track in emergencies
     if (
       SUBMIT_TX_HASH_ALLOWLIST.includes(
         submitExitRequestsHashTxHash.toLowerCase()
@@ -423,49 +413,9 @@ export const makeVerifier = (
       return
     }
 
-    const motionId = motionEnactedEvents[submitExitRequestsHashTxHash]
-    if (!motionId) {
-      logger.error(
-        '[verifyVotingEvent] No corresponding MotionEnacted event found for the submitExitRequestsHash transaction',
-        {
-          submitExitRequestsHashTxHash: submitExitRequestsHashTxHash,
-        }
-      )
-      throw new Error(
-        '[verifyVotingEvent] No corresponding MotionEnacted event found for the submitExitRequestsHash transaction'
-      )
-    }
-
-    const motionCreateTxHash = motionCreatedEvents[motionId]
-    if (!motionCreateTxHash) {
-      logger.error(
-        '[verifyVotingEvent] No corresponding MotionCreated event found for the motion ID',
-        {
-          motionId: motionId,
-        }
-      )
-      throw new Error(
-        '[verifyVotingEvent] No corresponding MotionCreated event found for the motion ID'
-      )
-    }
-
-    const motionCreateTx = await getTransaction(motionCreateTxHash)
-    const recoveredAddress = await recoverAddress(motionCreateTx)
-
-    const allowlist = EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST.map(
-      (address) => address.toLowerCase()
+    throw new Error(
+      '[verifyVotingEvent] submitExitRequestsHash transaction is not allowlisted'
     )
-    if (!allowlist.includes(recoveredAddress.toLowerCase())) {
-      logger.error(
-        '[verifyVotingEvent] Motion creation transaction is not signed by a trusted address',
-        {
-          address: recoveredAddress,
-        }
-      )
-      throw new Error(
-        '[verifyVotingEvent] Motion creation transaction is not signed by a trusted address'
-      )
-    }
   }
 
   return {

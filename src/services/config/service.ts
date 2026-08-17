@@ -70,15 +70,6 @@ export const makeConfig = ({
       (oracles) => oracles.map(str),
       'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
     ),
-    EASY_TRACK_ADDRESS: optional(() => str(env.EASY_TRACK_ADDRESS)) ?? '',
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST:
-      optional(() =>
-        json_arr(
-          env.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
-          (addresses) => addresses.map(str),
-          'Please, setup EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST. Example: ["0x123","0x456"]'
-        )
-      ) ?? [],
     SUBMIT_TX_HASH_ALLOWLIST:
       optional(() =>
         json_arr(

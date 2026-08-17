@@ -22,16 +22,13 @@ export const makeExitLogsService = (
     TRUST_MODE,
     BLOCKS_PRELOAD,
     VOTING_EVENTS_FRAME_BLOCKS,
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
-    EASY_TRACK_ADDRESS,
     EJECTOR_SCOPE,
   }: ConfigService,
   metrics: MetricsService
 ) => {
   const verifier = makeVerifier(logger, el, {
     ORACLE_ADDRESSES_ALLOWLIST,
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
     SUBMIT_TX_HASH_ALLOWLIST,
   })
 
@@ -42,7 +39,6 @@ export const makeExitLogsService = (
     cl,
     {
       TRUST_MODE,
-      EASY_TRACK_ADDRESS,
     },
     metrics
   )
@@ -50,32 +46,24 @@ export const makeExitLogsService = (
   const cache = makeExitLogsCacheService()
 
   const fetchVotingEvents = async (blockFrom: number, blockTo: number) => {
-    let motionCreatedEvents: Record<string, string> = {}
     let votingRequestsHashSubmittedEvents: Record<string, string> = {}
-    let motionEnactedEvents: Record<string, string> = {}
 
     if (!TRUST_MODE) {
-      const motionFromBlock = Math.max(
+      const votingFromBlock = Math.max(
         0,
         blockFrom - VOTING_EVENTS_FRAME_BLOCKS
       )
 
-      logger.info(`Loading motion events from ${motionFromBlock} to ${blockTo}`)
+      logger.info(`Loading voting events from ${votingFromBlock} to ${blockTo}`)
       for (
-        let block = motionFromBlock;
+        let block = votingFromBlock;
         block <= blockTo;
         block += LOAD_LOGS_STEP
       ) {
         const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
         logger.info(
-          `Fetching motion events from block ${block} to ${currentBlockTo}`
+          `Fetching voting events from block ${block} to ${currentBlockTo}`
         )
-
-        const batchMotionEvents = await fetcher.getMotionCreatedEvents(
-          block,
-          currentBlockTo
-        )
-        motionCreatedEvents = { ...motionCreatedEvents, ...batchMotionEvents }
 
         const batchVotingEvents =
           await fetcher.getVotingRequestsHashSubmittedEvents(
@@ -86,23 +74,10 @@ export const makeExitLogsService = (
           ...votingRequestsHashSubmittedEvents,
           ...batchVotingEvents,
         }
-
-        const batchMotionEnactedEvents = await fetcher.getMotionEnactedEvents(
-          block,
-          currentBlockTo
-        )
-        motionEnactedEvents = {
-          ...motionEnactedEvents,
-          ...batchMotionEnactedEvents,
-        }
       }
     }
 
-    return {
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents,
-    }
+    return { votingRequestsHashSubmittedEvents }
   }
 
   const getLogs = async (lastBlockNumber: number) => {
@@ -126,11 +101,10 @@ export const makeExitLogsService = (
         : `Initial load from ${blockFrom} to ${blockTo}`
     )
 
-    const {
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents,
-    } = await fetchVotingEvents(blockFrom, blockTo)
+    const { votingRequestsHashSubmittedEvents } = await fetchVotingEvents(
+      blockFrom,
+      blockTo
+    )
 
     for (let block = blockFrom; block <= blockTo; block += LOAD_LOGS_STEP) {
       const currentBlockTo = Math.min(block + LOAD_LOGS_STEP - 1, blockTo)
@@ -140,9 +114,7 @@ export const makeExitLogsService = (
         block,
         currentBlockTo,
         EJECTOR_SCOPE,
-        motionCreatedEvents,
-        votingRequestsHashSubmittedEvents,
-        motionEnactedEvents
+        votingRequestsHashSubmittedEvents
       )
       logs.forEach((log) => cache.push(log))
 

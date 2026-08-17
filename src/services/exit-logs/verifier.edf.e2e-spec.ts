@@ -106,7 +106,6 @@ describe('verifier EDF e2e (mainnet fork)', () => {
   const makeAllowlistedVerifier = (allowlist: string[]) =>
     makeVerifier(logger, executionApi, {
       ORACLE_ADDRESSES_ALLOWLIST: allowlist,
-      EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST: [],
       SUBMIT_TX_HASH_ALLOWLIST: [],
     })
 
@@ -196,8 +195,6 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       report.pubkey,
       report.finalizedTxHash,
       report.toBlock,
-      {},
-      {},
       {}
     )
 
