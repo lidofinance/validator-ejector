@@ -243,7 +243,6 @@ describe('makeConsensusApi logs', () => {
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
     ]
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
@@ -285,7 +284,7 @@ describe('makeConsensusApi logs', () => {
           : { result: [] }
       })
 
-    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     // The event survives even though 14 of 15 chunks are empty
     expect(res.length).toBe(1)
