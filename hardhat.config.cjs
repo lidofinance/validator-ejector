@@ -10,6 +10,8 @@ module.exports = {
         // An unset CI secret arrives as an empty string, which must also
         // fall back to the public node
         url: process.env.EXECUTION_NODE || 'https://ethereum-rpc.publicnode.com',
+        // Keep contract code, roles, and the registered validator key stable.
+        blockNumber: 25782077,
       },
     },
   },
