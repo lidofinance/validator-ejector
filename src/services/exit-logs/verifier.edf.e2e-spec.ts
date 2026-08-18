@@ -41,6 +41,18 @@ const NOR_KEY_INDEX = 0
 
 const DEFAULT_ADMIN_ROLE = ethers.constants.HashZero
 
+type SendTransaction = (
+  to: string,
+  calldata: string
+) => Promise<ethers.providers.TransactionResponse>
+
+type PublishedExitRequest = {
+  pubkey: string
+  finalizedTxHash: string
+  toBlock: number
+  finalizedCalldata: string
+}
+
 const consensusIface = new ethers.utils.Interface([
   'function getMembers() view returns (address[] addresses, uint256[] lastReportedRefSlots)',
   'function getCurrentFrame() view returns (uint256 refSlot, uint256 reportProcessingDeadlineSlot)',
@@ -57,7 +69,12 @@ const consensusIface = new ethers.utils.Interface([
 const exitBusIface = new ethers.utils.Interface([
   'function getConsensusVersion() view returns (uint256)',
   'function getContractVersion() view returns (uint256)',
+  'function SUBMIT_REPORT_HASH_ROLE() view returns (bytes32)',
+  'function getRoleMember(bytes32 role, uint256 index) view returns (address)',
   'function submitReportData(tuple(uint256 consensusVersion, uint256 refSlot, uint256 requestsCount, uint256 dataFormat, bytes data) data, uint256 contractVersion)',
+  'function submitExitRequestsHash(bytes32 exitRequestsHash)',
+  'function submitExitRequestsData(tuple(bytes data, uint256 dataFormat) request)',
+  'event ValidatorExitRequest(uint256 indexed stakingModuleId, uint256 indexed nodeOperatorId, uint256 indexed validatorIndex, bytes validatorPubkey, uint256 timestamp)',
 ])
 
 const norIface = new ethers.utils.Interface([
@@ -103,43 +120,74 @@ describe('verifier EDF e2e (mainnet fork)', () => {
   let registeredPubkey: string
   let nextValidatorIndex = 1_000_000_000
 
-  const makeAllowlistedVerifier = (allowlist: string[]) =>
+  const makeAllowlistedVerifier = (
+    oracleAllowlist: string[],
+    submitTxAllowlist: string[] = []
+  ) =>
     makeVerifier(logger, executionApi, {
-      ORACLE_ADDRESSES_ALLOWLIST: allowlist,
-      SUBMIT_TX_HASH_ALLOWLIST: [],
+      ORACLE_ADDRESSES_ALLOWLIST: oracleAllowlist,
+      SUBMIT_TX_HASH_ALLOWLIST: submitTxAllowlist,
     })
+
+  const buildExitRequest = () => {
+    const validatorIndex = nextValidatorIndex++
+    const data = packExitRequest(
+      NOR_MODULE_ID,
+      NOR_NODE_OPERATOR_ID,
+      validatorIndex,
+      NOR_KEY_INDEX,
+      registeredPubkey
+    )
+    return { data, validatorIndex }
+  }
+
+  const parseExitRequest = (
+    receipt: ethers.providers.TransactionReceipt,
+    validatorIndex: number,
+    finalizedCalldata: string
+  ): PublishedExitRequest => {
+    const topic = exitBusIface.getEventTopic('ValidatorExitRequest')
+    const logs = receipt.logs.filter(
+      (log) =>
+        log.address.toLowerCase() === exitBus.address.toLowerCase() &&
+        log.topics[0] === topic
+    )
+
+    expect(logs).toHaveLength(1)
+    const { args } = exitBusIface.parseLog(logs[0])
+    expect(args.stakingModuleId.toNumber()).toBe(NOR_MODULE_ID)
+    expect(args.nodeOperatorId.toNumber()).toBe(NOR_NODE_OPERATOR_ID)
+    expect(args.validatorIndex.toNumber()).toBe(validatorIndex)
+    expect(args.validatorPubkey).toBe(registeredPubkey)
+
+    return {
+      pubkey: args.validatorPubkey,
+      finalizedTxHash: receipt.transactionHash,
+      toBlock: receipt.blockNumber,
+      finalizedCalldata,
+    }
+  }
 
   // Runs the real report lifecycle on the fork: the member reaches consensus
   // on HashConsensus, then submits the report data to the Exit Bus, which
   // emits ValidatorExitRequest. `send` abstracts who the member is: an EOA
   // sends the calldata itself, a delegate wraps it in execute().
-  const publishExitRequest = async (
-    send: (
-      to: string,
-      calldata: string
-    ) => Promise<ethers.providers.TransactionResponse>
-  ) => {
+  const publishExitRequestsViaOracleReport = async (
+    send: SendTransaction
+  ): Promise<PublishedExitRequest> => {
     // A fresh frame per report, so earlier processed reports do not clash
     await provider.send('evm_increaseTime', [frameSeconds])
     await provider.send('evm_mine', [])
 
-    const pubkey = registeredPubkey
     const [refSlot] = await consensus.getCurrentFrame()
-    const requestsData = packExitRequest(
-      NOR_MODULE_ID,
-      NOR_NODE_OPERATOR_ID,
-      nextValidatorIndex++,
-      NOR_KEY_INDEX,
-      pubkey
-    )
+    const { data, validatorIndex } = buildExitRequest()
     const reportData = [
       consensusVersion,
       refSlot,
       1,
       DATA_FORMAT_LIST_WITH_KEY_INDEX,
-      requestsData,
+      data,
     ]
-
     const reportHash = ethers.utils.keccak256(
       ethers.utils.defaultAbiCoder.encode(
         [
@@ -160,22 +208,55 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       )
     ).wait()
 
-    const finalizedTx = await send(
-      exitBus.address,
-      exitBusIface.encodeFunctionData('submitReportData', [
-        reportData,
-        contractVersion,
-      ])
+    const finalizedCalldata = exitBusIface.encodeFunctionData(
+      'submitReportData',
+      [reportData, contractVersion]
     )
+    const finalizedTx = await send(exitBus.address, finalizedCalldata)
     const receipt = await finalizedTx.wait()
     expect(receipt.status).toBe(1)
 
-    const toBlock = await provider.getBlockNumber()
-    return { pubkey, finalizedTxHash: finalizedTx.hash, toBlock }
+    return parseExitRequest(receipt, validatorIndex, finalizedCalldata)
+  }
+
+  const publishExitRequestsViaTransaction = async (
+    send: SendTransaction
+  ): Promise<PublishedExitRequest> => {
+    const { data, validatorIndex } = buildExitRequest()
+    const exitRequestsHash = ethers.utils.keccak256(
+      ethers.utils.defaultAbiCoder.encode(
+        ['bytes', 'uint256'],
+        [data, DATA_FORMAT_LIST_WITH_KEY_INDEX]
+      )
+    )
+
+    const submitHashRole = await exitBus.SUBMIT_REPORT_HASH_ROLE()
+    const submitHashRoleHolder = await exitBus.getRoleMember(submitHashRole, 0)
+    await provider.send('hardhat_impersonateAccount', [submitHashRoleHolder])
+    await provider.send('hardhat_setBalance', [
+      submitHashRoleHolder,
+      ethers.utils.hexValue(ethers.utils.parseEther('10')),
+    ])
+    const submitHashSigner = provider.getSigner(submitHashRoleHolder)
+    await (
+      await exitBus
+        .connect(submitHashSigner)
+        .submitExitRequestsHash(exitRequestsHash)
+    ).wait()
+
+    const finalizedCalldata = exitBusIface.encodeFunctionData(
+      'submitExitRequestsData',
+      [{ data, dataFormat: DATA_FORMAT_LIST_WITH_KEY_INDEX }]
+    )
+    const finalizedTx = await send(exitBus.address, finalizedCalldata)
+    const receipt = await finalizedTx.wait()
+    expect(receipt.status).toBe(1)
+
+    return parseExitRequest(receipt, validatorIndex, finalizedCalldata)
   }
 
   const sendAsEoa =
-    (signer: ethers.providers.JsonRpcSigner) =>
+    (signer: ethers.providers.JsonRpcSigner): SendTransaction =>
     (to: string, calldata: string) =>
       signer.sendTransaction({ to, data: calldata })
 
@@ -183,13 +264,13 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     (
       delegationContract: ethers.Contract,
       delegate: ethers.providers.JsonRpcSigner
-    ) =>
+    ): SendTransaction =>
     (to: string, calldata: string) =>
       delegationContract.connect(delegate).execute(to, calldata)
 
   const verify = (
     verifier: ReturnType<typeof makeVerifier>,
-    report: { pubkey: string; finalizedTxHash: string; toBlock: number }
+    report: PublishedExitRequest
   ) =>
     verifier.verifyEvent(report.pubkey, report.finalizedTxHash, report.toBlock)
 
@@ -294,7 +375,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     await hardhat?.stop()
   })
 
-  describe('the oracle member is an EOA', () => {
+  describe('oracle report path with an EOA', () => {
     beforeAll(async () => {
       await (
         await consensus.connect(admin).addMember(memberEoaAddress, 1)
@@ -308,14 +389,18 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     }, 120_000)
 
     it('accepts a report when the EOA is allowlisted', async () => {
-      const report = await publishExitRequest(sendAsEoa(memberEoa))
+      const report = await publishExitRequestsViaOracleReport(
+        sendAsEoa(memberEoa)
+      )
 
       const verifier = makeAllowlistedVerifier([memberEoaAddress])
       await expect(verify(verifier, report)).resolves.toBeUndefined()
     })
 
     it('rejects a report when the EOA is not allowlisted', async () => {
-      const report = await publishExitRequest(sendAsEoa(memberEoa))
+      const report = await publishExitRequestsViaOracleReport(
+        sendAsEoa(memberEoa)
+      )
 
       const verifier = makeAllowlistedVerifier([
         ethers.Wallet.createRandom().address,
@@ -326,7 +411,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     })
   })
 
-  describe('the oracle member is an EDF DelegationContract', () => {
+  describe('oracle report path with an EDF delegate', () => {
     let delegationContract: ethers.Contract
 
     beforeAll(async () => {
@@ -348,7 +433,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     }, 120_000)
 
     it('accepts a report submitted through execute() when the delegate is allowlisted', async () => {
-      const report = await publishExitRequest(
+      const report = await publishExitRequestsViaOracleReport(
         sendAsDelegate(delegationContract, firstDelegate)
       )
 
@@ -357,7 +442,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     })
 
     it('rejects a delegate report when the delegate is not allowlisted', async () => {
-      const report = await publishExitRequest(
+      const report = await publishExitRequestsViaOracleReport(
         sendAsDelegate(delegationContract, firstDelegate)
       )
 
@@ -370,7 +455,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     })
 
     it('verifies reports across a rotation while both delegates are allowlisted, and drops the old ones when the old delegate is removed', async () => {
-      const firstReport = await publishExitRequest(
+      const firstReport = await publishExitRequestsViaOracleReport(
         sendAsDelegate(delegationContract, firstDelegate)
       )
 
@@ -385,7 +470,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       await provider.send('evm_mine', [])
       expect(await delegationContract.getDelegate()).toBe(secondDelegateAddress)
 
-      const secondReport = await publishExitRequest(
+      const secondReport = await publishExitRequestsViaOracleReport(
         sendAsDelegate(delegationContract, secondDelegate)
       )
 
@@ -404,6 +489,73 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       ).resolves.toBeUndefined()
       await expect(verify(newDelegateOnly, firstReport)).rejects.toThrow(
         'Transaction is not signed by a trusted Oracle'
+      )
+    })
+  })
+
+  describe('transaction allowlist path with an EOA', () => {
+    it('accepts the final transaction when its hash is allowlisted', async () => {
+      const report = await publishExitRequestsViaTransaction(
+        sendAsEoa(memberEoa)
+      )
+
+      const verifier = makeAllowlistedVerifier([], [report.finalizedTxHash])
+      await expect(verify(verifier, report)).resolves.toBeUndefined()
+    })
+
+    it('rejects the final transaction when its hash is not allowlisted', async () => {
+      const report = await publishExitRequestsViaTransaction(
+        sendAsEoa(memberEoa)
+      )
+
+      const emptyAllowlist = makeAllowlistedVerifier([])
+      await expect(verify(emptyAllowlist, report)).rejects.toThrow(
+        '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted'
+      )
+
+      const wrongHash = ethers.utils.hexlify(ethers.utils.randomBytes(32))
+      const wrongAllowlist = makeAllowlistedVerifier([], [wrongHash])
+      await expect(verify(wrongAllowlist, report)).rejects.toThrow(
+        '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted'
+      )
+    })
+  })
+
+  describe('transaction allowlist path with an EDF delegate', () => {
+    let delegationContract: ethers.Contract
+
+    beforeAll(async () => {
+      const factory = new ethers.ContractFactory(
+        delegationContractAbi as unknown as ethers.ContractInterface,
+        delegationContractFixture.bytecode,
+        owner
+      )
+      delegationContract = await factory.deploy(
+        await owner.getAddress(),
+        firstDelegateAddress,
+        3600
+      )
+      await delegationContract.deployed()
+    }, 120_000)
+
+    it('accepts the outer execute() transaction when its hash is allowlisted', async () => {
+      const report = await publishExitRequestsViaTransaction(
+        sendAsDelegate(delegationContract, firstDelegate)
+      )
+
+      const verifier = makeAllowlistedVerifier([], [report.finalizedTxHash])
+      await expect(verify(verifier, report)).resolves.toBeUndefined()
+    })
+
+    it('rejects a hash derived from the inner calldata', async () => {
+      const report = await publishExitRequestsViaTransaction(
+        sendAsDelegate(delegationContract, firstDelegate)
+      )
+      const innerCalldataHash = ethers.utils.keccak256(report.finalizedCalldata)
+      const verifier = makeAllowlistedVerifier([], [innerCalldataHash])
+
+      await expect(verify(verifier, report)).rejects.toThrow(
+        '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted'
       )
     })
   })
