@@ -84,6 +84,10 @@ export const makeConfig = ({
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
     BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    LOAD_LOGS_STEP: Math.max(
+      1,
+      Math.floor(optional(() => num(env.LOAD_LOGS_STEP)) || 10000)
+    ),
     VALIDATORS_BATCH_SIZE: Math.max(
       1,
       Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
@@ -225,9 +229,28 @@ export const makeWebhookProcessorConfig = ({
     WEBHOOK_ABORT_TIMEOUT_MS:
       optional(() => num(env.WEBHOOK_ABORT_TIMEOUT_MS)) ?? 10_000,
     WEBHOOK_MAX_RETRIES: optional(() => num(env.WEBHOOK_MAX_RETRIES)) ?? 0,
+    WEBHOOK_TOKEN: webhookToken(env),
+    WEBHOOK_HEADER: optional(() => str(env.WEBHOOK_HEADER)) ?? 'Authorization',
   }
 
   return config
+}
+
+const webhookToken = (env: NodeJS.ProcessEnv): string | undefined => {
+  if (env.WEBHOOK_TOKEN) return env.WEBHOOK_TOKEN
+
+  const tokenFile = env.WEBHOOK_TOKEN_FILE
+  if (tokenFile) {
+    try {
+      return readFileSync(tokenFile, 'utf-8').trim()
+    } catch (e) {
+      throw new Error('Unable to load WEBHOOK_TOKEN_FILE', {
+        cause: e,
+      })
+    }
+  }
+
+  return undefined
 }
 
 const LOGGER_SECRET_URL_LIST_ENV_VARS = new Set([

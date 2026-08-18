@@ -11,8 +11,6 @@ import { makeExitLogsCacheService } from './cache.js'
 
 export type ExitLogsService = ReturnType<typeof makeExitLogsService>
 
-const LOAD_LOGS_STEP = 10000
-
 export const makeExitLogsService = (
   logger: ReturnType<typeof makeLogger>,
   el: ExecutionApiService,
@@ -21,6 +19,7 @@ export const makeExitLogsService = (
     ORACLE_ADDRESSES_ALLOWLIST,
     TRUST_MODE,
     BLOCKS_PRELOAD,
+    LOAD_LOGS_STEP,
     SUBMIT_TX_HASH_ALLOWLIST,
     EJECTOR_SCOPE,
   }: ConfigService,
