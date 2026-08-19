@@ -41,6 +41,24 @@ const isRpcServerError = (json: unknown): boolean => {
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
+export const createExecutionRequestHeaders = (
+  JWT_SECRET_PATH: string | undefined,
+  jwtService?: JwtService
+) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  if (JWT_SECRET_PATH && jwtService) {
+    const token = jwtService.generateToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+
+  return headers
+}
+
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
@@ -57,24 +75,9 @@ export const makeExecutionApi = (
   let exitBusAddress: string
   let consensusAddress: string
 
-  const createRequestHeaders = () => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-
-    if (JWT_SECRET_PATH && jwtService) {
-      const token = jwtService.generateToken()
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-    }
-
-    return headers
-  }
-
   const elRequest = (requestConfig: RequestConfig) =>
     fallback(async (url) => {
-      const headers = createRequestHeaders()
+      const headers = createExecutionRequestHeaders(JWT_SECRET_PATH, jwtService)
       const res = await request(url, { ...requestConfig, headers })
       const json = await safelyParseJsonResponse(res, logger)
       if (isRpcServerError(json)) {

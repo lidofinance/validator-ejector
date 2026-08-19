@@ -1,4 +1,4 @@
-import { configBase } from '../../test/config.js'
+import { configBase, mockConfig } from '../../test/config.js'
 import {
   makeConfig,
   makeLoggerConfig,
@@ -42,6 +42,14 @@ describe('config module', () => {
       makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
     expect(makeConf).not.toThrow()
+  })
+
+  describe('BLOCKS_PRELOAD', () => {
+    test.each(['', '   '])('defaults the blank value %#', (value) => {
+      const config = mockConfig(logger, { BLOCKS_PRELOAD: value })
+
+      expect(config.BLOCKS_PRELOAD).toBe(50000)
+    })
   })
 
   test('invalid optional bool config includes env var name', () => {
