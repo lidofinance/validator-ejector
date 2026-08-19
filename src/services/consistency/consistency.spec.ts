@@ -1,10 +1,11 @@
 import nock from 'nock'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConsistencyChecker, makeConsistencyChecker } from './service.js'
 import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
 import { mockLogger } from '../../test/logger.js'
 import { mockConfig } from '../../test/config.js'
+import type { JwtService } from '../jwt/service.js'
 
 const elChainIdMock = (hex: string) => ({
   jsonrpc: '2.0',
@@ -70,6 +71,33 @@ describe('makeConsistencyChecker', () => {
       .reply(200, clDepositContractMock('1'))
 
     await expect(checker.checkChainIds()).resolves.toEqual({ chainId: 1 })
+  })
+
+  it('authenticates every EL chain-id request when JWT is configured', async () => {
+    const config = mockConfig(logger, {
+      EXECUTION_NODE: 'http://el-a.example:8545,http://el-b.example:8545',
+      CONSENSUS_NODE: 'http://cl.example:5051',
+      JWT_SECRET_PATH: '/jwt.hex',
+    })
+    const jwtService = {
+      generateToken: vi.fn(() => 'startup-token'),
+    } as unknown as JwtService
+    const checker = makeConsistencyChecker(request, logger, config, jwtService)
+
+    nock('http://el-a.example:8545')
+      .matchHeader('Authorization', 'Bearer startup-token')
+      .post('/')
+      .reply(200, elChainIdMock('0x1'))
+    nock('http://el-b.example:8545')
+      .matchHeader('Authorization', 'Bearer startup-token')
+      .post('/')
+      .reply(200, elChainIdMock('0x1'))
+    nock('http://cl.example:5051')
+      .get('/eth/v1/config/deposit_contract')
+      .reply(200, clDepositContractMock('1'))
+
+    await expect(checker.checkChainIds()).resolves.toEqual({ chainId: 1 })
+    expect(jwtService.generateToken).toHaveBeenCalledTimes(2)
   })
 
   it('throws when EL endpoints report different chain ids', async () => {

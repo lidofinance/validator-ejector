@@ -70,15 +70,6 @@ export const makeConfig = ({
       (oracles) => oracles.map(str),
       'Please, setup ORACLE_ADDRESSES_ALLOWLIST. Example: ["0x123","0x123"]'
     ),
-    EASY_TRACK_ADDRESS: optional(() => str(env.EASY_TRACK_ADDRESS)) ?? '',
-    EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST:
-      optional(() =>
-        json_arr(
-          env.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST,
-          (addresses) => addresses.map(str),
-          'Please, setup EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST. Example: ["0x123","0x456"]'
-        )
-      ) ?? [],
     SUBMIT_TX_HASH_ALLOWLIST:
       optional(() =>
         json_arr(
@@ -92,7 +83,10 @@ export const makeConfig = ({
 
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
-    BLOCKS_PRELOAD: optional(() => num(env.BLOCKS_PRELOAD)) ?? 50000, // 7 days of blocks
+    BLOCKS_PRELOAD: Math.max(
+      1,
+      Math.floor(optional(() => num(env.BLOCKS_PRELOAD)) || 50000)
+    ), // 7 days of blocks
     LOAD_LOGS_STEP: Math.max(
       1,
       Math.floor(optional(() => num(env.LOAD_LOGS_STEP)) || 10000)
@@ -101,8 +95,6 @@ export const makeConfig = ({
       1,
       Math.floor(optional(() => num(env.VALIDATORS_BATCH_SIZE)) || 1000)
     ),
-    VOTING_EVENTS_FRAME_BLOCKS:
-      optional(() => num(env.VOTING_EVENTS_FRAME_BLOCKS)) ?? 216000, // ~30 days
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
