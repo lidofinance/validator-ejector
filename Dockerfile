@@ -1,4 +1,4 @@
-FROM node:22-alpine as building
+FROM node:16-alpine as building
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY ./src ./src
 COPY ./encryptor ./encryptor
 RUN yarn build
 
-FROM node:22-alpine
+FROM node:16-alpine
 
 WORKDIR /app
 
