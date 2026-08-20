@@ -11,18 +11,12 @@ import {
   oracleSubmitReportDataTransactionMock,
   oracleSubmitReportTransactionMock,
   oracleConsensusReachedEventsMock,
-  votingRequestsHashSubmittedEventsMock,
-  easyTrackMotionCreatedEventsMock,
-  easyTrackMotionEnactedEventsMock,
-  votingValidatorExitRequestEventsMock,
-  votingSubmitExitRequestsDataTransactionMock,
-  voteEasyTrackMotionCreateTransactionMock,
-  voteSubmitHashTransactionMock,
-  voteSubmitHashTransactionWithWrongHashMock,
-  legacySubmitHashTransactionMock,
-  legacySubmitHashTransactionMissingGasPriceMock,
-  legacyEasyTrackMotionCreateTransactionMock,
-  legacyEasyTrackMotionCreateTransactionMissingGasPriceMock,
+  hoodiValidatorExitRequestEventsMock,
+  hoodiSubmitExitRequestsDataTransactionMock,
+  HOODI_EXIT_VALIDATOR_INDEX,
+  HOODI_EXIT_VALIDATOR_PUBKEY,
+  HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT,
+  HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -60,10 +54,6 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
-    Object.defineProperty(executionApi, 'easyTrackAddress', {
-      get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
-    })
-
     const consensusApi = {
       validatePublicKeys: vi.fn().mockResolvedValue(new Set(validatorIndices)),
     } as unknown as ConsensusApiService
@@ -92,30 +82,12 @@ describe('makeConsensusApi logs', () => {
       oracleValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
-    const votingValidatorExitRequestEvents = mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-
     config.TRUST_MODE = true
     mockService()
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {}
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(oracleValidatorExitRequestEvents.isDone()).to.be.true
-    expect(votingValidatorExitRequestEvents.isDone()).to.be.false
     expect(res.length).toBe(1)
     expect(res[0].stakingModuleId).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
@@ -163,7 +135,6 @@ describe('makeConsensusApi logs', () => {
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
     ]
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
@@ -188,17 +159,7 @@ describe('makeConsensusApi logs', () => {
     mockEthServer(oracleConsensusReachedEventsMock(), primary)
     mockEthServer(oracleSubmitReportTransactionMock(), primary)
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      {},
-      {}
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(primaryTxScope.isDone()).toBe(true)
     expect(secondaryTxScope.isDone()).toBe(true)
@@ -262,29 +223,90 @@ describe('makeConsensusApi logs', () => {
     config.ORACLE_ADDRESSES_ALLOWLIST = [
       '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
     ]
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {}
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(res.length).toBe(1)
     expect(res[0].validatorIndex).toBe('351636')
     expect(res[0].validatorPubkey).toBe(
       '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
     )
+  })
+
+  it('should find ConsensusReached in the chunked ORACLE_FRAME_BLOCKS window when LOAD_LOGS_STEP is small', async () => {
+    config = mockConfig(logger, {
+      EXECUTION_NODE: 'http://localhost:4455',
+      LOAD_LOGS_STEP: 500,
+    })
+    config.ORACLE_ADDRESSES_ALLOWLIST = [
+      '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+    mockService()
+
+    mockEthServer(
+      oracleValidatorExitRequestEventsMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+
+    const consensusMock = oracleConsensusReachedEventsMock()
+    const consensusTopic = consensusMock.result.result[0].topics[0]
+    const consensusEventBlock = parseInt(
+      consensusMock.result.result[0].blockNumber,
+      16
+    )
+    // Verifier window: exit request event block (0x855ad2) minus
+    // ORACLE_FRAME_BLOCKS (7200), split by LOAD_LOGS_STEP=500 into 15 chunks
+    const expectedChunks = 15
+    const ranges: [number, number][] = []
+    nock(config.EXECUTION_NODE[0])
+      .post(
+        '/',
+        (body) =>
+          body.method === 'eth_getLogs' &&
+          body.params[0].topics[0] === consensusTopic
+      )
+      .times(expectedChunks)
+      .reply(200, (_uri, body: any) => {
+        const from = parseInt(body.params[0].fromBlock, 16)
+        const to = parseInt(body.params[0].toBlock, 16)
+        ranges.push([from, to])
+        // Only the chunk actually covering the event block returns it
+        return from <= consensusEventBlock && consensusEventBlock <= to
+          ? consensusMock.result
+          : { result: [] }
+      })
+
+    const res = await api.fetcher.getLogs(123, 123, scope())
+
+    // The event survives even though 14 of 15 chunks are empty
+    expect(res.length).toBe(1)
+    expect(res[0].validatorIndex).toBe('351636')
+
+    // The chunks cover exactly the toBlock-7200..toBlock window,
+    // contiguously — no gaps, no overlaps, pinned endpoints
+    const exitEventBlock = parseInt(
+      oracleValidatorExitRequestEventsMock().result.result[0].blockNumber,
+      16
+    )
+    expect(ranges.length).toBe(expectedChunks)
+    expect(ranges[0][0]).toBe(exitEventBlock - 7200)
+    expect(ranges[ranges.length - 1][1]).toBe(exitEventBlock)
+    for (let i = 1; i < ranges.length; i++) {
+      expect(ranges[i][0]).toBe(ranges[i - 1][1] + 1)
+    }
+    expect(
+      ranges.filter(
+        ([from, to]) => from <= consensusEventBlock && consensusEventBlock <= to
+      ).length
+    ).toBe(1)
   })
 
   it('should not verify withdrawal via oracle if recoveredAddress not in ORACLE_ADDRESSES_ALLOWLIST', async () => {
@@ -300,508 +322,132 @@ describe('makeConsensusApi logs', () => {
     mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = ['0x222']
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
     config.SUBMIT_TX_HASH_ALLOWLIST = []
     mockService()
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {}
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
+    const res = await api.fetcher.getLogs(123, 123, scope())
 
     expect(res.length).toBe(0)
   })
 
-  it('should verify withdrawal via vote successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
+  it('should verify a real Hoodi submitExitRequestsData transaction', async () => {
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
+      hoodiSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE[0]
     )
-    mockEthServer(voteSubmitHashTransactionMock(), config.EXECUTION_NODE[0])
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    ]
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const motionCreatedEvents = {}
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x32f6af0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    }
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
-    )
+    expect(res).toHaveLength(1)
+    expect(res[0].validatorIndex).toBe(HOODI_EXIT_VALIDATOR_INDEX)
+    expect(res[0].validatorPubkey).toBe(HOODI_EXIT_VALIDATOR_PUBKEY)
   })
 
-  it('should throw transaction hash mismatch error when verifying transaction integrity when SUBMIT_TX_HASH_ALLOWLIST used', async () => {
+  it('should ignore submitExitRequestsData transaction not in allowlist', async () => {
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      voteSubmitHashTransactionWithWrongHashMock(),
+      hoodiSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    ]
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const motionCreatedEvents = {}
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xtestf0779f3f8f8286e4dccfacfe2eb0b073d1be0dffaf7b484b5aee87a6478',
-    }
-    const motionEnactedEvents = {}
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    const loggerErrorSpy = vi.spyOn(logger, 'error')
-
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
-
-    expect(res.length).toBe(0)
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
-        computedHash: expect.any(String),
-        expectedHash: expect.any(String),
+        message:
+          '[verifySubmitExitRequestsDataTransaction] transaction is not allowlisted',
       })
     )
   })
 
-  it('should verify withdrawal via vote successfully when transaction in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST', async () => {
+  it('should reject calldata changed by the RPC provider', async () => {
+    const tamperedInput = HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT.replace(
+      HOODI_EXIT_VALIDATOR_PUBKEY.slice(2),
+      '00'.repeat(48)
+    )
+
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      voteEasyTrackMotionCreateTransactionMock(),
+      hoodiSubmitExitRequestsDataTransactionMock({ input: tamperedInput }),
       config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = [
-      '0xfAd931F268dc5f8E5cdc3000baAaC0cbdb4E0a9C',
-    ]
-    config.SUBMIT_TX_HASH_ALLOWLIST = []
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-    }
-    const motionEnactedEvents = {
-      '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd': '1',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      '[verifyTransactionIntegrity] Transaction hash mismatch detected',
+      {
+        computedHash: expect.any(String),
+        expectedHash: HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
+      }
     )
   })
 
-  it('should not verify withdrawal via vote when transaction not in EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and not in SUBMIT_TX_HASH_ALLOWLIST', async () => {
+  it('should reject event pubkey missing from authenticated calldata', async () => {
+    const forgedPubkey = `0x${'11'.repeat(48)}`
     mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+      hoodiValidatorExitRequestEventsMock(forgedPubkey),
       config.EXECUTION_NODE[0]
     )
     mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      voteEasyTrackMotionCreateTransactionMock(),
+      hoodiSubmitExitRequestsDataTransactionMock(),
       config.EXECUTION_NODE[0]
     )
 
     config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = []
-    mockService()
+    config.SUBMIT_TX_HASH_ALLOWLIST = [HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX]
+    mockService([HOODI_EXIT_VALIDATOR_INDEX])
 
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {}
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
+
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
+      expect.objectContaining({
+        message:
+          '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
+      })
     )
-
-    expect(res.length).toBe(0)
-  })
-
-  it('should not verify withdrawal via vote when EASY_TRACK_ADDRESS is empty', async () => {
-    const votingValidatorExitRequestEvents = mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    mockEthServer(
-      voteEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.EASY_TRACK_ADDRESS = ''
-    mockService()
-
-    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
-
-    expect(votingValidatorExitRequestEvents.isDone()).to.be.true
-    expect(res.length).toBe(0)
   })
 
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {
-    const votingValidatorExitRequestEvents = mockEthServer(
-      votingValidatorExitRequestEventsMock(),
+    const validatorExitRequestEvents = mockEthServer(
+      hoodiValidatorExitRequestEventsMock(),
       config.EXECUTION_NODE[0]
     )
 
-    config.EASY_TRACK_ADDRESS = ''
     mockService([])
     api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
 
-    const res = await api.fetcher.getLogs(123, 123, scope(), {}, {}, {})
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
 
-    expect(votingValidatorExitRequestEvents.isDone()).to.be.true
+    expect(validatorExitRequestEvents.isDone()).to.be.true
     expect(res.length).toBe(0)
     expect(api.verifier.verifyEvent).not.toHaveBeenCalled()
-  })
-
-  it('should fetch motion created events correctly', async () => {
-    const easyTrackMotionCreatedEvents = mockEthServer(
-      easyTrackMotionCreatedEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.EASY_TRACK_ADDRESS = '0x0000000000000000000000000000000000000000'
-    mockService()
-
-    const motionEvents = await api.fetcher.getMotionCreatedEvents(123, 123)
-
-    expect(easyTrackMotionCreatedEvents.isDone()).to.be.true
-    expect(motionEvents).toEqual({
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    })
-  })
-
-  it('should return empty object when EASY_TRACK_ADDRESS is not set', async () => {
-    const easyTrackMotionCreatedEvents = mockEthServer(
-      easyTrackMotionCreatedEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.EASY_TRACK_ADDRESS = ''
-    mockService()
-
-    const motionEvents = await api.fetcher.getMotionCreatedEvents(123, 123)
-
-    expect(easyTrackMotionCreatedEvents.isDone()).to.be.false
-    expect(motionEvents).toEqual({})
-  })
-
-  describe('getVotingRequestsHashSubmittedEvents', () => {
-    it('should fetch and parse voting requests hash submitted events', async () => {
-      const votingRequestsHashSubmittedEvents = mockEthServer(
-        votingRequestsHashSubmittedEventsMock(),
-        config.EXECUTION_NODE[0]
-      )
-
-      mockService()
-
-      const result = await api.fetcher.getVotingRequestsHashSubmittedEvents(
-        123,
-        123
-      )
-
-      expect(votingRequestsHashSubmittedEvents.isDone()).to.be.true
-      expect(result).toEqual({
-        '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-          '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-      })
-    })
-  })
-
-  describe('getMotionEnactedEvents', () => {
-    it('should fetch and parse motion enacted events', async () => {
-      const easyTrackMotionEnactedEvents = mockEthServer(
-        easyTrackMotionEnactedEventsMock(),
-        config.EXECUTION_NODE[0]
-      )
-
-      mockService()
-
-      const result = await api.fetcher.getMotionEnactedEvents(123, 123)
-
-      expect(easyTrackMotionEnactedEvents.isDone()).to.be.true
-      expect(result).toEqual({
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd':
-          '1',
-      })
-    })
-
-    it('should return empty object when EASY_TRACK_ADDRESS is not set', async () => {
-      config.EASY_TRACK_ADDRESS = ''
-      mockService()
-
-      const result = await api.fetcher.getMotionEnactedEvents(123, 123)
-
-      expect(result).toEqual({})
-    })
-  })
-
-  it('should verify legacy transaction successfully when transaction in SUBMIT_TX_HASH_ALLOWLIST', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(legacySubmitHashTransactionMock(), config.EXECUTION_NODE[0])
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    ]
-    mockService()
-
-    const motionCreatedEvents = {}
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    }
-    const motionEnactedEvents = {}
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
-
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
-    )
-  })
-
-  it('should not verify when legacy transaction missing gasPrice', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      legacySubmitHashTransactionMissingGasPriceMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = []
-    config.SUBMIT_TX_HASH_ALLOWLIST = [
-      '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    ]
-    mockService()
-
-    const motionCreatedEvents = {}
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0x2802b350ef8a88114b8f6a3251125dd3c925a44faf5c8cf3f7fb5b200ec5a3ce',
-    }
-    const motionEnactedEvents = {}
-
-    const loggerErrorSpy = vi.spyOn(logger, 'error')
-
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
-
-    expect(res.length).toBe(0)
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Event security check failed for'),
-      expect.objectContaining({
-        message:
-          '[validateTransactionType] Legacy transaction missing gasPrice',
-      })
-    )
-  })
-
-  it('should verify withdrawal via Easy Track motion successfully when legacy transaction with recoverAddress', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      legacyEasyTrackMotionCreateTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = [
-      '0xD23C5258cEeD5Adf06713A7A21930F339F57c836',
-    ]
-    config.SUBMIT_TX_HASH_ALLOWLIST = []
-    mockService()
-
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-    }
-    const motionEnactedEvents = {
-      '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd': '1',
-    }
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
-
-    expect(res.length).toBe(1)
-    expect(res[0].validatorIndex).toBe('351636')
-    expect(res[0].validatorPubkey).toBe(
-      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
-    )
-  })
-
-  it('should not verify withdrawal via Easy Track when legacy transaction missing gasPrice in recoverAddress', async () => {
-    mockEthServer(
-      votingValidatorExitRequestEventsMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      votingSubmitExitRequestsDataTransactionMock(),
-      config.EXECUTION_NODE[0]
-    )
-    mockEthServer(
-      legacyEasyTrackMotionCreateTransactionMissingGasPriceMock(),
-      config.EXECUTION_NODE[0]
-    )
-
-    config.ORACLE_ADDRESSES_ALLOWLIST = []
-    config.EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST = [
-      '0xD23C5258cEeD5Adf06713A7A21930F339F57c836',
-    ]
-    config.SUBMIT_TX_HASH_ALLOWLIST = []
-    mockService()
-
-    const motionCreatedEvents = {
-      '1': '0xa2074472dfd9a1d2040e907e33473d8e660ca99ea50d98d1838ca97cc9233d26',
-    }
-    const votingRequestsHashSubmittedEvents = {
-      '0xbf69f106a2ad7915a01b4c49d4ce14c0bcf8d221dbe214a957863b5a29c301ac':
-        '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd',
-    }
-    const motionEnactedEvents = {
-      '0xe5b1eb2f6bb114961125040d7341bc09c179ca96b85b1c1a774ef772c7567ccd': '1',
-    }
-
-    const loggerErrorSpy = vi.spyOn(logger, 'error')
-
-    const res = await api.fetcher.getLogs(
-      123,
-      123,
-      scope(),
-      motionCreatedEvents,
-      votingRequestsHashSubmittedEvents,
-      motionEnactedEvents
-    )
-
-    expect(res.length).toBe(0)
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Event security check failed for'),
-      expect.objectContaining({
-        message:
-          '[validateTransactionType] Legacy transaction missing gasPrice',
-      })
-    )
   })
 })

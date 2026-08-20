@@ -24,102 +24,11 @@ export const makeExitLogsFetcherService = (
   cl: ConsensusApiService,
   {
     TRUST_MODE,
-    EASY_TRACK_ADDRESS,
   }: {
     TRUST_MODE: boolean
-    EASY_TRACK_ADDRESS: string
   },
   { eventSecurityVerification }: MetricsService
 ) => {
-  const getVotingRequestsHashSubmittedEvents = async (
-    fromBlock: number,
-    toBlock: number
-  ) => {
-    const event = ethers.utils.Fragment.from(
-      'event RequestsHashSubmitted(bytes32 exitRequestsHash)'
-    )
-    const iface = new ethers.utils.Interface([event])
-    const eventTopic = iface.getEventTopic(event.name)
-
-    const { result } = await el.getLogs(fromBlock, toBlock, el.exitBusAddress, [
-      eventTopic,
-    ])
-
-    logger.info('Loaded RequestsHashSubmitted events', {
-      amount: result.length,
-    })
-
-    const eventsMap: Record<string, string> = {}
-
-    for (const log of result) {
-      const parsed = iface.parseLog(log)
-      eventsMap[parsed.args.exitRequestsHash] = log.transactionHash
-    }
-
-    return eventsMap
-  }
-
-  const getMotionCreatedEvents = async (fromBlock: number, toBlock: number) => {
-    if (!EASY_TRACK_ADDRESS) {
-      return {}
-    }
-
-    const event = ethers.utils.Fragment.from(
-      'event MotionCreated(uint256 indexed _motionId, address _creator, address indexed _evmScriptFactory, bytes _evmScriptCallData, bytes _evmScript)'
-    )
-    const iface = new ethers.utils.Interface([event])
-    const eventTopic = iface.getEventTopic(event.name)
-
-    const { result } = await el.getLogs(
-      fromBlock,
-      toBlock,
-      EASY_TRACK_ADDRESS,
-      [eventTopic]
-    )
-
-    logger.info('Loaded MotionCreated events', { amount: result.length })
-
-    const eventsMap: Record<string, string> = {} // motion_id -> motion_create_transaction_hash
-
-    for (const log of result) {
-      const parsed = iface.parseLog(log)
-      const motionId = parsed.args._motionId.toString()
-      eventsMap[motionId] = log.transactionHash
-    }
-
-    return eventsMap
-  }
-
-  const getMotionEnactedEvents = async (fromBlock: number, toBlock: number) => {
-    if (!EASY_TRACK_ADDRESS) {
-      return {}
-    }
-
-    const event = ethers.utils.Fragment.from(
-      'event MotionEnacted(uint256 indexed _motionId)'
-    )
-    const iface = new ethers.utils.Interface([event])
-    const eventTopic = iface.getEventTopic(event.name)
-
-    const { result } = await el.getLogs(
-      fromBlock,
-      toBlock,
-      EASY_TRACK_ADDRESS,
-      [eventTopic]
-    )
-
-    logger.info('Loaded MotionEnacted events', { amount: result.length })
-
-    const eventsMap: Record<string, string> = {} // motion_enact_transaction_hash -> motion_id
-
-    for (const log of result) {
-      const parsed = iface.parseLog(log)
-      eventsMap[log.transactionHash] = parsed.args._motionId.toString()
-    }
-
-    return eventsMap
-  }
-
   const getValidatorExitRequestEvents = async (
     fromBlock: number,
     toBlock: number,
@@ -185,10 +94,7 @@ export const makeExitLogsFetcherService = (
   const getLogs = async (
     fromBlock: number,
     toBlock: number,
-    ejectorScope: EjectorScope[],
-    motionCreatedEvents: Record<string, string> = {},
-    votingRequestsHashSubmittedEvents: Record<string, string> = {},
-    motionEnactedEvents: Record<string, string> = {}
+    ejectorScope: EjectorScope[]
   ) => {
     const validatorExitRequestEvents = await getValidatorExitRequestEvents(
       fromBlock,
@@ -221,10 +127,7 @@ export const makeExitLogsFetcherService = (
           await verifier.verifyEvent(
             validatorPubkey,
             transactionHash,
-            blockNumber,
-            votingRequestsHashSubmittedEvents,
-            motionCreatedEvents,
-            motionEnactedEvents
+            blockNumber
           )
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })
@@ -258,8 +161,5 @@ export const makeExitLogsFetcherService = (
 
   return {
     getLogs,
-    getMotionCreatedEvents,
-    getVotingRequestsHashSubmittedEvents,
-    getMotionEnactedEvents,
   }
 }

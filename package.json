@@ -1,6 +1,6 @@
 {
   "name": "validator-ejector",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "main": "index.js",
   "license": "MIT",
@@ -43,6 +43,7 @@
     "eslint": "8.29.0",
     "eslint-config-prettier": "8.5.0",
     "eslint-plugin-prettier": "4.2.1",
+    "hardhat": "2.26.3",
     "nock": "13.3.1",
     "prettier": "2.8.0",
     "ts-node": "10.9.1",

@@ -78,7 +78,8 @@ export const makeAppModule = async () => {
   const consistencyChecker = makeConsistencyChecker(
     executionHttp,
     logger,
-    config
+    config,
+    jwtService
   )
 
   const consensusApi = makeConsensusApi(
