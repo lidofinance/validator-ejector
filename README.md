@@ -130,6 +130,18 @@ yarn start
 
 Don't forget env variables in the last command.
 
+### Running e2e tests
+
+The EDF mainnet-fork tests use Hardhat. Hardhat is not an application
+dependency and is not installed by the regular Yarn install. Use Node.js 18 or
+newer and install the pinned test dependency without changing the application
+manifest:
+
+```bash
+npm install --no-save --package-lock=false hardhat@2.26.3
+yarn test:e2e
+```
+
 ## Metrics
 
 Enable metrics endpoint by setting `HTTP_PORT=1234` and `RUN_METRICS=true` environment variables.

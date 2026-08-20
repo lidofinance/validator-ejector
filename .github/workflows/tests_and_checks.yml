@@ -10,7 +10,7 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3.5.0
         with:
-          node-version: '22'
+          node-version: '16'
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --immutable
@@ -27,10 +27,12 @@ jobs:
       - name: Set up node
         uses: actions/setup-node@v3.5.0
         with:
-          node-version: '22'
+          node-version: '18'
           cache: 'yarn'
       - name: Install dependencies
         run: yarn install --immutable
+      - name: Install Hardhat for e2e tests
+        run: npm install --no-save --package-lock=false hardhat@2.26.3
       - name: Run e2e tests
         run: yarn test:e2e
         env:
