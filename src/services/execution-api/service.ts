@@ -41,10 +41,33 @@ const isRpcServerError = (json: unknown): boolean => {
 
 export type ExecutionApiService = ReturnType<typeof makeExecutionApi>
 
+export const createExecutionRequestHeaders = (
+  JWT_SECRET_PATH: string | undefined,
+  jwtService?: JwtService
+) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  if (JWT_SECRET_PATH && jwtService) {
+    const token = jwtService.generateToken()
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+  }
+
+  return headers
+}
+
 export const makeExecutionApi = (
   request: ReturnType<typeof makeRequest>,
   logger: ReturnType<typeof makeLogger>,
-  { EXECUTION_NODE, LOCATOR_ADDRESS, JWT_SECRET_PATH }: ConfigService,
+  {
+    EXECUTION_NODE,
+    LOCATOR_ADDRESS,
+    JWT_SECRET_PATH,
+    LOAD_LOGS_STEP,
+  }: ConfigService,
   jwtService?: JwtService
 ) => {
   const fallback = makeFallback(EXECUTION_NODE, logger, 'EL')
@@ -52,24 +75,9 @@ export const makeExecutionApi = (
   let exitBusAddress: string
   let consensusAddress: string
 
-  const createRequestHeaders = () => {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-
-    if (JWT_SECRET_PATH && jwtService) {
-      const token = jwtService.generateToken()
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-      }
-    }
-
-    return headers
-  }
-
   const elRequest = (requestConfig: RequestConfig) =>
     fallback(async (url) => {
-      const headers = createRequestHeaders()
+      const headers = createExecutionRequestHeaders(JWT_SECRET_PATH, jwtService)
       const res = await request(url, { ...requestConfig, headers })
       const json = await safelyParseJsonResponse(res, logger)
       if (isRpcServerError(json)) {
@@ -221,28 +229,39 @@ export const makeExecutionApi = (
       throw new Error(`Invalid Ethereum address: ${address}`)
     }
 
-    const json = await elRequest({
-      method: 'POST',
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getLogs',
-        params: [
-          {
-            fromBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(fromBlock).toHexString()
-            ),
-            toBlock: ethers.utils.hexStripZeros(
-              ethers.BigNumber.from(toBlock).toHexString()
-            ),
-            address,
-            topics,
-          },
-        ],
-        id: 1,
-      }),
-    })
+    // Ranges wider than LOAD_LOGS_STEP are split into sequential sub-requests:
+    // nodes and RPC providers cap eth_getLogs ranges, sometimes by silently
+    // returning an empty result instead of an error
+    const result: ReturnType<typeof logsDTO>['result'] = []
 
-    return logsDTO(json)
+    for (let from = fromBlock; from <= toBlock; from += LOAD_LOGS_STEP) {
+      const to = Math.min(from + LOAD_LOGS_STEP - 1, toBlock)
+
+      const json = await elRequest({
+        method: 'POST',
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getLogs',
+          params: [
+            {
+              fromBlock: ethers.utils.hexStripZeros(
+                ethers.BigNumber.from(from).toHexString()
+              ),
+              toBlock: ethers.utils.hexStripZeros(
+                ethers.BigNumber.from(to).toHexString()
+              ),
+              address,
+              topics,
+            },
+          ],
+          id: 1,
+        }),
+      })
+
+      result.push(...logsDTO(json).result)
+    }
+
+    return { result }
   }
 
   return {

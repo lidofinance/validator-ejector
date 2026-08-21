@@ -1,11 +1,15 @@
-import { configBase } from '../../test/config.js'
+import { configBase, mockConfig } from '../../test/config.js'
 import {
   makeConfig,
   makeLoggerConfig,
   makeValidationConfig,
+  makeWebhookProcessorConfig,
 } from './service.js'
 import { mockLogger } from '../../test/logger.js'
 import { makeLogger } from '../../lib/index.js'
+import { writeFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 
 let logger = mockLogger()
 
@@ -38,6 +42,14 @@ describe('config module', () => {
       makeConfig({ logger, env: config as unknown as NodeJS.ProcessEnv })
 
     expect(makeConf).not.toThrow()
+  })
+
+  describe('BLOCKS_PRELOAD', () => {
+    test.each(['', '   '])('defaults the blank value %#', (value) => {
+      const config = mockConfig(logger, { BLOCKS_PRELOAD: value })
+
+      expect(config.BLOCKS_PRELOAD).toBe(50000)
+    })
   })
 
   test('invalid optional bool config includes env var name', () => {
@@ -97,6 +109,67 @@ describe('config module', () => {
 
       expect(result.VALIDATORS_BATCH_SIZE).toBe(expected)
     }
+  })
+
+  test('defaults load logs step', () => {
+    const config = { ...configBase, MESSAGES_LOCATION: 'messages' }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.LOAD_LOGS_STEP).toBe(10000)
+  })
+
+  test('accepts load logs step override', () => {
+    const config = {
+      ...configBase,
+      MESSAGES_LOCATION: 'messages',
+      LOAD_LOGS_STEP: '500',
+    }
+
+    const result = makeConfig({
+      logger,
+      env: config as unknown as NodeJS.ProcessEnv,
+    })
+
+    expect(result.LOAD_LOGS_STEP).toBe(500)
+  })
+
+  test('normalizes load logs step to positive integer', () => {
+    const cases = [
+      ['0', 10000],
+      ['-1', 1],
+      ['1.5', 1],
+    ] as const
+
+    for (const [value, expected] of cases) {
+      const result = makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          LOAD_LOGS_STEP: value,
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+      expect(result.LOAD_LOGS_STEP).toBe(expected)
+    }
+  })
+
+  test('rejects non-numeric load logs step', () => {
+    const makeConf = () =>
+      makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          LOAD_LOGS_STEP: 'not-a-number',
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+    expect(makeConf).toThrow('Invalid number input')
   })
 
   test('validation config includes validators batch size', () => {
@@ -476,5 +549,83 @@ describe('logger config module', () => {
     } finally {
       info.mockRestore()
     }
+  })
+})
+
+describe('webhook processor config', () => {
+  test('no token by default', () => {
+    const config = makeWebhookProcessorConfig({
+      env: {} as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_TOKEN).toBeUndefined()
+  })
+
+  test('token from WEBHOOK_TOKEN', () => {
+    const config = makeWebhookProcessorConfig({
+      env: { WEBHOOK_TOKEN: 'secret-token' } as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_TOKEN).toBe('secret-token')
+  })
+
+  test('token from WEBHOOK_TOKEN_FILE file', () => {
+    const tokenPath = join(tmpdir(), `webhook-token-${process.pid}.txt`)
+    writeFileSync(tokenPath, 'secret-token-from-file\n')
+
+    try {
+      const config = makeWebhookProcessorConfig({
+        env: { WEBHOOK_TOKEN_FILE: tokenPath } as NodeJS.ProcessEnv,
+      })
+
+      expect(config.WEBHOOK_TOKEN).toBe('secret-token-from-file')
+    } finally {
+      rmSync(tokenPath)
+    }
+  })
+
+  test('WEBHOOK_TOKEN takes precedence over WEBHOOK_TOKEN_FILE', () => {
+    const tokenPath = join(tmpdir(), `webhook-token-${process.pid}.txt`)
+    writeFileSync(tokenPath, 'secret-token-from-file')
+
+    try {
+      const config = makeWebhookProcessorConfig({
+        env: {
+          WEBHOOK_TOKEN: 'secret-token',
+          WEBHOOK_TOKEN_FILE: tokenPath,
+        } as NodeJS.ProcessEnv,
+      })
+
+      expect(config.WEBHOOK_TOKEN).toBe('secret-token')
+    } finally {
+      rmSync(tokenPath)
+    }
+  })
+
+  test('header defaults to Authorization', () => {
+    const config = makeWebhookProcessorConfig({
+      env: {} as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_HEADER).toBe('Authorization')
+  })
+
+  test('header from WEBHOOK_HEADER', () => {
+    const config = makeWebhookProcessorConfig({
+      env: { WEBHOOK_HEADER: 'X-Api-Key' } as NodeJS.ProcessEnv,
+    })
+
+    expect(config.WEBHOOK_HEADER).toBe('X-Api-Key')
+  })
+
+  test('unreadable WEBHOOK_TOKEN_FILE throws', () => {
+    const makeConf = () =>
+      makeWebhookProcessorConfig({
+        env: {
+          WEBHOOK_TOKEN_FILE: '/nonexistent/webhook-token.txt',
+        } as NodeJS.ProcessEnv,
+      })
+
+    expect(makeConf).toThrow('Unable to load WEBHOOK_TOKEN_FILE')
   })
 })

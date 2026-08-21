@@ -7,3 +7,5 @@ dist
 jwt.hex
 /.idea
 artifacts
+# hardhat fork node cache (e2e)
+cache

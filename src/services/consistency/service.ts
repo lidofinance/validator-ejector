@@ -7,6 +7,8 @@ import {
   type RequestService,
 } from '../../lib/index.js'
 import type { ConfigService } from '../config/service.js'
+import { createExecutionRequestHeaders } from '../execution-api/service.js'
+import type { JwtService } from '../jwt/service.js'
 
 export type ConsistencyChecker = ReturnType<typeof makeConsistencyChecker>
 
@@ -32,12 +34,17 @@ export const makeConsistencyChecker = (
   {
     EXECUTION_NODE,
     CONSENSUS_NODE,
-  }: Pick<ConfigService, 'EXECUTION_NODE' | 'CONSENSUS_NODE'>
+    JWT_SECRET_PATH,
+  }: Pick<
+    ConfigService,
+    'EXECUTION_NODE' | 'CONSENSUS_NODE' | 'JWT_SECRET_PATH'
+  >,
+  jwtService?: JwtService
 ) => {
   const fetchElChainId = async (url: string): Promise<number> => {
     const res = await request(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: createExecutionRequestHeaders(JWT_SECRET_PATH, jwtService),
       body: JSON.stringify({
         jsonrpc: '2.0',
         method: 'eth_chainId',

@@ -67,9 +67,9 @@ describe('exitLogs e2e', () => {
 
   beforeEach(async () => {
     const nodes = {
-      EXECUTION_NODE: process.env.EXECUTION_NODE ?? 'https://eth.drpc.org',
+      EXECUTION_NODE: process.env.EXECUTION_NODE || 'https://eth.drpc.org',
       CONSENSUS_NODE:
-        process.env.CONSENSUS_NODE ??
+        process.env.CONSENSUS_NODE ||
         'https://ethereum-beacon-api.publicnode.com',
     }
 
@@ -99,11 +99,6 @@ describe('exitLogs e2e', () => {
       ]),
       OPERATOR_IDENTIFIERS: JSON.stringify([0]),
       BLOCKS_PRELOAD: 1,
-      // Test default of 216_000 blocks (~30 days) takes minutes against a real
-      // RPC. Narrow the motion-event security-verification window to the same
-      // span as BLOCKS_PRELOAD so each test makes O(BLOCKS_PRELOAD/10k) RPC
-      // calls instead of O(216k/10k). Production keeps the 216k default.
-      VOTING_EVENTS_FRAME_BLOCKS: 1,
       STAKING_MODULE_ID: '1',
       DRY_RUN: true,
       LOCATOR_ADDRESS: '0xC1d0b3DE6792Bf6b4b37EccdcC24e45978Cfd2Eb',
@@ -139,6 +134,7 @@ describe('exitLogs e2e', () => {
 
     const frame1 = await api.getLogs(frame1Block)
 
+    // 40 mainnet exit requests for operators 0-2 in blocks 22024255..22044254
     expect(frame1.length).toBe(40)
 
     config.EJECTOR_SCOPE = [{ stakingModuleId: '1', operatorIds: [0, 1] }]
@@ -149,6 +145,8 @@ describe('exitLogs e2e', () => {
 
     const frame2 = await api.getLogs(frame2Block)
 
-    expect(frame2.length).toBe(62)
+    // 22 mainnet exit requests for operators 0-1 in blocks 22044255..22064254.
+    // loadServices() rebuilt the cache, so frame1 events are not included
+    expect(frame2.length).toBe(22)
   })
 })
