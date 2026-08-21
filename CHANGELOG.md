@@ -1,13 +1,6 @@
 # [2.2.0](https://github.com/lidofinance/validator-ejector/compare/2.1.0...2.2.0) (2026-08-21)
 
 
-### Bug Fixes
-
-* eslint errors ([763af0f](https://github.com/lidofinance/validator-ejector/commit/763af0f8621b6c46d28e4d21b67cd30b2d0fef01))
-* restore Node 16 build and isolate Hardhat e2e dependency ([8560dde](https://github.com/lidofinance/validator-ejector/commit/8560dde93c063d12adf98b12af4beb6d29c20888))
-* update commit hash and bytecode in delegation contract fixture ([88b124e](https://github.com/lidofinance/validator-ejector/commit/88b124ef0b6a9e0bea462f9f7c9805d30102a476))
-
-
 ### Features
 
 * add JWT support for execution request headers and enhance config handling ([7f629b5](https://github.com/lidofinance/validator-ejector/commit/7f629b51746ec184d27e734ad6c6979f7b2b73ea))
@@ -18,7 +11,6 @@
 * remove unused EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and simplify getLogs call ([550feb9](https://github.com/lidofinance/validator-ejector/commit/550feb9e3bf1e0102c5106b7872f22ac63b3f581))
 * rework tx verify ([d7f18cf](https://github.com/lidofinance/validator-ejector/commit/d7f18cf62e738333393de33b5122039983e3848b))
 * update execution node fallback ([131c284](https://github.com/lidofinance/validator-ejector/commit/131c284169d93c8144c6ce43e28cacfc5db951e6))
-* upgrade Node.js version to 22 in workflows and Dockerfile ([7704676](https://github.com/lidofinance/validator-ejector/commit/770467669d006d0669bf9fe685f8a2934a28ac91))
 * **webhook:** add bearer token auth via WEBHOOK_TOKEN or WEBHOOK_TOKEN_FILE ([feacda8](https://github.com/lidofinance/validator-ejector/commit/feacda8a51547a197080729881c2cbe3432ba84b))
 * **webhook:** allow custom auth header via WEBHOOK_HEADER ([731c54d](https://github.com/lidofinance/validator-ejector/commit/731c54d1a5c5ed85e0bbf4e3557f3d4910917df4))
 
