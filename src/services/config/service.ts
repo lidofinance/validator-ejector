@@ -351,9 +351,16 @@ const resolveLoggerSecretValues = (env: NodeJS.ProcessEnv, envVar: string) => {
   const value = envOrFile(env, envVar)
   if (!value) return [envVar]
 
+  // Secrets loaded from a *_FILE usually end with a newline, while the place
+  // that uses them may have trimmed it (e.g. WEBHOOK_TOKEN_FILE). Redact the
+  // trimmed form too so the bare secret never reaches the logs either.
+  const values = [value]
+  const trimmed = value.trim()
+  if (trimmed && trimmed !== value) values.push(trimmed)
+
   if (!LOGGER_SECRET_URL_LIST_ENV_VARS.has(envVar)) {
-    return [value]
+    return values
   }
 
-  return [value, ...normalizeUrlList(value)]
+  return [...values, ...normalizeUrlList(value)]
 }
