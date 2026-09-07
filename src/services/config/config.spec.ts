@@ -550,6 +550,99 @@ describe('logger config module', () => {
       info.mockRestore()
     }
   })
+
+  describe('secrets loaded from a *_FILE with a trailing newline', () => {
+    const password = 'file-password-1234'
+    const passwordPath = join(tmpdir(), `messages-password-${process.pid}.txt`)
+
+    beforeEach(() => writeFileSync(passwordPath, `${password}\n`))
+    afterEach(() => rmSync(passwordPath, { force: true }))
+
+    test('registers the raw and the trimmed value', () => {
+      const env = {
+        LOGGER_SECRETS: `["MESSAGES_PASSWORD"]`,
+        MESSAGES_PASSWORD_FILE: passwordPath,
+      } as NodeJS.ProcessEnv
+
+      const config = makeLoggerConfig({ env })
+
+      expect(config.LOGGER_SECRETS).toEqual([`${password}\n`, password])
+    })
+
+    test.each(['json', 'simple'] as const)(
+      'redacts MESSAGES_PASSWORD from the startup config dump in %s logs',
+      (format) => {
+        const env = {
+          ...configBase,
+          MESSAGES_LOCATION: 'messages',
+          MESSAGES_PASSWORD_FILE: passwordPath,
+          LOGGER_LEVEL: 'info',
+          LOGGER_FORMAT: format,
+          LOGGER_SECRETS: `["MESSAGES_PASSWORD"]`,
+        } as unknown as NodeJS.ProcessEnv
+
+        const loggerConfig = makeLoggerConfig({ env })
+        const logger = makeLogger({
+          level: loggerConfig.LOGGER_LEVEL,
+          format: loggerConfig.LOGGER_FORMAT,
+          sanitizer: {
+            secrets: loggerConfig.LOGGER_SECRETS,
+            replacer: '<secret>',
+          },
+        })
+        const appConfig = makeConfig({ logger, env })
+        const info = vi
+          .spyOn(console, 'info')
+          .mockImplementation(() => undefined)
+
+        try {
+          // Same call shape as the startup line in app/service.ts
+          logger.info('Validator Ejector started', {
+            ...appConfig,
+            heapLimit: '4096',
+          })
+
+          const output = String(info.mock.calls[0][0])
+          expect(output).toContain('<secret>')
+          expect(output).not.toContain(password)
+        } finally {
+          info.mockRestore()
+        }
+      }
+    )
+
+    test('redacts a WEBHOOK_TOKEN that was trimmed on load', () => {
+      const env = {
+        LOGGER_LEVEL: 'info',
+        LOGGER_FORMAT: 'json',
+        LOGGER_SECRETS: `["WEBHOOK_TOKEN"]`,
+        WEBHOOK_TOKEN_FILE: passwordPath,
+      } as NodeJS.ProcessEnv
+
+      const loggerConfig = makeLoggerConfig({ env })
+      const webhookConfig = makeWebhookProcessorConfig({ env })
+      const logger = makeLogger({
+        level: 'info',
+        format: 'json',
+        sanitizer: {
+          secrets: loggerConfig.LOGGER_SECRETS,
+          replacer: '<secret>',
+        },
+      })
+      const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+      try {
+        logger.info('webhook', { ...webhookConfig })
+
+        const output = String(info.mock.calls[0][0])
+        expect(webhookConfig.WEBHOOK_TOKEN).toBe(password)
+        expect(output).toContain('<secret>')
+        expect(output).not.toContain(password)
+      } finally {
+        info.mockRestore()
+      }
+    })
+  })
 })
 
 describe('webhook processor config', () => {
