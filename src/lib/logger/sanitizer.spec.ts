@@ -63,27 +63,27 @@ describe('Logger Sanitizer', () => {
     'sanitize message and details in %s transport with escaped strings',
     (format) => {
       const { restore, log } = mockConsole()
-      const password = 'secret""///\\\t\n'
+      const escapedValue = 'secret""///\\\t\n'
       const details = {
-        MESSAGES_PASSWORD: password,
-        nested: { values: [password, 42, null] },
+        value: escapedValue,
+        nested: { values: [escapedValue, 42, null] },
       }
       const logger = makeLogger({
         format,
         level: 'debug',
         sanitizer: {
-          secrets: [password],
+          secrets: [escapedValue],
           replacer: '<*>',
         },
       })
 
       try {
-        logger.debug(`test ${password}`, details)
+        logger.debug(`test ${escapedValue}`, details)
 
         expect(log.debug).toHaveBeenCalledTimes(1)
         const line = log.debug.mock.calls[0][0]
         const sanitizedDetails = {
-          MESSAGES_PASSWORD: '<*>',
+          value: '<*>',
           nested: { values: ['<*>', 42, null] },
         }
         if (format === 'json') {
@@ -96,8 +96,8 @@ describe('Logger Sanitizer', () => {
           expect(line).toContain(JSON.stringify(sanitizedDetails))
         }
         expect(line).not.toContain('secret')
-        expect(details.MESSAGES_PASSWORD).toBe(password)
-        expect(details.nested.values).toEqual([password, 42, null])
+        expect(details.value).toBe(escapedValue)
+        expect(details.nested.values).toEqual([escapedValue, 42, null])
       } finally {
         restore()
       }
