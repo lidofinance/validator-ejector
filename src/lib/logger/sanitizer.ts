@@ -13,8 +13,9 @@ export const stringify = (object: unknown, sanitizer: Sanitizer) => {
   let message = ''
 
   try {
-    const jsonString = JSON.stringify(object)
-    message = sanitize(jsonString, sanitizer)
+    message = JSON.stringify(object, (_, value) =>
+      typeof value === 'string' ? sanitize(value, sanitizer) : value
+    )
   } catch (error) {}
 
   return message

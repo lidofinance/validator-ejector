@@ -59,22 +59,48 @@ describe('Logger Sanitizer', () => {
     restore()
   })
 
-  test('sanitize message in simple transport with escaped strings', () => {
-    const { restore, log } = mockConsole()
-    const logger = makeLogger({
-      format: 'simple',
-      level: 'debug',
-      sanitizer: {
-        secrets: ['secret""///\\'],
-        replacer: '<*>',
-      },
-    })
+  test.each(['json', 'simple'] as const)(
+    'sanitize message and details in %s transport with escaped strings',
+    (format) => {
+      const { restore, log } = mockConsole()
+      const password = 'secret""///\\\t\n'
+      const details = {
+        MESSAGES_PASSWORD: password,
+        nested: { values: [password, 42, null] },
+      }
+      const logger = makeLogger({
+        format,
+        level: 'debug',
+        sanitizer: {
+          secrets: [password],
+          replacer: '<*>',
+        },
+      })
 
-    logger.debug('test secret""///\\')
+      try {
+        logger.debug(`test ${password}`, details)
 
-    expect(log.debug).toHaveBeenCalledTimes(1)
-    expect(log.debug.mock.calls[0][0].includes('test <*>')).toBe(true)
-
-    restore()
-  })
+        expect(log.debug).toHaveBeenCalledTimes(1)
+        const line = log.debug.mock.calls[0][0]
+        const sanitizedDetails = {
+          MESSAGES_PASSWORD: '<*>',
+          nested: { values: ['<*>', 42, null] },
+        }
+        if (format === 'json') {
+          expect(JSON.parse(line)).toMatchObject({
+            message: 'test <*>',
+            details: sanitizedDetails,
+          })
+        } else {
+          expect(line).toContain('test <*>')
+          expect(line).toContain(JSON.stringify(sanitizedDetails))
+        }
+        expect(line).not.toContain('secret')
+        expect(details.MESSAGES_PASSWORD).toBe(password)
+        expect(details.nested.values).toEqual([password, 42, null])
+      } finally {
+        restore()
+      }
+    }
+  )
 })
