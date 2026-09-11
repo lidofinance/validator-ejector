@@ -620,7 +620,9 @@ describe('verifier EDF e2e (mainnet fork)', () => {
 
     it('drops the old EOA report once it leaves the allowlist while the delegate still verifies', async () => {
       const delegateOnly = makeAllowlistedVerifier([firstDelegateAddress])
-      await expect(verify(delegateOnly, delegateReport)).resolves.toBeUndefined()
+      await expect(
+        verify(delegateOnly, delegateReport)
+      ).resolves.toBeUndefined()
       await expect(verify(delegateOnly, eoaReport)).rejects.toThrow(
         'Transaction is not signed by a trusted Oracle'
       )
