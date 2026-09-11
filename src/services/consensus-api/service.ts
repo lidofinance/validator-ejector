@@ -21,6 +21,15 @@ import { HttpException } from '../../lib/request/errors.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
+// validatePublicKeys returns the (index, pubkey) pairs the consensus layer
+// confirmed, not just indices: a malicious EL can report one index with two
+// different pubkeys, and keying by index alone would let the mismatched one
+// ride on the valid index. Callers must match the exact pair.
+export const validationPairKey = (
+  validatorIndex: string,
+  validatorPubkey: string
+) => `${validatorIndex}:${validatorPubkey}`
+
 export type ConsensusApiService = ReturnType<typeof makeConsensusApi>
 
 export const makeConsensusApi = (
@@ -220,7 +229,7 @@ export const makeConsensusApi = (
     batchSize = 1000,
     state: string | number = 'head'
   ) => {
-    const validIndices = new Set<string>()
+    const validPairs = new Set<string>()
     const indices = validatorData.map((v) => v.validatorIndex)
 
     const validators = await fetchValidatorsBatch(indices, batchSize, state)
@@ -249,16 +258,21 @@ export const makeConsensusApi = (
         continue
       }
 
-      validIndices.add(validatorInfo.validatorIndex)
+      validPairs.add(
+        validationPairKey(
+          validatorInfo.validatorIndex,
+          validatorInfo.validatorPubkey
+        )
+      )
     }
 
     logger.info('Public key validation completed', {
       totalValidators: validatorData.length,
-      validValidators: validIndices.size,
-      invalidValidators: validatorData.length - validIndices.size,
+      validValidators: validPairs.size,
+      invalidValidators: validatorData.length - validPairs.size,
     })
 
-    return validIndices
+    return validPairs
   }
 
   return {

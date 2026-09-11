@@ -17,6 +17,7 @@ import {
   HOODI_EXIT_VALIDATOR_PUBKEY,
   HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT,
   HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
+  VALIDATOR_EXIT_REQUEST_TOPIC,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -43,7 +44,10 @@ describe('makeConsensusApi logs', () => {
     stakingModuleId = '1'
   ): EjectorScope[] => [{ stakingModuleId, operatorIds }]
 
-  const mockService = (validatorIndices: string[] = ['351636']) => {
+  const mockService = (
+    validatorIndices: string[] = ['351636'],
+    correctPubkeys?: Record<string, string>
+  ) => {
     const executionApi = makeExecutionApi(request, logger, config)
 
     Object.defineProperty(executionApi, 'exitBusAddress', {
@@ -54,8 +58,27 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
+    // Mirror the real validatePublicKeys contract: it returns the confirmed
+    // (index, pubkey) pairs, not bare indices. An index is valid only for the
+    // pubkey the CL holds; a mismatched pubkey on a valid index is dropped.
     const consensusApi = {
-      validatePublicKeys: vi.fn().mockResolvedValue(new Set(validatorIndices)),
+      validatePublicKeys: vi.fn(
+        async (
+          pairs: Array<{ validatorIndex: string; validatorPubkey: string }>
+        ) => {
+          const valid = new Set<string>()
+          for (const pair of pairs) {
+            if (!validatorIndices.includes(pair.validatorIndex)) continue
+            if (
+              correctPubkeys &&
+              correctPubkeys[pair.validatorIndex] !== pair.validatorPubkey
+            )
+              continue
+            valid.add(`${pair.validatorIndex}:${pair.validatorPubkey}`)
+          }
+          return valid
+        }
+      ),
     } as unknown as ConsensusApiService
 
     api = makeExitLogsService(
@@ -433,6 +456,60 @@ describe('makeConsensusApi logs', () => {
           '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
       })
     )
+  })
+
+  it('drops a second log that reuses a valid index with an impostor pubkey', async () => {
+    // Same (module, nodeOp, validatorIndex) topics; only the pubkey differs
+    const sameIndexTopics = [
+      VALIDATOR_EXIT_REQUEST_TOPIC,
+      '0x0000000000000000000000000000000000000000000000000000000000000001',
+      '0x0000000000000000000000000000000000000000000000000000000000000026',
+      '0x0000000000000000000000000000000000000000000000000000000000125731',
+    ]
+    const impostorPubkey = `0x${'22'.repeat(48)}`
+    const log = (pubkey: string, transactionHash: string) => ({
+      address: '0x8664d394c2b3278f26a1b44b967aef99707eeab2',
+      topics: sameIndexTopics,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ['bytes', 'uint256'],
+        [pubkey, 1763148708]
+      ),
+      blockNumber: '0x18bd75',
+      transactionHash,
+    })
+
+    // A malicious EL reports index 1201969 twice: its real pubkey (which puts
+    // the index in the CL Set) and an impostor pubkey reused from elsewhere.
+    mockEthServer(
+      {
+        url: '/',
+        method: 'POST',
+        result: {
+          result: [
+            log(HOODI_EXIT_VALIDATOR_PUBKEY, `0x${'11'.repeat(32)}`),
+            log(impostorPubkey, `0x${'22'.repeat(32)}`),
+          ],
+        },
+        bodyMatcher: (body: any) =>
+          body.method === 'eth_getLogs' &&
+          body.params[0].topics[0] === VALIDATOR_EXIT_REQUEST_TOPIC,
+      },
+      config.EXECUTION_NODE[0]
+    )
+
+    // The CL confirms the index only for its real pubkey
+    mockService([HOODI_EXIT_VALIDATOR_INDEX], {
+      [HOODI_EXIT_VALIDATOR_INDEX]: HOODI_EXIT_VALIDATOR_PUBKEY,
+    })
+    // Isolate the CL pair filter from downstream verification
+    api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
+
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
+
+    // Only the real pair survives; the impostor never reaches verification
+    expect(res).toHaveLength(1)
+    expect(res[0].validatorPubkey).toBe(HOODI_EXIT_VALIDATOR_PUBKEY)
+    expect(api.verifier.verifyEvent).toHaveBeenCalledTimes(1)
   })
 
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {
