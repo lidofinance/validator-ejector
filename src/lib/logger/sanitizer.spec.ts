@@ -151,16 +151,16 @@ describe('Logger Sanitizer', () => {
     // A secret this large overflows the regex compiler; the sanitizer must not
     // throw (it runs unguarded in the simple printer) and must not fall back to
     // the raw input, which still holds the secret
-    const hugeSecret = 'a'.repeat(2_000_000)
-    const output = sanitize(`token ${hugeSecret} end`, {
-      secrets: [hugeSecret],
+    const oversizedValue = 'a'.repeat(2_000_000)
+    const output = sanitize(`value ${oversizedValue} end`, {
+      secrets: [oversizedValue],
       replacer: '<*>',
     })
 
-    expect(output).not.toContain(hugeSecret)
+    expect(output).not.toContain(oversizedValue)
     expect(output).toContain('unsanitizable')
     // reports sizes so the offending secret can be traced, never its contents
-    expect(output).toContain(String(hugeSecret.length))
+    expect(output).toContain(String(oversizedValue.length))
   })
 
   test('replaces overlapping secrets once and treats the replacement literally', () => {
