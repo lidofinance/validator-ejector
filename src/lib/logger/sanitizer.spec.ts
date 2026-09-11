@@ -147,6 +147,22 @@ describe('Logger Sanitizer', () => {
     ).toEqual(details)
   })
 
+  test('redacts instead of throwing or leaking when a secret is too large to compile', () => {
+    // A secret this large overflows the regex compiler; the sanitizer must not
+    // throw (it runs unguarded in the simple printer) and must not fall back to
+    // the raw input, which still holds the secret
+    const hugeSecret = 'a'.repeat(2_000_000)
+    const output = sanitize(`token ${hugeSecret} end`, {
+      secrets: [hugeSecret],
+      replacer: '<*>',
+    })
+
+    expect(output).not.toContain(hugeSecret)
+    expect(output).toContain('unsanitizable')
+    // reports sizes so the offending secret can be traced, never its contents
+    expect(output).toContain(String(hugeSecret.length))
+  })
+
   test('replaces overlapping secrets once and treats the replacement literally', () => {
     expect(
       sanitize('fixture-long fixture', {

@@ -29,15 +29,34 @@ const collectVariants = (secrets: string[]) => {
   return variants
 }
 
+// Describe why sanitization failed without ever printing a secret: report how
+// many secrets there were and their sizes, so the oversized secret or header
+// can be traced later
+const unsanitizable = (secrets: string[]) => {
+  const lengths = secrets
+    .filter((secret) => typeof secret === 'string')
+    .map((secret) => secret.length)
+  const total = lengths.reduce((sum, length) => sum + length, 0)
+  const largest = lengths.reduce((max, length) => Math.max(max, length), 0)
+  return `[unsanitizable: too large to redact; ${lengths.length} secrets, ${total} chars total, largest ${largest}]`
+}
+
 export const sanitize = (input: string, sanitizer: Sanitizer) => {
   const variants = collectVariants(sanitizer.secrets)
   if (variants.size === 0) return input
 
-  // Longest variant first, so an overlapping shorter secret cannot shadow a
-  // longer one; the function replacer keeps `$` in the replacement literal
-  const longestFirst = [...variants].sort((a, b) => b.length - a.length)
-  const pattern = new RegExp(longestFirst.map(escapeRegExp).join('|'), 'g')
-  return input.replace(pattern, () => sanitizer.replacer)
+  try {
+    // Longest variant first, so an overlapping shorter secret cannot shadow a
+    // longer one; the function replacer keeps `$` in the replacement literal
+    const longestFirst = [...variants].sort((a, b) => b.length - a.length)
+    const pattern = new RegExp(longestFirst.map(escapeRegExp).join('|'), 'g')
+    return input.replace(pattern, () => sanitizer.replacer)
+  } catch {
+    // A secret too large to compile into a matcher throws here. Never fall back
+    // to `input`: it may hold that secret. Redact, and report sizes (never
+    // contents) so the offending secret or header can be found.
+    return unsanitizable(sanitizer.secrets)
+  }
 }
 
 // JSON.parse's reviver visits values only, never keys, so objects are
