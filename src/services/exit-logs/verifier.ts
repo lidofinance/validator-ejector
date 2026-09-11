@@ -236,10 +236,28 @@ export const makeVerifier = (
   }
 
   const verifyEvent = async (
-    validatorPubkey: string,
+    event: {
+      stakingModuleId: ethers.BigNumberish
+      nodeOperatorId: ethers.BigNumberish
+      validatorIndex: ethers.BigNumberish
+      validatorPubkey: string
+    },
     transactionHash: string,
     toBlock: number
   ) => {
+    const validatorPubkey = event.validatorPubkey
+
+    // The exit downstream is executed by the validator index from the event,
+    // so the signed data must authorize the index, not only the pubkey.
+    // (moduleId, nodeOpId, validatorIndex) is the packed request key; its
+    // layout is identical in both data formats.
+    const requestKey = ethers.utils
+      .solidityPack(
+        ['uint24', 'uint40', 'uint64'],
+        [event.stakingModuleId, event.nodeOperatorId, event.validatorIndex]
+      )
+      .slice(2)
+
     const tx = await getTransaction(transactionHash)
 
     // EDF (LIP-37): an oracle member that is a DelegationContract submits
@@ -266,6 +284,7 @@ export const makeVerifier = (
         // Oracle report finalized on the Exit Bus
         await verifyOracleEvent(
           validatorPubkey,
+          requestKey,
           submitReportDataIface.decodeFunctionData('submitReportData', input),
           toBlock
         )
@@ -276,6 +295,7 @@ export const makeVerifier = (
         // unlike the hash of execute(proposalId), commits to that data.
         await verifySubmitExitRequestsDataTransaction(
           validatorPubkey,
+          requestKey,
           tx,
           transactionHash,
           input
@@ -291,6 +311,7 @@ export const makeVerifier = (
 
   const verifyOracleEvent = async (
     validatorPubkey: string,
+    requestKey: string,
     decoded: ethers.utils.Result,
     toBlock: number
   ) => {
@@ -306,6 +327,11 @@ export const makeVerifier = (
     // Strip 0x
     if (!data.includes((validatorPubkey as string).slice(2)))
       throw new Error('Pubkey for exit was not found in finalized tx data')
+
+    if (!data.includes(requestKey))
+      throw new Error(
+        'Validator index for exit was not found in finalized tx data'
+      )
 
     const encodedData = ethers.utils.defaultAbiCoder.encode(
       [
@@ -364,6 +390,7 @@ export const makeVerifier = (
 
   const verifySubmitExitRequestsDataTransaction = async (
     validatorPubkey: string,
+    requestKey: string,
     tx: ReturnType<typeof txDTO>['result'],
     transactionHash: string,
     input: string
@@ -386,6 +413,11 @@ export const makeVerifier = (
     if (!data.includes((validatorPubkey as string).slice(2)))
       throw new Error(
         '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data'
+      )
+
+    if (!data.includes(requestKey))
+      throw new Error(
+        '[verifySubmitExitRequestsDataTransaction] Validator index for exit was not found in finalized tx data'
       )
 
     logger.info(
