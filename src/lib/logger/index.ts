@@ -40,7 +40,13 @@ export const makeLogger = (options: LoggerOptions) => {
 
       const print = format === 'simple' ? printer.simple : printer.json
 
-      if (!silent) print(output, logLevel, sanitizer)
+      if (!silent) {
+        const secrets = [
+          ...sanitizer.secrets,
+          ...Object.values(details?.headers ?? {}),
+        ].filter((value): value is string => typeof value === 'string')
+        print(output, logLevel, { ...sanitizer, secrets })
+      }
     }
     return logger
   }, {}) as Logger

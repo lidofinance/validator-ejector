@@ -559,4 +559,73 @@ describe('verifier EDF e2e (mainnet fork)', () => {
       )
     })
   })
+
+  // Around the EDF enactment the ejector still verifies reports from the
+  // lookback window: some finalized before the switch (a pre-EDF EOA member),
+  // some after (an EDF delegate member). A union allowlist covers both.
+  describe('union allowlist accepts both a pre-EDF EOA report and an EDF delegate report', () => {
+    let delegationContract: ethers.Contract
+    let eoaReport: PublishedExitRequest
+    let delegateReport: PublishedExitRequest
+
+    beforeAll(async () => {
+      // Start from no members; earlier describes may leave one in place
+      const [members] = await consensus.getMembers()
+      for (let count = members.length; count > 0; count--) {
+        const quorumAfter = Math.max(1, Math.floor((count - 1) / 2) + 1)
+        await (
+          await consensus
+            .connect(admin)
+            .removeMember(members[count - 1], quorumAfter)
+        ).wait()
+      }
+
+      // Pre-EDF: an EOA member submits the report directly
+      await (
+        await consensus.connect(admin).addMember(memberEoaAddress, 1)
+      ).wait()
+      eoaReport = await publishExitRequestsViaOracleReport(sendAsEoa(memberEoa))
+      await (
+        await consensus.connect(admin).removeMember(memberEoaAddress, 1)
+      ).wait()
+
+      // Post-EDF: a DelegationContract member submits through execute()
+      const factory = new ethers.ContractFactory(
+        delegationContractAbi as unknown as ethers.ContractInterface,
+        delegationContractFixture.bytecode,
+        owner
+      )
+      delegationContract = await factory.deploy(
+        await owner.getAddress(),
+        firstDelegateAddress,
+        3600
+      )
+      await delegationContract.deployed()
+      await (
+        await consensus.connect(admin).addMember(delegationContract.address, 1)
+      ).wait()
+      delegateReport = await publishExitRequestsViaOracleReport(
+        sendAsDelegate(delegationContract, firstDelegate)
+      )
+    }, 300_000)
+
+    it('accepts both reports under a union of the EOA and the delegate', async () => {
+      const union = makeAllowlistedVerifier([
+        memberEoaAddress,
+        firstDelegateAddress,
+      ])
+      await expect(verify(union, eoaReport)).resolves.toBeUndefined()
+      await expect(verify(union, delegateReport)).resolves.toBeUndefined()
+    })
+
+    it('drops the old EOA report once it leaves the allowlist while the delegate still verifies', async () => {
+      const delegateOnly = makeAllowlistedVerifier([firstDelegateAddress])
+      await expect(
+        verify(delegateOnly, delegateReport)
+      ).resolves.toBeUndefined()
+      await expect(verify(delegateOnly, eoaReport)).rejects.toThrow(
+        'Transaction is not signed by a trusted Oracle'
+      )
+    })
+  })
 })
