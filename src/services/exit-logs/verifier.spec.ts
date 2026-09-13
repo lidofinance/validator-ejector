@@ -48,7 +48,12 @@ const OTHER_REQUEST = {
 }
 
 const v1Record = (r: typeof REQUEST) =>
-  packV1(r.stakingModuleId, r.nodeOperatorId, r.validatorIndex, r.validatorPubkey)
+  packV1(
+    r.stakingModuleId,
+    r.nodeOperatorId,
+    r.validatorIndex,
+    r.validatorPubkey
+  )
 
 const v2Record = (r: typeof REQUEST, keyIndex = 5) =>
   packV2(
@@ -133,9 +138,9 @@ describe('parseExitRequests', () => {
     )
 
     // A format 2 record misread as format 1 leaves an 8-byte remainder
-    expect(() => parseExitRequests(v2Record(REQUEST), DATA_FORMAT_LIST)).toThrow(
-      'Invalid exit requests data length'
-    )
+    expect(() =>
+      parseExitRequests(v2Record(REQUEST), DATA_FORMAT_LIST)
+    ).toThrow('Invalid exit requests data length')
   })
 })
 
@@ -162,7 +167,9 @@ describe('containsExitRequest', () => {
   it('matches the pubkey case-insensitively', () => {
     const event = {
       ...REQUEST,
-      validatorPubkey: REQUEST.validatorPubkey.toUpperCase().replace('0X', '0x'),
+      validatorPubkey: REQUEST.validatorPubkey
+        .toUpperCase()
+        .replace('0X', '0x'),
     }
     expect(containsExitRequest(data, DATA_FORMAT_LIST, event)).toBe(true)
   })
