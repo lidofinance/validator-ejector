@@ -453,7 +453,7 @@ describe('makeConsensusApi logs', () => {
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
         message:
-          '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
+          '[verifySubmitExitRequestsDataTransaction] Exit request for the validator was not found in finalized tx data',
       })
     )
   })
@@ -555,7 +555,8 @@ describe('makeConsensusApi logs', () => {
     expect(logger.error).toHaveBeenCalledWith(
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
-        message: 'Validator index for exit was not found in finalized tx data',
+        message:
+          'Exit request for the validator was not found in finalized tx data',
       })
     )
   })
