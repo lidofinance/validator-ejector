@@ -133,11 +133,7 @@ export const makeExitLogsFetcherService = (
 
       if (!TRUST_MODE) {
         try {
-          await verifier.verifyEvent(
-            validatorPubkey,
-            transactionHash,
-            blockNumber
-          )
+          await verifier.verifyEvent(event, transactionHash, blockNumber)
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })
         } catch (e) {

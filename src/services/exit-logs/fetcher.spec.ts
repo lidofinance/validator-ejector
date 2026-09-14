@@ -453,7 +453,7 @@ describe('makeConsensusApi logs', () => {
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
         message:
-          '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
+          '[verifySubmitExitRequestsDataTransaction] Exit request for the validator was not found in finalized tx data',
       })
     )
   })
@@ -510,6 +510,55 @@ describe('makeConsensusApi logs', () => {
     expect(res).toHaveLength(1)
     expect(res[0].validatorPubkey).toBe(HOODI_EXIT_VALIDATOR_PUBKEY)
     expect(api.verifier.verifyEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects an event that reuses a signed pubkey under a foreign validator index', async () => {
+    // The oracle signed exactly one exit request: validator 351636 with this
+    // pubkey. The ejector executes exits by the index taken from the event,
+    // so the index must be authorized by the signed report too.
+    const SIGNED_PUBKEY =
+      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    const VICTIM_INDEX = '351637' // never signed by the oracle
+
+    // Malicious EL: the event carries the signed pubkey, but the victim's
+    // index. Everything else in the event is untouched.
+    const forgedEvent = oracleValidatorExitRequestEventsMock()
+    forgedEvent.result.result[0].topics[3] = ethers.utils.hexZeroPad(
+      ethers.BigNumber.from(VICTIM_INDEX).toHexString(),
+      32
+    )
+    mockEthServer(forgedEvent, config.EXECUTION_NODE[0])
+
+    // The oracle report itself is genuine and untouched: transaction
+    // integrity, report hash, signature recovery, allowlist — all pass.
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE[0])
+    config.ORACLE_ADDRESSES_ALLOWLIST = [
+      '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+
+    // Malicious CL: confirms that validator 351637 has the signed pubkey
+    // (an honest CL would return a different pubkey and the pair filter
+    // would drop the event before verification).
+    mockService([VICTIM_INDEX], { [VICTIM_INDEX]: SIGNED_PUBKEY })
+
+    const res = await api.fetcher.getLogs(123, 123, scope())
+
+    // The pubkey alone is not enough: the signed report contains no request
+    // with index 351637, so the event is dropped and nothing gets exited.
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
+      expect.objectContaining({
+        message:
+          'Exit request for the validator was not found in finalized tx data',
+      })
+    )
   })
 
   it('should not verify withdrawal if validator pubkey not found on CL', async () => {

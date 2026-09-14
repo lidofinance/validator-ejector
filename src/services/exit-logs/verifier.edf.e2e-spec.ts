@@ -48,6 +48,7 @@ type SendTransaction = (
 
 type PublishedExitRequest = {
   pubkey: string
+  validatorIndex: number
   finalizedTxHash: string
   toBlock: number
   finalizedCalldata: string
@@ -162,6 +163,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
 
     return {
       pubkey: args.validatorPubkey,
+      validatorIndex,
       finalizedTxHash: receipt.transactionHash,
       toBlock: receipt.blockNumber,
       finalizedCalldata,
@@ -272,7 +274,16 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     verifier: ReturnType<typeof makeVerifier>,
     report: PublishedExitRequest
   ) =>
-    verifier.verifyEvent(report.pubkey, report.finalizedTxHash, report.toBlock)
+    verifier.verifyEvent(
+      {
+        stakingModuleId: NOR_MODULE_ID,
+        nodeOperatorId: NOR_NODE_OPERATOR_ID,
+        validatorIndex: report.validatorIndex,
+        validatorPubkey: report.pubkey,
+      },
+      report.finalizedTxHash,
+      report.toBlock
+    )
 
   beforeAll(async () => {
     hardhat = new HardhatServer(FORK_PORT)
