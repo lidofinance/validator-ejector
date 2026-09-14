@@ -37,6 +37,83 @@ const EXECUTE_SELECTOR = executeIface.getSighash('execute')
 
 const selectorOf = (input: string) => input.slice(0, 10).toLowerCase()
 
+type ExitRequestEvent = {
+  stakingModuleId: ethers.BigNumberish
+  nodeOperatorId: ethers.BigNumberish
+  validatorIndex: ethers.BigNumberish
+  validatorPubkey: string
+}
+
+// One packed exit request record, layouts from ValidatorsExitBus.sol:
+//
+// DATA_FORMAT_LIST (1), 64 bytes:
+//   | moduleId (3) | nodeOpId (5) | validatorIndex (8) | pubkey (48) |
+//
+// DATA_FORMAT_LIST_WITH_KEY_INDEX (2), 72 bytes — same fields plus a
+// keyIndex the contract uses to look the pubkey up in the registry;
+// it is not part of the event, so it is skipped here:
+//   | moduleId (3) | nodeOpId (5) | validatorIndex (8) | keyIndex (8) | pubkey (48) |
+const decodeExitRequest = (record: string) => ({
+  stakingModuleId: ethers.BigNumber.from(
+    ethers.utils.hexDataSlice(record, 0, 3)
+  ),
+  nodeOperatorId: ethers.BigNumber.from(
+    ethers.utils.hexDataSlice(record, 3, 8)
+  ),
+  validatorIndex: ethers.BigNumber.from(
+    ethers.utils.hexDataSlice(record, 8, 16)
+  ),
+  // In both formats the pubkey is the last 48 bytes of the record
+  validatorPubkey: ethers.utils.hexDataSlice(
+    record,
+    ethers.utils.hexDataLength(record) - 48
+  ),
+})
+
+// The `data` of an oracle report or a submitExitRequestsData call is a batch:
+// exit request records packed back to back with no separator, one record per
+// validator asked to exit. `dataFormat` (from the same authenticated calldata)
+// picks the record layout above and therefore the record length
+export const parseExitRequests = (
+  data: string,
+  dataFormat: ethers.BigNumber
+) => {
+  const format = dataFormat.toNumber()
+  if (format !== 1 && format !== 2)
+    throw new Error(`Unsupported exit requests data format ${format}`)
+
+  const recordLength = format === 1 ? 64 : 72
+  const dataLength = ethers.utils.hexDataLength(data)
+  if (dataLength === 0 || dataLength % recordLength !== 0)
+    throw new Error('Invalid exit requests data length')
+
+  const records: ReturnType<typeof decodeExitRequest>[] = []
+  for (let offset = 0; offset < dataLength; offset += recordLength)
+    records.push(
+      decodeExitRequest(
+        ethers.utils.hexDataSlice(data, offset, offset + recordLength)
+      )
+    )
+  return records
+}
+
+// The exit downstream is executed by the validator index from the event, so
+// the signed data must contain the whole requested record, not merely the
+// pubkey somewhere in the byte stream: every event field has to match one
+// record exactly.
+export const containsExitRequest = (
+  data: string,
+  dataFormat: ethers.BigNumber,
+  event: ExitRequestEvent
+) =>
+  parseExitRequests(data, dataFormat).some(
+    (request) =>
+      request.stakingModuleId.eq(event.stakingModuleId) &&
+      request.nodeOperatorId.eq(event.nodeOperatorId) &&
+      request.validatorIndex.eq(event.validatorIndex) &&
+      request.validatorPubkey === event.validatorPubkey.toLowerCase()
+  )
+
 export type VerifierService = ReturnType<typeof makeVerifier>
 
 export const makeVerifier = (
@@ -236,7 +313,7 @@ export const makeVerifier = (
   }
 
   const verifyEvent = async (
-    validatorPubkey: string,
+    event: ExitRequestEvent,
     transactionHash: string,
     toBlock: number
   ) => {
@@ -265,7 +342,7 @@ export const makeVerifier = (
       case SUBMIT_REPORT_DATA_SELECTOR:
         // Oracle report finalized on the Exit Bus
         await verifyOracleEvent(
-          validatorPubkey,
+          event,
           submitReportDataIface.decodeFunctionData('submitReportData', input),
           toBlock
         )
@@ -275,7 +352,7 @@ export const makeVerifier = (
         // This transaction contains the full exit requests data. Its hash,
         // unlike the hash of execute(proposalId), commits to that data.
         await verifySubmitExitRequestsDataTransaction(
-          validatorPubkey,
+          event,
           tx,
           transactionHash,
           input
@@ -290,7 +367,7 @@ export const makeVerifier = (
   }
 
   const verifyOracleEvent = async (
-    validatorPubkey: string,
+    event: ExitRequestEvent,
     decoded: ethers.utils.Result,
     toBlock: number
   ) => {
@@ -303,9 +380,10 @@ export const makeVerifier = (
         dataFormat: ethers.BigNumber
       }
 
-    // Strip 0x
-    if (!data.includes((validatorPubkey as string).slice(2)))
-      throw new Error('Pubkey for exit was not found in finalized tx data')
+    if (!containsExitRequest(data, dataFormat, event))
+      throw new Error(
+        'Exit request for the validator was not found in finalized tx data'
+      )
 
     const encodedData = ethers.utils.defaultAbiCoder.encode(
       [
@@ -363,7 +441,7 @@ export const makeVerifier = (
   }
 
   const verifySubmitExitRequestsDataTransaction = async (
-    validatorPubkey: string,
+    event: ExitRequestEvent,
     tx: ReturnType<typeof txDTO>['result'],
     transactionHash: string,
     input: string
@@ -381,11 +459,14 @@ export const makeVerifier = (
       'submitExitRequestsData',
       input
     )
-    const { data } = decoded.request as { data: string }
+    const { data, dataFormat } = decoded.request as {
+      data: string
+      dataFormat: ethers.BigNumber
+    }
 
-    if (!data.includes((validatorPubkey as string).slice(2)))
+    if (!containsExitRequest(data, dataFormat, event))
       throw new Error(
-        '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data'
+        '[verifySubmitExitRequestsDataTransaction] Exit request for the validator was not found in finalized tx data'
       )
 
     logger.info(

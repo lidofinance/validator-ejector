@@ -17,6 +17,7 @@ import {
   HOODI_EXIT_VALIDATOR_PUBKEY,
   HOODI_SUBMIT_EXIT_REQUESTS_DATA_INPUT,
   HOODI_SUBMIT_EXIT_REQUESTS_DATA_TX,
+  VALIDATOR_EXIT_REQUEST_TOPIC,
 } from './fixtures.js'
 import { mockEthServer } from '../../test/mock-eth-server.js'
 import { mockLogger } from '../../test/logger.js'
@@ -43,7 +44,10 @@ describe('makeConsensusApi logs', () => {
     stakingModuleId = '1'
   ): EjectorScope[] => [{ stakingModuleId, operatorIds }]
 
-  const mockService = (validatorIndices: string[] = ['351636']) => {
+  const mockService = (
+    validatorIndices: string[] = ['351636'],
+    correctPubkeys?: Record<string, string>
+  ) => {
     const executionApi = makeExecutionApi(request, logger, config)
 
     Object.defineProperty(executionApi, 'exitBusAddress', {
@@ -54,8 +58,27 @@ describe('makeConsensusApi logs', () => {
       get: vi.fn(() => '0x0000000000000000000000000000000000000000'),
     })
 
+    // Mirror the real validatePublicKeys contract: it returns the confirmed
+    // (index, pubkey) pairs, not bare indices. An index is valid only for the
+    // pubkey the CL holds; a mismatched pubkey on a valid index is dropped.
     const consensusApi = {
-      validatePublicKeys: vi.fn().mockResolvedValue(new Set(validatorIndices)),
+      validatePublicKeys: vi.fn(
+        async (
+          pairs: Array<{ validatorIndex: string; validatorPubkey: string }>
+        ) => {
+          const valid = new Set<string>()
+          for (const pair of pairs) {
+            if (!validatorIndices.includes(pair.validatorIndex)) continue
+            if (
+              correctPubkeys &&
+              correctPubkeys[pair.validatorIndex] !== pair.validatorPubkey
+            )
+              continue
+            valid.add(`${pair.validatorIndex}:${pair.validatorPubkey}`)
+          }
+          return valid
+        }
+      ),
     } as unknown as ConsensusApiService
 
     api = makeExitLogsService(
@@ -430,7 +453,110 @@ describe('makeConsensusApi logs', () => {
       expect.stringContaining('Event security check failed for'),
       expect.objectContaining({
         message:
-          '[verifySubmitExitRequestsDataTransaction] Pubkey for exit was not found in finalized tx data',
+          '[verifySubmitExitRequestsDataTransaction] Exit request for the validator was not found in finalized tx data',
+      })
+    )
+  })
+
+  it('drops a second log that reuses a valid index with an impostor pubkey', async () => {
+    // Same (module, nodeOp, validatorIndex) topics; only the pubkey differs
+    const sameIndexTopics = [
+      VALIDATOR_EXIT_REQUEST_TOPIC,
+      '0x0000000000000000000000000000000000000000000000000000000000000001',
+      '0x0000000000000000000000000000000000000000000000000000000000000026',
+      '0x0000000000000000000000000000000000000000000000000000000000125731',
+    ]
+    const impostorPubkey = `0x${'22'.repeat(48)}`
+    const log = (pubkey: string, transactionHash: string) => ({
+      address: '0x8664d394c2b3278f26a1b44b967aef99707eeab2',
+      topics: sameIndexTopics,
+      data: ethers.utils.defaultAbiCoder.encode(
+        ['bytes', 'uint256'],
+        [pubkey, 1763148708]
+      ),
+      blockNumber: '0x18bd75',
+      transactionHash,
+    })
+
+    // A malicious EL reports index 1201969 twice: its real pubkey (which puts
+    // the index in the CL Set) and an impostor pubkey reused from elsewhere.
+    mockEthServer(
+      {
+        url: '/',
+        method: 'POST',
+        result: {
+          result: [
+            log(HOODI_EXIT_VALIDATOR_PUBKEY, `0x${'11'.repeat(32)}`),
+            log(impostorPubkey, `0x${'22'.repeat(32)}`),
+          ],
+        },
+        bodyMatcher: (body: any) =>
+          body.method === 'eth_getLogs' &&
+          body.params[0].topics[0] === VALIDATOR_EXIT_REQUEST_TOPIC,
+      },
+      config.EXECUTION_NODE[0]
+    )
+
+    // The CL confirms the index only for its real pubkey
+    mockService([HOODI_EXIT_VALIDATOR_INDEX], {
+      [HOODI_EXIT_VALIDATOR_INDEX]: HOODI_EXIT_VALIDATOR_PUBKEY,
+    })
+    // Isolate the CL pair filter from downstream verification
+    api.verifier.verifyEvent = vi.fn().mockResolvedValue(undefined)
+
+    const res = await api.fetcher.getLogs(1621365, 1621365, scope([38]))
+
+    // Only the real pair survives; the impostor never reaches verification
+    expect(res).toHaveLength(1)
+    expect(res[0].validatorPubkey).toBe(HOODI_EXIT_VALIDATOR_PUBKEY)
+    expect(api.verifier.verifyEvent).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects an event that reuses a signed pubkey under a foreign validator index', async () => {
+    // The oracle signed exactly one exit request: validator 351636 with this
+    // pubkey. The ejector executes exits by the index taken from the event,
+    // so the index must be authorized by the signed report too.
+    const SIGNED_PUBKEY =
+      '0xab50ef06a0e48d9edf43e052f20dc912e0ba8d5b3f07051b6f2a13b094087f791af79b2780d395444a57e258d838083a'
+    const VICTIM_INDEX = '351637' // never signed by the oracle
+
+    // Malicious EL: the event carries the signed pubkey, but the victim's
+    // index. Everything else in the event is untouched.
+    const forgedEvent = oracleValidatorExitRequestEventsMock()
+    forgedEvent.result.result[0].topics[3] = ethers.utils.hexZeroPad(
+      ethers.BigNumber.from(VICTIM_INDEX).toHexString(),
+      32
+    )
+    mockEthServer(forgedEvent, config.EXECUTION_NODE[0])
+
+    // The oracle report itself is genuine and untouched: transaction
+    // integrity, report hash, signature recovery, allowlist — all pass.
+    mockEthServer(
+      oracleSubmitReportDataTransactionMock(),
+      config.EXECUTION_NODE[0]
+    )
+    mockEthServer(oracleSubmitReportTransactionMock(), config.EXECUTION_NODE[0])
+    mockEthServer(oracleConsensusReachedEventsMock(), config.EXECUTION_NODE[0])
+    config.ORACLE_ADDRESSES_ALLOWLIST = [
+      '0x7eE534a6081d57AFB25b5Cff627d4D26217BB0E9',
+    ]
+    config.SUBMIT_TX_HASH_ALLOWLIST = []
+
+    // Malicious CL: confirms that validator 351637 has the signed pubkey
+    // (an honest CL would return a different pubkey and the pair filter
+    // would drop the event before verification).
+    mockService([VICTIM_INDEX], { [VICTIM_INDEX]: SIGNED_PUBKEY })
+
+    const res = await api.fetcher.getLogs(123, 123, scope())
+
+    // The pubkey alone is not enough: the signed report contains no request
+    // with index 351637, so the event is dropped and nothing gets exited.
+    expect(res).toHaveLength(0)
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Event security check failed for'),
+      expect.objectContaining({
+        message:
+          'Exit request for the validator was not found in finalized tx data',
       })
     )
   })

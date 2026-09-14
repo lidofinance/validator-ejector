@@ -6,7 +6,10 @@ import { MetricsService } from '../prom/service'
 import { VerifierService } from './verifier.js'
 
 import { ValidatorsToEjectCache } from './types.js'
-import { ConsensusApiService } from '../consensus-api/service.js'
+import {
+  ConsensusApiService,
+  validationPairKey,
+} from '../consensus-api/service.js'
 import { ExecutionApiService } from '../../services/execution-api/service.js'
 import type { EjectorScope } from '../config/service.js'
 
@@ -81,14 +84,20 @@ export const makeExitLogsFetcherService = (
       }
     })
 
-    const validIndices = await cl.validatePublicKeys(
+    const validPairs = await cl.validatePublicKeys(
       events.map((event) => ({
         validatorIndex: event.validatorIndex,
         validatorPubkey: event.validatorPubkey,
       }))
     )
 
-    return events.filter((event) => validIndices.has(event.validatorIndex))
+    // Keep the exact (index, pubkey) pair the CL confirmed, not just the index:
+    // a second log reusing a valid index with another pubkey must not survive.
+    return events.filter((event) =>
+      validPairs.has(
+        validationPairKey(event.validatorIndex, event.validatorPubkey)
+      )
+    )
   }
 
   const getLogs = async (
@@ -124,11 +133,7 @@ export const makeExitLogsFetcherService = (
 
       if (!TRUST_MODE) {
         try {
-          await verifier.verifyEvent(
-            validatorPubkey,
-            transactionHash,
-            blockNumber
-          )
+          await verifier.verifyEvent(event, transactionHash, blockNumber)
           logger.debug('Event security check passed', { validatorPubkey })
           eventSecurityVerification.inc({ result: 'success' })
         } catch (e) {
