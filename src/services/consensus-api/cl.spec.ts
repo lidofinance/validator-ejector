@@ -458,11 +458,41 @@ describe('makeConsensusApi', () => {
 
       expect(primaryScope.isDone()).toBe(true)
       expect(secondaryScope.isDone()).toBe(true)
-      expect(res).toEqual(new Set(['1']))
+      expect(res).toEqual(new Set(['1:0x123']))
       expect(logger.warn).toHaveBeenCalledWith(
         'CL endpoint failed, trying next',
         expect.objectContaining({ url: 'primary.cl.example:5051' })
       )
+    })
+
+    it('binds each valid index to its pubkey so a mismatched pubkey cannot ride on it', async () => {
+      const cfg = mockConfig(logger, { CONSENSUS_NODE: PRIMARY })
+      const apiOne = makeConsensusApi(request, logger, cfg)
+
+      const realPubkey = '0xaaa'
+      const scope = nock(PRIMARY)
+        .get('/eth/v1/beacon/states/head/validators?id=1,1')
+        .reply(200, {
+          data: [
+            {
+              index: '1',
+              status: 'active_ongoing',
+              validator: { pubkey: realPubkey, exit_epoch: FAR_FUTURE_EPOCH },
+            },
+          ],
+        })
+
+      // A malicious EL reports index 1 twice: once with its real key, once
+      // with an unrelated one. The mismatched pair must not count as valid
+      // just because the index is.
+      const res = await apiOne.validatePublicKeys([
+        { validatorIndex: '1', validatorPubkey: realPubkey },
+        { validatorIndex: '1', validatorPubkey: '0xdead' },
+      ])
+
+      expect(scope.isDone()).toBe(true)
+      expect(res.has(`1:${realPubkey}`)).toBe(true)
+      expect(res.has('1:0xdead')).toBe(false)
     })
 
     it('genesis does not rotate on 4xx (terminal)', async () => {
