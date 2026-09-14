@@ -1,4 +1,29 @@
+## [2.2.1](https://github.com/lidofinance/validator-ejector/compare/2.2.0...2.2.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* add tests for union allowlist to verify pre-EDF and EDF delegate reports ([c833527](https://github.com/lidofinance/validator-ejector/commit/c83352774994f6c9aa11ef406f3ad4fd35867508))
+* enhance event verification to reject unauthorized validator index usage ([9307468](https://github.com/lidofinance/validator-ejector/commit/93074689659c2eacbe58014221b8687b5b97b052))
+* enhance logger sanitizer to handle secrets more effectively and improve key sanitization ([9987925](https://github.com/lidofinance/validator-ejector/commit/9987925b344969445731589c3fea88109f731194))
+* enhance public key validation to ensure index and pubkey pairs match ([1c8bdfa](https://github.com/lidofinance/validator-ejector/commit/1c8bdfacb6da4ff809077f688737a0a195b6772b))
+* enhance sanitizer to handle oversized secrets without leaking information ([f04b188](https://github.com/lidofinance/validator-ejector/commit/f04b1889200133d4003442ef961aff68f37020a3))
+* eslint ([3002a12](https://github.com/lidofinance/validator-ejector/commit/3002a122dfb559a79d3a1109055b909db2f4b98c))
+* format code for better readability in verifier EDF e2e test ([03a6ee5](https://github.com/lidofinance/validator-ejector/commit/03a6ee5361b2ded4049848fd7e2a4b9ac9bf28d3))
+* update sanitizer test to handle oversized secrets without leaking information ([556a492](https://github.com/lidofinance/validator-ejector/commit/556a4928666ac31590e9aa492191522660ee05e4))
+* update sanitizer tests to use consistent variable names and improve clarity ([9120931](https://github.com/lidofinance/validator-ejector/commit/912093197f7bb0afc5d6913a80fe8a9ad950db9f))
+* verify exit events against whole decoded report records ([875c49a](https://github.com/lidofinance/validator-ejector/commit/875c49a533d1764cfe12c3ca43082938c1c5cc7f))
+
+
+
 # [2.2.0](https://github.com/lidofinance/validator-ejector/compare/2.1.0...2.2.0) (2026-08-21)
+
+
+### Bug Fixes
+
+* eslint errors ([763af0f](https://github.com/lidofinance/validator-ejector/commit/763af0f8621b6c46d28e4d21b67cd30b2d0fef01))
+* restore Node 16 build and isolate Hardhat e2e dependency ([8560dde](https://github.com/lidofinance/validator-ejector/commit/8560dde93c063d12adf98b12af4beb6d29c20888))
+* update commit hash and bytecode in delegation contract fixture ([88b124e](https://github.com/lidofinance/validator-ejector/commit/88b124ef0b6a9e0bea462f9f7c9805d30102a476))
 
 
 ### Features
@@ -11,6 +36,7 @@
 * remove unused EASY_TRACK_MOTION_CREATOR_ADDRESSES_ALLOWLIST and simplify getLogs call ([550feb9](https://github.com/lidofinance/validator-ejector/commit/550feb9e3bf1e0102c5106b7872f22ac63b3f581))
 * rework tx verify ([d7f18cf](https://github.com/lidofinance/validator-ejector/commit/d7f18cf62e738333393de33b5122039983e3848b))
 * update execution node fallback ([131c284](https://github.com/lidofinance/validator-ejector/commit/131c284169d93c8144c6ce43e28cacfc5db951e6))
+* upgrade Node.js version to 22 in workflows and Dockerfile ([7704676](https://github.com/lidofinance/validator-ejector/commit/770467669d006d0669bf9fe685f8a2934a28ac91))
 * **webhook:** add bearer token auth via WEBHOOK_TOKEN or WEBHOOK_TOKEN_FILE ([feacda8](https://github.com/lidofinance/validator-ejector/commit/feacda8a51547a197080729881c2cbe3432ba84b))
 * **webhook:** allow custom auth header via WEBHOOK_HEADER ([731c54d](https://github.com/lidofinance/validator-ejector/commit/731c54d1a5c5ed85e0bbf4e3557f3d4910917df4))
 
@@ -252,21 +278,6 @@
 * link to lido fi ([f24353d](https://github.com/lidofinance/validator-ejector/commit/f24353d5f178242b55d212a5c483d7b570d489a6))
 * move to vitetest ([84a362c](https://github.com/lidofinance/validator-ejector/commit/84a362cbb93a14000286491df7889e36ad68fe9c))
 * reload messages in each iteration ([daf7ed6](https://github.com/lidofinance/validator-ejector/commit/daf7ed610451f9a8f1d543a7a20bce06b2b6552c))
-
-
-
-# [1.2.0](https://github.com/lidofinance/validator-ejector/compare/1.1.0...1.2.0) (2023-04-26)
-
-
-### Bug Fixes
-
-* prom percentage math ([f9c0beb](https://github.com/lidofinance/validator-ejector/commit/f9c0beb99a8198ff542f980d8c69ceee29bb9a64))
-* remove part of help msg in message metric ([ad7dabf](https://github.com/lidofinance/validator-ejector/commit/ad7dabfe076bc5217f9ac3672d787eaaac615bf0))
-
-
-### Features
-
-* dedicated exit messages left metrics ([c8f6ceb](https://github.com/lidofinance/validator-ejector/commit/c8f6cebbf58726f37858ddfd16f2d664b607a586))
 
 
 
