@@ -1,4 +1,4 @@
-## [2.2.1](https://github.com/lidofinance/validator-ejector/compare/2.2.0...2.2.1) (2026-09-14)
+## [2.2.1](https://github.com/lidofinance/validator-ejector/compare/2.2.0...2.2.1) (2026-09-15)
 
 
 ### Bug Fixes
