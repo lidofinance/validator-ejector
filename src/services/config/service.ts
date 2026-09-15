@@ -97,6 +97,7 @@ export const makeConfig = ({
     ),
     JOB_INTERVAL: optional(() => num(env.JOB_INTERVAL)) ?? 384000, // 1 epoch
 
+    HTTP_HOST: optional(() => str(env.HTTP_HOST)),
     HTTP_PORT: optional(() => num(env.HTTP_PORT)) ?? 8989,
     RUN_METRICS:
       optional(() =>
