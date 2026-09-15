@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { makeLogger } from './lib/index.js'
 import { makeAppModule } from './app/module.js'
 
