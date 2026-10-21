@@ -3,7 +3,7 @@
     "target": "esnext",
     "module": "ESNext",
     "lib": ["esnext"],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -11,13 +11,15 @@
     "strictNullChecks": true,
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": ".",
     "baseUrl": "./src",
-    "types": ["vitest/globals"]
+    "types": ["node", "vitest/globals"]
   },
-  "exclude": ["node_modules"],
-  "ts-node": {
-    "experimentalSpecifierResolution": "node",
-    "transpileOnly": true,
-    "esm": true,
-  },
+  "include": [
+    "src/**/*.ts",
+    "encryptor/**/*.ts",
+    "vite*.config.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

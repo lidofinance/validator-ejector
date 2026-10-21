@@ -1,13 +1,14 @@
-import bls from '@chainsafe/bls'
 import { decrypt } from '@chainsafe/bls-keystore'
 import { createHash } from 'crypto'
-
-import { ssz } from '@lodestar/types'
-import { fromHex, toHexString } from '@lodestar/utils'
-import { DOMAIN_VOLUNTARY_EXIT } from '@lodestar/params'
-import { computeDomain, computeSigningRoot } from '@lodestar/state-transition'
+import { utils } from 'ethers'
 
 import { encryptedMessageDTO, exitOrEthDoExitDTO } from './dto.js'
+import {
+  computeExitDomain,
+  computeExitSigningRoot,
+  decodeFixedHex,
+  verifyExitSignature,
+} from './crypto.js'
 
 import type { LoggerService } from '../../lib/index.js'
 import type {
@@ -182,6 +183,15 @@ export const makeMessagesProcessor = ({
     const genesis = await consensusApi.genesis()
     const state = await consensusApi.state()
 
+    // Invalid network context must fail the refresh, not mark local files bad.
+    const GENESIS_VALIDATORS_ROOT = decodeFixedHex(
+      genesis.genesis_validators_root,
+      32
+    )
+    const CURRENT_FORK = decodeFixedHex(state.current_version, 4)
+    const PREVIOUS_FORK = decodeFixedHex(state.previous_version, 4)
+    const CAPELLA_FORK_VERSION = decodeFixedHex(capellaForkVersion, 4)
+
     const validatorIndices = Array.from(
       new Set(messages.map((m) => m.data.message.validator_index))
     )
@@ -213,38 +223,26 @@ export const makeMessagesProcessor = ({
         continue
       }
 
-      const pubKey = fromHex(validatorInfo.pubKey)
-      const signature = fromHex(rawSignature)
-
-      const GENESIS_VALIDATORS_ROOT = fromHex(genesis.genesis_validators_root)
-      const CURRENT_FORK = fromHex(state.current_version)
-      const PREVIOUS_FORK = fromHex(state.previous_version)
-      const CAPELLA_FORK_VERSION = fromHex(capellaForkVersion)
-
       const verifyFork = (fork: Uint8Array) => {
-        const domain = computeDomain(
-          DOMAIN_VOLUNTARY_EXIT,
-          fork,
-          GENESIS_VALIDATORS_ROOT
-        )
+        const domain = computeExitDomain(fork, GENESIS_VALIDATORS_ROOT)
 
         const parsedExit = {
           epoch: parseInt(epoch, 10),
           validatorIndex: parseInt(validatorIndex, 10),
         }
 
-        const signingRoot = computeSigningRoot(
-          ssz.phase0.VoluntaryExit,
-          parsedExit,
-          domain
-        )
+        const signingRoot = computeExitSigningRoot(parsedExit, domain)
 
-        const isValid = bls.verify(pubKey, signingRoot, signature)
+        const isValid = verifyExitSignature(
+          signingRoot,
+          validatorInfo.pubKey,
+          rawSignature
+        )
 
         logger.debug(
           `Singature ${
             isValid ? 'valid' : 'invalid'
-          } for validator ${validatorIndex} for fork ${toHexString(fork)}`
+          } for validator ${validatorIndex} for fork ${utils.hexlify(fork)}`
         )
 
         return isValid

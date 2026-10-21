@@ -1,7 +1,7 @@
 import http from 'http'
 import url from 'url'
 
-import type { Registry } from 'prom-client'
+import type { Registry } from '@prometheus-io/client'
 import type { ConfigService } from 'services/config/service'
 
 export type HttpHandlerService = ReturnType<typeof makeHttpHandler>

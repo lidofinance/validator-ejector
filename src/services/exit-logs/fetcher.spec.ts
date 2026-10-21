@@ -297,7 +297,10 @@ describe('makeConsensusApi logs', () => {
           body.params[0].topics[0] === consensusTopic
       )
       .times(expectedChunks)
-      .reply(200, (_uri, body: any) => {
+      .reply(200, async (request: Request) => {
+        const body = (await request.json()) as {
+          params: [{ fromBlock: string; toBlock: string }]
+        }
         const from = parseInt(body.params[0].fromBlock, 16)
         const to = parseInt(body.params[0].toBlock, 16)
         ranges.push([from, to])

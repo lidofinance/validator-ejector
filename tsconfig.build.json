@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "encryptor/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.spec.ts",
+    "src/**/*.e2e-spec.ts",
+    "src/**/test/**",
+    "src/**/fixtures/**",
+    "encryptor/**/*.spec.ts",
+    "src/**/fixtures.ts"
+  ]
+}

@@ -9,3 +9,4 @@ jwt.hex
 artifacts
 # hardhat fork node cache (e2e)
 cache
+coverage
