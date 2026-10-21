@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { randomBytes } from 'node:crypto'
 import { access, readdir } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { PublicKey, Signature, verify } from '@chainsafe/blst'
@@ -100,7 +101,7 @@ assert.equal(
 )
 
 const payload = new TextEncoder().encode('synthetic runtime encryption probe')
-const password = 'public-test-password'
+const password = randomBytes(32).toString('hex')
 // A small KDF cost is used only for this public, synthetic smoke-test payload.
 const keystore = await create(password, payload, new Uint8Array(), '', null, {
   function: 'pbkdf2',

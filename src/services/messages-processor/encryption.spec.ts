@@ -31,7 +31,7 @@ import {
   VALIDATOR_PUB_KEY,
 } from './test/messages.js'
 
-const password = 'synthetic test password, not a validator secret'
+const password = randomBytes(32).toString('hex')
 const original = JSON.stringify({
   ...JSON.parse(CAPELLA_MESSAGE.content),
   description: 'Synthetic exit payload: проверка UTF-8 🔐',
@@ -89,7 +89,7 @@ describe('encrypted exit messages', () => {
   it('decrypts independently encrypted bytes using a Unicode password file ending in LF', async () => {
     // Build the input independently of the keystore library. Its 3.0.0 password
     // normalization uses NFKD UTF-8 and preserves the trailing LF.
-    const filePassword = 'synthetic café password\n'
+    const filePassword = `${randomBytes(32).toString('hex')} café\n`
     const salt = randomBytes(32)
     const iv = randomBytes(16)
     const derivedKey = await promisify(pbkdf2)(
