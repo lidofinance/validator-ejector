@@ -7,9 +7,10 @@ import {
 } from './test/messages.js'
 import { prepareDeps } from './test/prepare-deps.js'
 import { HttpException } from '../../lib/request/errors.js'
+import { genesisMock } from './test/fixtures.js'
 
 const CAPELLA_FORK_VERSION = '0x04017000'
-const BELLATRIX_FORK_VERSION = '0x04017000'
+const BELLATRIX_FORK_VERSION = '0x03017000'
 const DENCUN_FORK_VERSION = '0x05017000'
 
 describe('messages processor', () => {
@@ -21,7 +22,7 @@ describe('messages processor', () => {
         id: VALIDATOR_INDEX,
       },
       {
-        previous_version: BELLATRIX_FORK_VERSION,
+        previous_version: CAPELLA_FORK_VERSION,
         current_version: CAPELLA_FORK_VERSION,
         epoch: EPOCH,
       }
@@ -108,6 +109,189 @@ describe('messages processor', () => {
 
     di.restore()
   })
+
+  it('accepts the distinct previous fork before Dencun', async () => {
+    const di = prepareDeps(
+      [BELLATRIX_MESSAGE],
+      { pubKey: VALIDATOR_PUB_KEY, id: VALIDATOR_INDEX },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    try {
+      const state = await di.messagesProcessor.loadToMemoryStorage(
+        di.messageStorage,
+        {
+          isDencun: false,
+          currentVersion: CAPELLA_FORK_VERSION,
+          capellaVersion: CAPELLA_FORK_VERSION,
+        }
+      )
+      expect(state.added).toBe(1)
+      expect(state.invalidExitMessageFiles.size).toBe(0)
+      expect(di.messageStorage.findByValidatorIndex(VALIDATOR_INDEX)).toEqual(
+        JSON.parse(BELLATRIX_MESSAGE.content)
+      )
+    } finally {
+      di.restore()
+    }
+  })
+
+  it('accepts only Capella after Dencun even when the previous fork matches', async () => {
+    const di = prepareDeps(
+      [BELLATRIX_MESSAGE, CAPELLA_MESSAGE],
+      { pubKey: VALIDATOR_PUB_KEY, id: VALIDATOR_INDEX },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: DENCUN_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    try {
+      const state = await di.messagesProcessor.loadToMemoryStorage(
+        di.messageStorage,
+        {
+          isDencun: true,
+          currentVersion: DENCUN_FORK_VERSION,
+          capellaVersion: CAPELLA_FORK_VERSION,
+        }
+      )
+      expect(state.added).toBe(1)
+      expect([...state.invalidExitMessageFiles]).toEqual(['bellatrix.json'])
+      expect(di.messageStorage.findByValidatorIndex(VALIDATOR_INDEX)).toEqual(
+        JSON.parse(CAPELLA_MESSAGE.content)
+      )
+    } finally {
+      di.restore()
+    }
+  })
+
+  it.each([
+    ['odd hex', (signature: string) => signature.slice(0, -1)],
+    ['trailing junk', (signature: string) => `${signature}junk`],
+    ['infinity', () => `0xc0${'00'.repeat(95)}`],
+    ['off-curve point', () => `0x80${'00'.repeat(95)}`],
+    ['wrong subgroup', () => `0x80${'00'.repeat(94)}02`],
+  ])('continues a batch after a signature with %s', async (_name, corrupt) => {
+    const badMessage = JSON.parse(CAPELLA_MESSAGE.content)
+    badMessage.signature = corrupt(badMessage.signature)
+    const di = prepareDeps(
+      [
+        { filename: 'bad.json', content: JSON.stringify(badMessage) },
+        CAPELLA_MESSAGE,
+      ],
+      { pubKey: VALIDATOR_PUB_KEY, id: VALIDATOR_INDEX },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    try {
+      const state = await di.messagesProcessor.loadToMemoryStorage(
+        di.messageStorage,
+        {
+          isDencun: false,
+          currentVersion: CAPELLA_FORK_VERSION,
+          capellaVersion: CAPELLA_FORK_VERSION,
+        }
+      )
+      expect(state.added).toBe(1)
+      expect([...state.invalidExitMessageFiles]).toEqual(['bad.json'])
+      expect(di.messageStorage.findByValidatorIndex(VALIDATOR_INDEX)).toEqual(
+        JSON.parse(CAPELLA_MESSAGE.content)
+      )
+    } finally {
+      di.restore()
+    }
+  })
+
+  it('continues a batch after a malformed public key', async () => {
+    const badMessage = JSON.parse(CAPELLA_MESSAGE.content)
+    badMessage.message.validator_index = '123'
+    const di = prepareDeps(
+      [
+        { filename: 'bad-pubkey.json', content: JSON.stringify(badMessage) },
+        CAPELLA_MESSAGE,
+      ],
+      { pubKey: VALIDATOR_PUB_KEY, id: VALIDATOR_INDEX },
+      {
+        previous_version: BELLATRIX_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    vi.mocked(di.consensusApi.fetchValidatorsInfoBatch).mockResolvedValue(
+      new Map([
+        [
+          '123',
+          { index: '123', pubKey: '0xzz', status: 'active', isExiting: false },
+        ],
+        [
+          VALIDATOR_INDEX,
+          {
+            index: VALIDATOR_INDEX,
+            pubKey: VALIDATOR_PUB_KEY,
+            status: 'active',
+            isExiting: false,
+          },
+        ],
+      ])
+    )
+    try {
+      const state = await di.messagesProcessor.loadToMemoryStorage(
+        di.messageStorage,
+        {
+          isDencun: false,
+          currentVersion: CAPELLA_FORK_VERSION,
+          capellaVersion: CAPELLA_FORK_VERSION,
+        }
+      )
+      expect(state.added).toBe(1)
+      expect([...state.invalidExitMessageFiles]).toEqual(['bad-pubkey.json'])
+      expect(di.messageStorage.findByValidatorIndex(VALIDATOR_INDEX)).toEqual(
+        JSON.parse(CAPELLA_MESSAGE.content)
+      )
+    } finally {
+      di.restore()
+    }
+  })
+
+  it.each(['genesis', 'current', 'previous', 'capella'])(
+    'propagates an invalid %s context length',
+    async (field) => {
+      const di = prepareDeps(
+        [CAPELLA_MESSAGE],
+        { pubKey: VALIDATOR_PUB_KEY, id: VALIDATOR_INDEX },
+        {
+          previous_version:
+            field === 'previous' ? '0x01' : BELLATRIX_FORK_VERSION,
+          current_version: field === 'current' ? '0x01' : CAPELLA_FORK_VERSION,
+          epoch: EPOCH,
+        }
+      )
+      if (field === 'genesis') {
+        vi.spyOn(di.consensusApi, 'genesis').mockResolvedValue({
+          ...genesisMock().result.data,
+          genesis_validators_root: '0x01',
+        })
+      }
+      try {
+        await expect(
+          di.messagesProcessor.loadToMemoryStorage(di.messageStorage, {
+            isDencun: false,
+            currentVersion: CAPELLA_FORK_VERSION,
+            capellaVersion: field === 'capella' ? '0x01' : CAPELLA_FORK_VERSION,
+          })
+        ).rejects.toThrow(/Expected (4|32) bytes/)
+        expect(di.messageStorage.size).toBe(0)
+      } finally {
+        di.restore()
+      }
+    }
+  )
 
   it('logs exit request failures as error objects', async () => {
     const di = prepareDeps(

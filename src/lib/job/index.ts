@@ -1,4 +1,4 @@
-import type { Histogram } from 'prom-client'
+import type { Histogram } from '@prometheus-io/client'
 
 import { makeLogger } from '../logger/index.js'
 
@@ -16,7 +16,7 @@ export const makeJobRunner = <Initial>(
   }: {
     config: { JOB_INTERVAL: number }
     logger: ReturnType<typeof makeLogger>
-    metric: Histogram
+    metric: Histogram<'name' | 'interval' | 'result'>
     handler: (handlerValue: Initial) => Promise<void>
   }
 ) => {

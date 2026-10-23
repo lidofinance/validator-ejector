@@ -121,7 +121,10 @@ describe('makeExecutionApi', () => {
       nock(cfg.EXECUTION_NODE[0])
         .post('/', (body: any) => body.method === 'eth_getLogs')
         .times(3)
-        .reply(200, (_uri, body: any) => {
+        .reply(200, async (request: Request) => {
+          const body = (await request.json()) as {
+            params: [{ fromBlock: string; toBlock: string }]
+          }
           const { fromBlock, toBlock } = body.params[0]
           ranges.push([fromBlock, toBlock])
           // Distinct event per chunk to verify nothing is lost in the merge
