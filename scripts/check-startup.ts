@@ -126,10 +126,11 @@ const check = async (mode: 'dev' | 'built') => {
       const matched = routes.find(({ url }) => `/cl${url}` === req.url)
       assert.ok(matched, `Unexpected fixture route ${req.url}`)
       res.end(JSON.stringify(matched.result))
-    } catch (error) {
-      unexpected.push(String(error))
+    } catch {
+      const message = 'Fixture request failed'
+      unexpected.push(message)
       res.statusCode = 400
-      res.end(JSON.stringify({ message: String(error) }))
+      res.end(JSON.stringify({ message }))
     }
   })
 
