@@ -49,7 +49,7 @@ export const prepareDeps = (
     current_version: string
     epoch: string
   },
-  options: { failValidatorsBatch?: boolean } = {}
+  options: { failValidatorsBatch?: boolean; messagesPassword?: string } = {}
 ) => {
   const logger = makeLogger({
     level: 'error',
@@ -62,7 +62,10 @@ export const prepareDeps = (
 
   const config = makeConfig({
     logger,
-    env: defaultConfig as unknown as NodeJS.ProcessEnv,
+    env: {
+      ...defaultConfig,
+      MESSAGES_PASSWORD: options.messagesPassword,
+    } as unknown as NodeJS.ProcessEnv,
   })
 
   const serverMocks = [
@@ -137,7 +140,7 @@ export const prepareDeps = (
     epoch: string
   }) => {
     restore('/eth/v1/beacon/states/finalized/fork')
-    mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE[0])
+    serverMocks.push(mockEthCLNode(stateMock(fork), config.CONSENSUS_NODE[0]))
   }
 
   return {

@@ -8,6 +8,8 @@ On start, it will load events from a configurable amount of blocks behind and th
 
 ## Requirements
 
+- Node.js 24.22.1 and Yarn 1.22.22 for local installation and development
+
 - Folder of pre-signed exit messages as individual JSON files in either [spec format](https://github.com/lidofinance/validator-ejector/blob/d2e4db190935239e019618b948a1bd1cea20f88f/src/services/messages-processor/service.ts#L19-L25) (generic) or [ethdo output format](https://github.com/wealdtech/ethdo/blob/master/docs/usage.md#exit)
 - Execution node
 - Consensus node
@@ -123,24 +125,76 @@ Either:
 ```bash
 git clone https://github.com/lidofinance/validator-ejector.git
 cd validator-ejector
-yarn
+nvm install
+nvm use
+npm install --global yarn@1.22.22
+yarn install --frozen-lockfile --non-interactive
 yarn build
 yarn start
 ```
 
 Don't forget env variables in the last command.
 
-### Running e2e tests
+### Development and checks
 
-The EDF mainnet-fork tests use Hardhat. Hardhat is not an application
-dependency and is not installed by the regular Yarn install. Use Node.js 18 or
-newer and install the pinned test dependency without changing the application
-manifest:
+Use the same Node and Yarn versions for application and fork tests:
 
 ```bash
-npm install --no-save --package-lock=false hardhat@2.26.3
-yarn test:e2e
+nvm use
+yarn install --frozen-lockfile --non-interactive
+yarn build
+yarn typecheck
+yarn lint
+yarn test
 ```
+
+`yarn dev` runs the TypeScript entry point with tsx. `yarn encrypt` also uses
+tsx and requires the development dependencies. After building, the encryption
+script can be run with `node dist/encryptor/encrypt.js` using production
+dependencies. Run it from the repository root with the input/output folders
+and password configured as described above.
+
+The production build excludes tests and their fixtures. `yarn typecheck`
+checks application, encryption, test, and Vitest configuration sources.
+`yarn lint:fix` applies lint and formatting fixes explicitly.
+
+### Running e2e tests
+
+Hardhat is a pinned development dependency installed from `yarn.lock`.
+All three e2e suites run on Node.js 24.22.1:
+
+```bash
+EXECUTION_NODE="$MAINNET_ARCHIVE_RPC" yarn test:e2e
+```
+
+Set `MAINNET_ARCHIVE_RPC` to a mainnet execution RPC with historical state at
+block **25782077**. The EDF suite starts a local Hardhat fork on port 8560
+and sends its test transactions only to that local fork. It needs contract
+state at the pinned block, so an endpoint that only serves historical blocks
+or logs is insufficient. The other suites read execution and consensus data.
+See their configurations for the default consensus endpoint.
+
+In GitHub Actions, set `EDF_E2E_EXECUTION_NODE` to the archive-capable mainnet
+RPC. A public fallback in the test configuration may require a provider token
+or lack historical state; it is not a substitute for a working archive RPC.
+
+### Checking production images
+
+Build and check each supported architecture. The runtime probe needs no RPC,
+credentials, mounted messages, or network:
+
+```bash
+docker buildx build --platform linux/arm64 --load -t validator-ejector:arm64 .
+docker run --rm --network none validator-ejector:arm64 node scripts/check-runtime.mjs
+docker buildx build --platform linux/amd64 --load -t validator-ejector:amd64 .
+docker run --rm --network none validator-ejector:amd64 node scripts/check-runtime.mjs
+```
+
+The probe checks the Node version, non-root user, native BLST verification,
+SSZ, keystore encryption/decryption, JWT, built application imports, and the
+absence of development tools and test output. Running it does not start the
+daemon or submit exits. See [dependency notes](docs/dependencies.md) for the
+version constraints and security-audit limits.
 
 ## Metrics
 
@@ -176,19 +230,12 @@ Available metrics:
 
 ## Troubleshooting
 
-When you try to use Lido Validator Ejector on ARM, you may encounter an unexpected
-problem related to the inability to install @chainsafe/blst dependencies under darwin arm64.
+BLST 2.2.0 uses native prebuilt packages for supported platforms, including
+macOS ARM64 and Linux ARM64/AMD64. Do not reuse `node_modules` from another
+platform or suppress optional dependencies during installation. A native
+BLST import failure must be fixed before starting the daemon; there is no
+JavaScript fallback.
 
-### Why does it happen?!
-
-It happens because https://www.npmjs.com/package/@chainsafe/blst doesn't provide native C binding to https://github.com/supranational/blst under darwin arm64.
-Such as there no native binding, a user has to compile C binding to blst lab manually for darwin arm64.
-@chainsafe/blst has compile option but inside itself for downloading dependencies this lib uses Python language.
-Historically MacOs uses alias python3 for python. So then @chainsafe/blst fails with an error that it could not install all dependencies.
-To fix it on MacOs just create alias python for python3.
-
-```bash
-ln -s /opt/homebrew/bin/python3 /usr/local/bin/python
-```
-
-More info here - https://github.com/ChainSafe/lodestar/issues/4767#issuecomment-1640631566
+Use Node.js 24.22.1 and a fresh frozen installation when diagnosing native
+loading errors. Production Docker builds install dependencies inside the
+target architecture; they do not copy host `node_modules`.

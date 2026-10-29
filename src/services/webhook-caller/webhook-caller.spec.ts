@@ -28,8 +28,8 @@ describe('WebhookProcessor', () => {
     let authHeader: string | undefined
     const scope = nock('http://webhook.example')
       .post('/exit', JSON.stringify(event))
-      .reply(200, function () {
-        authHeader = this.req.headers.authorization
+      .reply(200, (request: Request) => {
+        authHeader = request.headers.get('authorization') ?? undefined
         return {}
       })
 
@@ -43,8 +43,8 @@ describe('WebhookProcessor', () => {
     let authHeader: string | undefined
     const scope = nock('http://webhook.example')
       .post('/exit', JSON.stringify(event))
-      .reply(200, function () {
-        authHeader = this.req.headers.authorization
+      .reply(200, (request: Request) => {
+        authHeader = request.headers.get('authorization') ?? undefined
         return {}
       })
 
@@ -62,9 +62,9 @@ describe('WebhookProcessor', () => {
     let authHeader: string | undefined
     const scope = nock('http://webhook.example')
       .post('/exit', JSON.stringify(event))
-      .reply(200, function () {
-        apiKeyHeader = this.req.headers['x-api-key'] as string | undefined
-        authHeader = this.req.headers.authorization
+      .reply(200, (request: Request) => {
+        apiKeyHeader = request.headers.get('x-api-key') ?? undefined
+        authHeader = request.headers.get('authorization') ?? undefined
         return {}
       })
 

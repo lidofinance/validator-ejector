@@ -1,4 +1,4 @@
-import client from 'prom-client'
+import client from '@prometheus-io/client'
 
 import type { MessageStorage } from '../job-processor/message-storage.js'
 
