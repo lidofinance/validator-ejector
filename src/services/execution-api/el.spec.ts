@@ -167,6 +167,79 @@ describe('makeExecutionApi', () => {
       expect(result).toHaveLength(1)
     })
 
+    it('sends literal 0x0 quantities for a zero-only range', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      const bodies: any[] = []
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => {
+          if (body.method !== 'eth_getLogs') return false
+          bodies.push(body)
+          return true
+        })
+        .reply(200, logsReply('0x0'))
+
+      const { result } = await apiChunked.getLogs(0, 0, ADDRESS, [TOPIC])
+
+      expect(bodies).toHaveLength(1)
+      expect(bodies[0].params).toEqual([
+        { fromBlock: '0x0', toBlock: '0x0', address: ADDRESS, topics: [TOPIC] },
+      ])
+      expect(result).toHaveLength(1)
+    })
+
+    it('sends 0x0 quantities for a chunked range starting at zero', async () => {
+      const cfg = mockConfig(logger, {
+        EXECUTION_NODE: 'http://localhost:4455',
+        LOAD_LOGS_STEP: 100,
+      })
+      const apiChunked = makeExecutionApi(request, logger, cfg)
+
+      const bodies: any[] = []
+      nock(cfg.EXECUTION_NODE[0])
+        .post('/', (body: any) => body.method === 'eth_getLogs')
+        .times(2)
+        .reply(200, (_uri, body: any) => {
+          bodies.push(body)
+          const reply = logsReply(body.params[0].fromBlock)
+          reply.result[0].transactionHash = `0xtx-${body.params[0].fromBlock}`
+          return reply
+        })
+
+      const { result } = await apiChunked.getLogs(0, 100, ADDRESS, [TOPIC])
+
+      expect(bodies.map((b) => b.method)).toEqual([
+        'eth_getLogs',
+        'eth_getLogs',
+      ])
+      expect(bodies.map((b) => b.params)).toEqual([
+        [
+          {
+            fromBlock: '0x0',
+            toBlock: '0x63',
+            address: ADDRESS,
+            topics: [TOPIC],
+          },
+        ],
+        [
+          {
+            fromBlock: '0x64',
+            toBlock: '0x64',
+            address: ADDRESS,
+            topics: [TOPIC],
+          },
+        ],
+      ])
+      expect(result.map((log) => log.transactionHash)).toEqual([
+        '0xtx-0x0',
+        '0xtx-0x64',
+      ])
+    })
+
     it('rejects on a failing middle chunk without returning a partial result', async () => {
       const cfg = mockConfig(logger, {
         EXECUTION_NODE: 'http://localhost:4455',

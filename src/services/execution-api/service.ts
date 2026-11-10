@@ -244,12 +244,8 @@ export const makeExecutionApi = (
           method: 'eth_getLogs',
           params: [
             {
-              fromBlock: ethers.utils.hexStripZeros(
-                ethers.BigNumber.from(from).toHexString()
-              ),
-              toBlock: ethers.utils.hexStripZeros(
-                ethers.BigNumber.from(to).toHexString()
-              ),
+              fromBlock: ethers.utils.hexValue(from),
+              toBlock: ethers.utils.hexValue(to),
               address,
               topics,
             },
