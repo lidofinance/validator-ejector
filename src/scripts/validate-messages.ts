@@ -11,7 +11,7 @@ import { makeGsStore } from '../services/gs-store/service.js'
 import { makeMessagesProcessor } from '../services/messages-processor/service.js'
 import { MessageStorage } from '../services/job-processor/message-storage.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const prepareDeps = () => {
   const logger = makeLogger({
