@@ -50,9 +50,8 @@ unlocked Hardhat version with npm or bypass package engine checks.
 
 The Dockerfile installs build and production dependencies separately.
 Production output excludes tests, fixtures, Hardhat, EDR, TypeScript, and
-Vitest. `scripts/check-runtime.mjs` checks the final image offline on each
-supported architecture. A successful build on macOS does not verify the
-Linux native packages or fork runner.
+Vitest. A successful build on macOS does not verify the Linux native
+packages or fork runner.
 
 ## Security review
 

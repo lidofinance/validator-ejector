@@ -156,7 +156,9 @@ and password configured as described above.
 
 The production build excludes tests and their fixtures. `yarn typecheck`
 checks application, encryption, test, and Vitest configuration sources.
-`yarn lint:fix` applies lint and formatting fixes explicitly.
+`yarn lint:fix` applies lint and formatting fixes explicitly. See
+[dependency notes](docs/dependencies.md) for the version constraints and
+security-audit limits.
 
 ### Running e2e tests
 
@@ -177,24 +179,6 @@ See their configurations for the default consensus endpoint.
 In GitHub Actions, set `EDF_E2E_EXECUTION_NODE` to the archive-capable mainnet
 RPC. A public fallback in the test configuration may require a provider token
 or lack historical state; it is not a substitute for a working archive RPC.
-
-### Checking production images
-
-Build and check each supported architecture. The runtime probe needs no RPC,
-credentials, mounted messages, or network:
-
-```bash
-docker buildx build --platform linux/arm64 --load -t validator-ejector:arm64 .
-docker run --rm --network none validator-ejector:arm64 node scripts/check-runtime.mjs
-docker buildx build --platform linux/amd64 --load -t validator-ejector:amd64 .
-docker run --rm --network none validator-ejector:amd64 node scripts/check-runtime.mjs
-```
-
-The probe checks the Node version, non-root user, native BLST verification,
-SSZ, keystore encryption/decryption, JWT, built application imports, and the
-absence of development tools and test output. Running it does not start the
-daemon or submit exits. See [dependency notes](docs/dependencies.md) for the
-version constraints and security-audit limits.
 
 ## Metrics
 

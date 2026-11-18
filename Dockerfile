@@ -23,13 +23,14 @@ WORKDIR /app
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
-COPY scripts/check-runtime.mjs ./scripts/check-runtime.mjs
+# Volume mount points for dist/encryptor/encrypt.js, which reads and writes
+# encryptor/input and encryptor/output relative to /app as the node user.
 RUN mkdir -p encryptor/input encryptor/output \
     && chown -R node:node encryptor
 
 USER node
 
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
-CMD sh -c "wget -nv -t1 --spider http://localhost:${HTTP_PORT:-8989}/health" || exit 1
+CMD wget -nv -t1 --spider "http://localhost:${HTTP_PORT:-8989}/health" || exit 1
 
 CMD ["node", "dist/src/index.js"]
