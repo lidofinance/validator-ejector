@@ -1,11 +1,14 @@
 import { makeLogger } from './lib/index.js'
 import { makeAppModule } from './app/module.js'
+import { exitOnShutdownSignals } from './app/shutdown.js'
 
 const bootstrap = async () => {
   const defaultLogger = makeLogger({
     level: 'debug',
     format: 'simple',
   })
+  // Before startup, so a stop during the initial event load also works.
+  exitOnShutdownSignals(defaultLogger)
   try {
     const module = await makeAppModule()
     await module.run()
