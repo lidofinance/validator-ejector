@@ -34,7 +34,7 @@ import { makeForkVersionResolver } from '../services/fork-version-resolver/servi
 import { makeExitLogsService } from '../services/exit-logs/service.js'
 import { makeConsistencyChecker } from '../services/consistency/service.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 export const makeAppModule = async () => {
   const loggerConfig = makeLoggerConfig({ env: process.env })

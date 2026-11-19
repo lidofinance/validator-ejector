@@ -14,7 +14,7 @@ import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeExitLogsService } from '../services/exit-logs/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const run = async () => {
   const loggerConfig = makeLoggerConfig({ env: process.env })

@@ -15,7 +15,7 @@ export const makeApp = ({
 }: Dependencies) => {
   const { BLOCKS_PRELOAD, JOB_INTERVAL, EJECTOR_SCOPE } = config
 
-  let ejectorCycleTimer: NodeJS.Timer | null = null
+  let ejectorCycleTimer: ReturnType<typeof setInterval> | null = null
 
   const run = async () => {
     const version = await appInfoReader.getVersion()

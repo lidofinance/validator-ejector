@@ -9,7 +9,7 @@ import {
 } from '../services/consensus-api/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 export enum Chains {
   MAINNET = 1,

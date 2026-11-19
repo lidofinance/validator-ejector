@@ -1,12 +1,11 @@
-import { Histogram } from 'prom-client'
+import { Histogram } from '@prometheus-io/client'
 import { extractErrorBody, getUrl, isNotServerError } from './index.js'
 import { makeLogger } from '../logger/index.js'
 import type { InternalConfig, Middleware, Response } from './types'
 import { HttpException } from './errors.js'
 
 type PromReturnTypeSerializer =
-  | Partial<Record<string, string | number>>
-  | undefined
+  Partial<Record<string, string | number>> | undefined
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -25,7 +24,7 @@ const defaultSerializer = (
 }
 
 /**
- * Simple middleware for prom-client
+ * Simple middleware for @prometheus-io/client
  *
  * ```ts
  * const h = new Histogram({
@@ -49,7 +48,7 @@ const defaultSerializer = (
  */
 export const prom =
   (
-    prom: Histogram,
+    prom: Histogram<string>,
     serialize: (
       conf: InternalConfig,
       response: Response,
