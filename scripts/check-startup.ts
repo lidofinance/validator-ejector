@@ -61,7 +61,8 @@ const stop = async (child: ChildProcess): Promise<Exit> => {
       process.kill(-child.pid!, 'SIGKILL')
       reject(new Error('App process did not stop after SIGTERM'))
     }, 5000)
-    child.once('exit', (code, signal) => {
+    // 'close' also waits for stdout, so the last log line is captured.
+    child.once('close', (code, signal) => {
       clearTimeout(timer)
       resolve({ code, signal })
     })
@@ -246,6 +247,8 @@ const check = async (mode: 'dev' | 'built') => {
     // action, so only the app's own handler can end it. The handler exits
     // with 0; without it this child would end by the signal instead.
     assert.deepEqual(await stop(child), { code: 0, signal: null }, output)
+    // LOGGER_FORMAT is json: the configured logger, not the startup fallback.
+    assert.match(output, /"message":"Received SIGTERM, shutting down"/)
     console.log(
       JSON.stringify({
         mode,

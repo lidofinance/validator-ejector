@@ -7,11 +7,11 @@ const bootstrap = async () => {
     level: 'debug',
     format: 'simple',
   })
-  // Before startup, so a stop during the initial event load also works.
-  exitOnShutdownSignals(defaultLogger)
   try {
-    const module = await makeAppModule()
-    await module.run()
+    const appModule = await makeAppModule()
+    // run() can take minutes to load the initial events.
+    exitOnShutdownSignals(appModule.logger)
+    await appModule.run()
   } catch (error) {
     defaultLogger.error('Startup error', error)
     process.exit(1)
