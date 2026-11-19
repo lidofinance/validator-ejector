@@ -14,9 +14,15 @@ import { AbortError } from 'node-fetch'
 import { makeLogger } from '../logger/index.js'
 import { HttpException } from './errors.js'
 
-import { Registry, Histogram } from 'prom-client'
+import { Registry, Histogram } from '@prometheus-io/client'
 
 const URL = 'http://www.example.com'
+
+// Delay the response headers: Nock 15's .delay() delays only body bytes.
+const delayedHello = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  return 'hello'
+}
 
 describe('Fetcher Middlewares', () => {
   afterEach(() => nock.cleanAll())
@@ -251,14 +257,14 @@ describe('Fetcher Middlewares', () => {
   })
 
   test('retry - should respect setting of ignoring an Abort signal', async () => {
-    const no = nock(URL).get('/').delay(20).reply(200, 'hello')
+    const no = nock(URL).get('/').reply(200, delayedHello)
 
     let requestsReceived = 0
     no.on('request', () => requestsReceived++)
 
     const request = makeRequest([
       retry(3, { ignoreAbort: false, sleep: 0 }),
-      abort(10), // need a condition to repeat requests
+      abort(30), // need a condition to repeat requests
     ])
 
     let err: Error | undefined
@@ -276,12 +282,12 @@ describe('Fetcher Middlewares', () => {
   })
 
   test('abort - throw on too long responses', async () => {
-    const no = nock(URL).get('/').times(4).delay(20).reply(200, 'hello')
+    const no = nock(URL).get('/').times(4).reply(200, delayedHello)
 
     let requestsReceived = 0
     no.on('request', () => requestsReceived++)
 
-    const request = makeRequest([abort(10)])
+    const request = makeRequest([abort(30)])
 
     let err: Error | undefined
     try {
@@ -295,7 +301,7 @@ describe('Fetcher Middlewares', () => {
   })
 
   test('all middleware - should work together', async () => {
-    const no = nock(URL).get('/').times(3).delay(20).reply(200, 'hello')
+    const no = nock(URL).get('/').times(3).reply(200, delayedHello)
 
     let requestsReceived = 0
     no.on('request', () => requestsReceived++)
@@ -326,7 +332,7 @@ describe('Fetcher Middlewares', () => {
       loggerMiddleware(logger),
       prom(histogram),
       notOkError(),
-      abort(10),
+      abort(30),
     ])
 
     let err: Error | undefined
