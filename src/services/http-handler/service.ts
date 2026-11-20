@@ -8,7 +8,7 @@ export type HttpHandlerService = ReturnType<typeof makeHttpHandler>
 
 export const makeHttpHandler = ({
   register,
-  config: { HTTP_PORT, RUN_METRICS, RUN_HEALTH_CHECK },
+  config: { HTTP_HOST, HTTP_PORT, RUN_METRICS, RUN_HEALTH_CHECK },
 }: {
   register: Registry
   config: ConfigService
@@ -17,22 +17,26 @@ export const makeHttpHandler = ({
     async run() {
       if (!HTTP_PORT) return
 
-      http
-        .createServer(async (req, res) => {
-          const path = req.url || '/'
-          const route = url.parse(path).pathname
-          if (RUN_METRICS && route === '/metrics') {
-            res.setHeader('Content-Type', register.contentType)
-            return res.end(await register.metrics())
-          }
-          if (RUN_HEALTH_CHECK && route === '/health') {
-            res.setHeader('Content-Type', 'application/json')
-            return res.end(JSON.stringify({ status: 'ok' }))
-          }
-          res.statusCode = 404
-          res.end()
-        })
-        .listen(HTTP_PORT)
+      const server = http.createServer(async (req, res) => {
+        const path = req.url || '/'
+        const route = url.parse(path).pathname
+        if (RUN_METRICS && route === '/metrics') {
+          res.setHeader('Content-Type', register.contentType)
+          return res.end(await register.metrics())
+        }
+        if (RUN_HEALTH_CHECK && route === '/health') {
+          res.setHeader('Content-Type', 'application/json')
+          return res.end(JSON.stringify({ status: 'ok' }))
+        }
+        res.statusCode = 404
+        res.end()
+      })
+
+      if (HTTP_HOST) {
+        server.listen(HTTP_PORT, HTTP_HOST)
+      } else {
+        server.listen(HTTP_PORT)
+      }
     },
   }
 }
