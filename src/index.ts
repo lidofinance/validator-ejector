@@ -1,11 +1,8 @@
-import { makeLogger } from './lib/index.js'
+import { makeBootstrapLogger } from './app/bootstrap-logger.js'
 import { makeAppModule } from './app/module.js'
 
 const bootstrap = async () => {
-  const defaultLogger = makeLogger({
-    level: 'debug',
-    format: 'simple',
-  })
+  const defaultLogger = makeBootstrapLogger(process.env)
   try {
     const module = await makeAppModule()
     await module.run()
