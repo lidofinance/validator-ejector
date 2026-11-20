@@ -1,5 +1,6 @@
 import { makeLogger } from './lib/index.js'
 import { makeAppModule } from './app/module.js'
+import { exitOnShutdownSignals } from './app/shutdown.js'
 
 const bootstrap = async () => {
   const defaultLogger = makeLogger({
@@ -7,8 +8,10 @@ const bootstrap = async () => {
     format: 'simple',
   })
   try {
-    const module = await makeAppModule()
-    await module.run()
+    const appModule = await makeAppModule()
+    // run() can take minutes to load the initial events.
+    exitOnShutdownSignals(appModule.logger)
+    await appModule.run()
   } catch (error) {
     defaultLogger.error('Startup error', error)
     process.exit(1)

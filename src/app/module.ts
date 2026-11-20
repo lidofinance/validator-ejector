@@ -170,6 +170,7 @@ export const makeAppModule = async () => {
   })
 
   return {
+    logger,
     async run() {
       await app.run()
     },

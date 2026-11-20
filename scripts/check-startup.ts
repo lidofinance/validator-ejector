@@ -49,17 +49,22 @@ const close = async (server: http.Server) => {
   })
 }
 
-const stop = async (child: ChildProcess) => {
-  if (child.exitCode !== null || child.signalCode !== null || !child.pid) return
-  await new Promise<void>((resolve, reject) => {
+type Exit = { code: number | null; signal: NodeJS.Signals | null }
+
+const stop = async (child: ChildProcess): Promise<Exit> => {
+  if (child.exitCode !== null || child.signalCode !== null || !child.pid) {
+    return { code: child.exitCode, signal: child.signalCode }
+  }
+  return await new Promise<Exit>((resolve, reject) => {
     const timer = setTimeout(() => {
       // The tsx CLI and its app child belong to this dedicated process group.
       process.kill(-child.pid!, 'SIGKILL')
       reject(new Error('App process did not stop after SIGTERM'))
     }, 5000)
-    child.once('exit', () => {
+    // 'close' also waits for stdout, so the last log line is captured.
+    child.once('close', (code, signal) => {
       clearTimeout(timer)
-      resolve()
+      resolve({ code, signal })
     })
     process.kill(-child.pid!, 'SIGTERM')
   })
@@ -238,6 +243,12 @@ const check = async (mode: 'dev' | 'built') => {
       assert.ok(calls.includes(required), `Missing request: ${required}`)
     }
     assert.deepEqual(unexpected, [])
+    // The Docker image runs the app as PID 1, where SIGTERM has no default
+    // action, so only the app's own handler can end it. The handler exits
+    // with 0; without it this child would end by the signal instead.
+    assert.deepEqual(await stop(child), { code: 0, signal: null }, output)
+    // LOGGER_FORMAT is json: the configured logger, not the startup fallback.
+    assert.match(output, /"message":"Received SIGTERM, shutting down"/)
     console.log(
       JSON.stringify({
         mode,
@@ -246,6 +257,7 @@ const check = async (mode: 'dev' | 'built') => {
         metrics: 'ok',
         completedJobs: 1,
         fixtureRequests: calls.length,
+        sigterm: 'exit 0',
       })
     )
   } finally {
