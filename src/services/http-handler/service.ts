@@ -19,18 +19,30 @@ export const makeHttpHandler = ({
 
       http
         .createServer(async (req, res) => {
-          const path = req.url || '/'
-          const route = url.parse(path).pathname
-          if (RUN_METRICS && route === '/metrics') {
-            res.setHeader('Content-Type', register.contentType)
-            return res.end(await register.metrics())
+          // The callback must never reject: an unhandled rejection
+          // terminates the process and stops exit processing.
+          let route: string | null
+          try {
+            route = url.parse(req.url || '/').pathname
+          } catch {
+            res.statusCode = 400
+            return res.end()
           }
-          if (RUN_HEALTH_CHECK && route === '/health') {
-            res.setHeader('Content-Type', 'application/json')
-            return res.end(JSON.stringify({ status: 'ok' }))
+          try {
+            if (RUN_METRICS && route === '/metrics') {
+              res.setHeader('Content-Type', register.contentType)
+              return res.end(await register.metrics())
+            }
+            if (RUN_HEALTH_CHECK && route === '/health') {
+              res.setHeader('Content-Type', 'application/json')
+              return res.end(JSON.stringify({ status: 'ok' }))
+            }
+            res.statusCode = 404
+            res.end()
+          } catch {
+            res.statusCode = 500
+            res.end()
           }
-          res.statusCode = 404
-          res.end()
         })
         .listen(HTTP_PORT)
     },
