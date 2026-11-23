@@ -30,9 +30,11 @@ const getStatus = (
     req.on('error', reject)
   })
 
+const servers: http.Server[] = []
+
 const startHandler = async (register: Registry) => {
   const port = await getFreePort()
-  await makeHttpHandler({
+  const server = await makeHttpHandler({
     register,
     config: {
       HTTP_PORT: port,
@@ -40,10 +42,23 @@ const startHandler = async (register: Registry) => {
       RUN_HEALTH_CHECK: true,
     } as any,
   }).run()
+  if (server) servers.push(server)
   return port
 }
 
 describe('http handler', () => {
+  afterEach(async () => {
+    await Promise.all(
+      servers.splice(0).map(
+        (server) =>
+          new Promise<void>((resolve, reject) => {
+            server.closeAllConnections()
+            server.close((error) => (error ? reject(error) : resolve()))
+          })
+      )
+    )
+  })
+
   it('routes by path and ignores the query string', async () => {
     const port = await startHandler(new Registry())
 
@@ -64,15 +79,16 @@ describe('http handler', () => {
     expect(await getStatus(port, `https://${host}/metrics`)).toBe(200)
   })
 
-  for (const target of ['http://[/', '//[']) {
-    it(`answers 400 to malformed target ${target} and keeps serving`, async () => {
-      const port = await startHandler(new Registry())
+  it('answers 404 to unnormalized or malformed targets and keeps serving', async () => {
+    const port = await startHandler(new Registry())
 
-      expect(await getStatus(port, '/health')).toBe(200)
-      expect(await getStatus(port, target)).toBe(400)
-      expect(await getStatus(port, '/health')).toBe(200)
-    })
-  }
+    expect(await getStatus(port, '/missing/../metrics')).toBe(404)
+    expect(await getStatus(port, '/./health')).toBe(404)
+    expect(await getStatus(port, '//example.com/health')).toBe(404)
+    expect(await getStatus(port, '//[')).toBe(404)
+    expect(await getStatus(port, 'http://[/')).toBe(404)
+    expect(await getStatus(port, '/health')).toBe(200)
+  })
 
   it('answers 500 when metrics collection fails and keeps serving', async () => {
     const register = {

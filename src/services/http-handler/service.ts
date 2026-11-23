@@ -16,18 +16,15 @@ export const makeHttpHandler = ({
     async run() {
       if (!HTTP_PORT) return
 
-      http
+      return http
         .createServer(async (req, res) => {
           // The callback must never reject: an unhandled rejection
           // terminates the process and stops exit processing.
-          let route: string
-          try {
-            // req.url is a bare path; the base only lets URL parse it
-            route = new URL(req.url || '/', 'http://localhost').pathname
-          } catch {
-            res.statusCode = 400
-            return res.end()
-          }
+          const target = req.url || '/'
+          // Origin-form is matched as sent, absolute-form by its path
+          const route = target.startsWith('/')
+            ? target.split(/[?#]/, 1)[0]
+            : URL.parse(target)?.pathname
           try {
             if (RUN_METRICS && route === '/metrics') {
               res.setHeader('Content-Type', register.contentType)
