@@ -1,5 +1,4 @@
 import http from 'http'
-import url from 'url'
 
 import type { Registry } from '@prometheus-io/client'
 import type { ConfigService } from 'services/config/service'
@@ -21,9 +20,10 @@ export const makeHttpHandler = ({
         .createServer(async (req, res) => {
           // The callback must never reject: an unhandled rejection
           // terminates the process and stops exit processing.
-          let route: string | null
+          let route: string
           try {
-            route = url.parse(req.url || '/').pathname
+            // req.url is a bare path; the base only lets URL parse it
+            route = new URL(req.url || '/', 'http://localhost').pathname
           } catch {
             res.statusCode = 400
             return res.end()

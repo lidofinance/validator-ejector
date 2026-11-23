@@ -1,6 +1,6 @@
 import http from 'http'
 import net from 'net'
-import { Registry } from 'prom-client'
+import { Registry } from '@prometheus-io/client'
 import { makeHttpHandler } from './service.js'
 
 const getFreePort = () =>
@@ -13,10 +13,14 @@ const getFreePort = () =>
     })
   })
 
-const getStatus = (port: number, path: string) =>
+const getStatus = (
+  port: number,
+  path: string,
+  headers: http.OutgoingHttpHeaders = {}
+) =>
   new Promise<number>((resolve, reject) => {
     const req = http.get(
-      { host: '127.0.0.1', port, path, timeout: 2000 },
+      { host: '127.0.0.1', port, path, headers, timeout: 2000 },
       (res) => {
         res.resume()
         res.on('end', () => resolve(res.statusCode ?? 0))
@@ -40,7 +44,27 @@ const startHandler = async (register: Registry) => {
 }
 
 describe('http handler', () => {
-  for (const target of ['http://%FF@localhost/', '//%FF@localhost/']) {
+  it('routes by path and ignores the query string', async () => {
+    const port = await startHandler(new Registry())
+
+    expect(await getStatus(port, '/health?probe=1')).toBe(200)
+    expect(await getStatus(port, '/metrics')).toBe(200)
+    expect(await getStatus(port, '/unknown')).toBe(404)
+  })
+
+  it('routes by path whatever host the request names', async () => {
+    const port = await startHandler(new Registry())
+    const host = 'ejector.example.com:8443'
+
+    expect(await getStatus(port, '/health', { host })).toBe(200)
+    expect(await getStatus(port, '/metrics', { host })).toBe(200)
+    expect(await getStatus(port, '/unknown', { host })).toBe(404)
+    // Absolute-form target, as sent by a forward proxy.
+    expect(await getStatus(port, `http://${host}/health?x=1`)).toBe(200)
+    expect(await getStatus(port, `https://${host}/metrics`)).toBe(200)
+  })
+
+  for (const target of ['http://[/', '//[']) {
     it(`answers 400 to malformed target ${target} and keeps serving`, async () => {
       const port = await startHandler(new Registry())
 
