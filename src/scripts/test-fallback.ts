@@ -13,7 +13,7 @@ import { makeExecutionApi } from '../services/execution-api/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
 import { makeMetrics } from '../services/prom/service.js'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const hostOf = (url: string) => {
   try {
