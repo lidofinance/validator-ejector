@@ -20,11 +20,15 @@ export const makeHttpHandler = ({
         .createServer(async (req, res) => {
           // The callback must never reject: an unhandled rejection
           // terminates the process and stops exit processing.
-          const target = req.url || '/'
-          // Origin-form is matched as sent, absolute-form by its path
-          const route = target.startsWith('/')
-            ? target.split(/[?#]/, 1)[0]
-            : URL.parse(target)?.pathname
+          const path = req.url || '/'
+          // Origin-form path is not normalized, as with url.parse.
+          const route = path.startsWith('/')
+            ? path.split(/[?#]/, 1)[0]
+            : URL.parse(path)?.pathname
+          if (route === undefined) {
+            res.statusCode = 400
+            return res.end()
+          }
           try {
             if (RUN_METRICS && route === '/metrics') {
               res.setHeader('Content-Type', register.contentType)
@@ -34,12 +38,12 @@ export const makeHttpHandler = ({
               res.setHeader('Content-Type', 'application/json')
               return res.end(JSON.stringify({ status: 'ok' }))
             }
-            res.statusCode = 404
-            res.end()
           } catch {
             res.statusCode = 500
-            res.end()
+            return res.end()
           }
+          res.statusCode = 404
+          res.end()
         })
         .listen(HTTP_PORT)
     },

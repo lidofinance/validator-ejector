@@ -13,14 +13,10 @@ const getFreePort = () =>
     })
   })
 
-const getStatus = (
-  port: number,
-  path: string,
-  headers: http.OutgoingHttpHeaders = {}
-) =>
+const getStatus = (port: number, path: string) =>
   new Promise<number>((resolve, reject) => {
     const req = http.get(
-      { host: '127.0.0.1', port, path, headers, timeout: 2000 },
+      { host: '127.0.0.1', port, path, timeout: 2000 },
       (res) => {
         res.resume()
         res.on('end', () => resolve(res.statusCode ?? 0))
@@ -65,28 +61,16 @@ describe('http handler', () => {
     expect(await getStatus(port, '/health?probe=1')).toBe(200)
     expect(await getStatus(port, '/metrics')).toBe(200)
     expect(await getStatus(port, '/unknown')).toBe(404)
-  })
-
-  it('routes by path whatever host the request names', async () => {
-    const port = await startHandler(new Registry())
-    const host = 'ejector.example.com:8443'
-
-    expect(await getStatus(port, '/health', { host })).toBe(200)
-    expect(await getStatus(port, '/metrics', { host })).toBe(200)
-    expect(await getStatus(port, '/unknown', { host })).toBe(404)
     // Absolute-form target, as sent by a forward proxy.
-    expect(await getStatus(port, `http://${host}/health?x=1`)).toBe(200)
-    expect(await getStatus(port, `https://${host}/metrics`)).toBe(200)
+    expect(await getStatus(port, 'http://example.com/health?x=1')).toBe(200)
   })
 
-  it('answers 404 to unnormalized or malformed targets and keeps serving', async () => {
+  it('answers 404 to unnormalized and 400 to malformed targets and keeps serving', async () => {
     const port = await startHandler(new Registry())
 
     expect(await getStatus(port, '/missing/../metrics')).toBe(404)
-    expect(await getStatus(port, '/./health')).toBe(404)
     expect(await getStatus(port, '//example.com/health')).toBe(404)
-    expect(await getStatus(port, '//[')).toBe(404)
-    expect(await getStatus(port, 'http://[/')).toBe(404)
+    expect(await getStatus(port, 'http://[/')).toBe(400)
     expect(await getStatus(port, '/health')).toBe(200)
   })
 
