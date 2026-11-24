@@ -1,15 +1,18 @@
 import http from 'http'
 
 import type { Registry } from '@prometheus-io/client'
+import type { LoggerService } from '../../lib/index.js'
 import type { ConfigService } from 'services/config/service'
 
 export type HttpHandlerService = ReturnType<typeof makeHttpHandler>
 
 export const makeHttpHandler = ({
   register,
+  logger,
   config: { HTTP_PORT, RUN_METRICS, RUN_HEALTH_CHECK },
 }: {
   register: Registry
+  logger: LoggerService
   config: ConfigService
 }) => {
   return {
@@ -38,7 +41,8 @@ export const makeHttpHandler = ({
               res.setHeader('Content-Type', 'application/json')
               return res.end(JSON.stringify({ status: 'ok' }))
             }
-          } catch {
+          } catch (error) {
+            logger.error(`Failed to serve ${route}`, error)
             res.statusCode = 500
             return res.end()
           }

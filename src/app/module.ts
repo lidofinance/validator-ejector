@@ -152,7 +152,7 @@ export const makeAppModule = async () => {
     handler: jobProcessor.handleJob,
   })
 
-  const httpHandler = makeHttpHandler({ register, config })
+  const httpHandler = makeHttpHandler({ register, logger, config })
 
   const appInfoReader = makeAppInfoReader({ localFileReader })
 

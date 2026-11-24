@@ -1,6 +1,7 @@
 import http from 'http'
 import net from 'net'
 import { Registry } from '@prometheus-io/client'
+import { mockLogger } from '../../test/logger.js'
 import { makeHttpHandler } from './service.js'
 
 const getFreePort = () =>
@@ -28,10 +29,11 @@ const getStatus = (port: number, path: string) =>
 
 const servers: http.Server[] = []
 
-const startHandler = async (register: Registry) => {
+const startHandler = async (register: Registry, logger = mockLogger()) => {
   const port = await getFreePort()
   const server = await makeHttpHandler({
     register,
+    logger,
     config: {
       HTTP_PORT: port,
       RUN_METRICS: true,
@@ -74,14 +76,17 @@ describe('http handler', () => {
     expect(await getStatus(port, '/health')).toBe(200)
   })
 
-  it('answers 500 when metrics collection fails and keeps serving', async () => {
+  it('answers 500 and logs when metrics collection fails and keeps serving', async () => {
+    const error = new Error('collect failed')
     const register = {
       contentType: 'text/plain',
-      metrics: () => Promise.reject(new Error('collect failed')),
+      metrics: () => Promise.reject(error),
     } as unknown as Registry
-    const port = await startHandler(register)
+    const logger = mockLogger()
+    const port = await startHandler(register, logger)
 
     expect(await getStatus(port, '/metrics')).toBe(500)
+    expect(logger.error).toHaveBeenCalledWith('Failed to serve /metrics', error)
     expect(await getStatus(port, '/health')).toBe(200)
   })
 })
