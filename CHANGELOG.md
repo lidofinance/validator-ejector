@@ -1,3 +1,23 @@
+# [2.4.0](https://github.com/lidofinance/validator-ejector/compare/2.3.0...2.4.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* **http-handler:** improve error handling and cleanup in tests ([f7deae8](https://github.com/lidofinance/validator-ejector/commit/f7deae88d9f95b09c457a831d6cbfc2cfbe7bcba))
+* **http-handler:** improve error handling in HTTP requests ([c00a3e0](https://github.com/lidofinance/validator-ejector/commit/c00a3e0c966d25b27fcead8c547fa21954c33c76))
+* **http-handler:** replace deprecated url.parse with WHATWG URL ([c28359e](https://github.com/lidofinance/validator-ejector/commit/c28359e62e6447eaa49b6ae94a4f27e41bac7cfe))
+* log the error behind a 500 response ([f209db1](https://github.com/lidofinance/validator-ejector/commit/f209db1af7309e6f8b825e8976ed852f14e63eca))
+* **shutdown:** improve graceful shutdown handling and logging ([1214169](https://github.com/lidofinance/validator-ejector/commit/121416982f5048bc4749ac382a70c9816cf45ee4))
+* **shutdown:** update comments for graceful shutdown logic ([973c945](https://github.com/lidofinance/validator-ejector/commit/973c945cf82b06710e1aec45b79663f0797a2114))
+
+
+### Features
+
+* **shutdown:** enhance graceful shutdown handling and logging ([a78c79d](https://github.com/lidofinance/validator-ejector/commit/a78c79d4586854a729f85805d2ecae9fb97dfb12))
+* **shutdown:** implement graceful shutdown on SIGTERM and SIGINT ([b18b026](https://github.com/lidofinance/validator-ejector/commit/b18b026f809b01198b83dce05a663cd5e2640f80))
+
+
+
 # [2.3.0](https://github.com/lidofinance/validator-ejector/compare/2.2.1...2.3.0) (2026-11-19)
 
 
@@ -10,7 +30,6 @@
 
 * **encryption:** use random password generation for synthetic tests ([d39b2ab](https://github.com/lidofinance/validator-ejector/commit/d39b2ab795558e66f817a3dde5acc813b3856c0f))
 * update post-edf readme ([20c31cd](https://github.com/lidofinance/validator-ejector/commit/20c31cdf847c5fb11e0e2894cd0b9223590d241e))
-* upgrade Node.js version to 24.22.1 in workflows and Dockerfile ([a042989](https://github.com/lidofinance/validator-ejector/commit/a0429895e288e9aa452ae088611686d60fac5cf2))
 
 
 
@@ -237,29 +256,5 @@
 
 * enabling dencun checks by env ([cf9192c](https://github.com/lidofinance/validator-ejector/commit/cf9192c17f4f6ae0a7e950f20de3659525812319))
 
-
-
-# [1.4.0](https://github.com/lidofinance/validator-ejector/compare/1.3.0...1.4.0) (2024-02-15)
-
-
-### Bug Fixes
-
-* deleted the unnecessary validation log ([99b005e](https://github.com/lidofinance/validator-ejector/commit/99b005ed3118af663cc282e8fd33ac58ace152ba))
-* enable validation for mainnet ([a5e3e12](https://github.com/lidofinance/validator-ejector/commit/a5e3e121d5aeff9746e4b0c4f8999810406f9a14))
-* move progress logs to the debug level ([5eb31e4](https://github.com/lidofinance/validator-ejector/commit/5eb31e44d66767169731cc5c287ac2579bfd806b))
-* nock spec ([297b266](https://github.com/lidofinance/validator-ejector/commit/297b2661a92bc12d569282af5b58f1060ba251ca))
-* remove unused fixture ([53f323b](https://github.com/lidofinance/validator-ejector/commit/53f323b74ed58efbf320984f204a6d2273960e29))
-* removed unnecessary env fields from the validation script configuration ([3adbf22](https://github.com/lidofinance/validator-ejector/commit/3adbf22ed07b2dec335e199709bc5fe437a39db0))
-* validation script better logs ([d0ee05f](https://github.com/lidofinance/validator-ejector/commit/d0ee05fea6fd123d20f1cccbc371aa1eb2430a3c))
-
-
-### Features
-
-* basic tests fork ([9b527e7](https://github.com/lidofinance/validator-ejector/commit/9b527e7df41ec580dbdc83c9a399bef59f7d1e6b))
-* capella fork version script generator for each network ([daf6669](https://github.com/lidofinance/validator-ejector/commit/daf6669b4c67896299ff753ff212e997d289c6bf))
-* dencun support ([2106901](https://github.com/lidofinance/validator-ejector/commit/210690129e2d6a2945b11e46eb177fc214703521))
-* detailed error message eip-7044 ([3ad868b](https://github.com/lidofinance/validator-ejector/commit/3ad868bc092705d3433335a727270870613e0053))
-* getting CAPELLA_FORK_VERSION from constant by chain_id ([26ca5e9](https://github.com/lidofinance/validator-ejector/commit/26ca5e93b071771c56a42144d05b0ec3bc28686f))
-* validation script ([19505da](https://github.com/lidofinance/validator-ejector/commit/19505da5a66eadc6a84a6c20a6a9fbcbcf471f78))
 
 
