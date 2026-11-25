@@ -32,11 +32,11 @@ export const makeConfig = ({
 
   const config = {
     EXECUTION_NODE: url_list(
-      env.EXECUTION_NODE,
+      envOrFile(env, 'EXECUTION_NODE'),
       'Please, setup EXECUTION_NODE address. Example: http://1.2.3.4:8545 or http://primary:8545,http://backup:8545'
     ),
     CONSENSUS_NODE: url_list(
-      env.CONSENSUS_NODE,
+      envOrFile(env, 'CONSENSUS_NODE'),
       'Please, setup CONSENSUS_NODE address. Example: http://1.2.3.4:5051 or http://primary:5051,http://backup:5051'
     ),
     JWT_SECRET_PATH: optional(() => str(env.JWT_SECRET_PATH)),
@@ -79,7 +79,9 @@ export const makeConfig = ({
         )
       ) ?? [],
     MESSAGES_LOCATION: optional(() => str(env.MESSAGES_LOCATION)),
-    VALIDATOR_EXIT_WEBHOOK: optional(() => str(env.VALIDATOR_EXIT_WEBHOOK)),
+    VALIDATOR_EXIT_WEBHOOK: optional(() =>
+      str(envOrFile(env, 'VALIDATOR_EXIT_WEBHOOK'))
+    ),
 
     MESSAGES_PASSWORD: optional(() => str(envOrFile(env, 'MESSAGES_PASSWORD'))),
 
@@ -199,7 +201,7 @@ export const makeValidationConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
 export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
-    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'simple',
+    LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'json',
     LOGGER_SECRETS:
       optional(() =>
         json_arr(
@@ -210,13 +212,18 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
       ) ?? [],
   }
 
+  // Secret env vars are always masked when they hold a value. A name without
+  // a value is skipped, so the name itself stays readable in the config dump.
+  const secretNames = [
+    ...config.LOGGER_SECRETS,
+    ...LOGGER_SECRET_ENV_VARS.filter((envVar) => envOrFile(env, envVar)),
+  ]
+
   // Resolve the value of an env var if such exists. RPC endpoints are stored
   // as arrays in config logs, so include each comma-separated endpoint too.
   config.LOGGER_SECRETS = Array.from(
     new Set(
-      config.LOGGER_SECRETS.flatMap((envVar) =>
-        resolveLoggerSecretValues(env, envVar)
-      )
+      secretNames.flatMap((envVar) => resolveLoggerSecretValues(env, envVar))
     )
   )
 
@@ -255,6 +262,14 @@ const webhookToken = (env: NodeJS.ProcessEnv): string | undefined => {
 
   return undefined
 }
+
+const LOGGER_SECRET_ENV_VARS = [
+  'EXECUTION_NODE',
+  'CONSENSUS_NODE',
+  'VALIDATOR_EXIT_WEBHOOK',
+  'MESSAGES_PASSWORD',
+  'WEBHOOK_TOKEN',
+]
 
 const LOGGER_SECRET_URL_LIST_ENV_VARS = new Set([
   'EXECUTION_NODE',

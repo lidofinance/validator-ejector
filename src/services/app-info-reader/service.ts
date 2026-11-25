@@ -1,6 +1,6 @@
 import { LocalFileReaderService } from 'services/local-file-reader/service.js'
 
-import { versionDTO } from './dto.js'
+import { buildInfoDTO, versionDTO } from './dto.js'
 
 export type AppInfoReaderService = ReturnType<typeof makeAppInfoReader>
 
@@ -8,25 +8,26 @@ export const makeAppInfoReader = ({
   localFileReader,
 }: {
   localFileReader: LocalFileReaderService
-}) => ({
-  getVersion: async () => {
+}) => {
+  const readJson = async (fileName: string): Promise<unknown> => {
     let data: string
-    let parsed: unknown
 
     try {
-      data = (await localFileReader.readFile('package.json')).toString()
+      data = (await localFileReader.readFile(fileName)).toString()
     } catch {
-      throw new Error('Unable to read package.json file')
+      throw new Error(`Unable to read ${fileName} file`)
     }
 
     try {
-      parsed = JSON.parse(data)
+      return JSON.parse(data)
     } catch {
-      throw new Error('Unable to parse JSON in package.json')
+      throw new Error(`Unable to parse JSON in ${fileName}`)
     }
+  }
 
-    const verified = versionDTO(parsed)
-
-    return verified.version
-  },
-})
+  return {
+    getVersion: async () => versionDTO(await readJson('package.json')).version,
+    // The image build writes branch and commit into build-info.json
+    getBuildInfo: async () => buildInfoDTO(await readJson('build-info.json')),
+  }
+}

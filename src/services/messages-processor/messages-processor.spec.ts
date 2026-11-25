@@ -363,4 +363,41 @@ describe('messages processor', () => {
 
     di.restore()
   })
+
+  it('records a failed message source read', async () => {
+    const di = prepareDeps(
+      [CAPELLA_MESSAGE],
+      {
+        pubKey: VALIDATOR_PUB_KEY,
+        id: VALIDATOR_INDEX,
+      },
+      {
+        previous_version: CAPELLA_FORK_VERSION,
+        current_version: CAPELLA_FORK_VERSION,
+        epoch: EPOCH,
+      }
+    )
+    vi.mocked(di.localFileReader.readFilesFromFolder).mockRejectedValueOnce(
+      new Error('unreadable folder')
+    )
+
+    await expect(
+      di.messagesProcessor.loadToMemoryStorage(di.messageStorage, {
+        isDencun: false,
+        capellaVersion: CAPELLA_FORK_VERSION,
+        currentVersion: CAPELLA_FORK_VERSION,
+      })
+    ).rejects.toThrow('unreadable folder')
+
+    const { values } = await di.metrics.messagesReadDurationSeconds.get()
+    expect(values).toContainEqual(
+      expect.objectContaining({
+        metricName: 'PROM_TESTmessages_read_duration_seconds_count',
+        value: 1,
+        labels: { source: 'local', result: 'error' },
+      })
+    )
+
+    di.restore()
+  })
 })

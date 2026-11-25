@@ -300,10 +300,24 @@ export const makeMessagesProcessor = ({
     }
   }
 
-  const readFolder = async (uri: string): Promise<MessageFile[]> => {
+  const readSource = async (uri: string): Promise<MessageFile[]> => {
     if (uri.startsWith('s3://')) return s3Service.read(uri)
     if (uri.startsWith('gs://')) return gsService.read(uri)
     return localFileReader.readFilesFromFolder(uri)
+  }
+
+  // Times every read of the message source: the local folder, S3 or GCS
+  const readFolder = async (uri: string): Promise<MessageFile[]> => {
+    const source = uri.match(/^(s3|gs):\/\//)?.[1] ?? 'local'
+    const end = metrics.messagesReadDurationSeconds.startTimer({ source })
+    try {
+      const files = await readSource(uri)
+      end({ result: 'success' })
+      return files
+    } catch (error) {
+      end({ result: 'error' })
+      throw error
+    }
   }
 
   const loadToMemoryStorage = async (

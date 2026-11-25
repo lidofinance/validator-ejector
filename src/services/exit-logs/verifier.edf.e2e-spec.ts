@@ -308,7 +308,7 @@ describe('verifier EDF e2e (mainnet fork)', () => {
     logger = makeLogger({
       level: 'error',
       format: 'simple',
-      sanitizer: { secrets: [], replacer: '<secret>' },
+      sanitizer: { secrets: [] },
     })
     const config = mockConfig(logger, {
       EXECUTION_NODE: hardhat.url,

@@ -1,8 +1,5 @@
+import { satanizer } from '@lidofinance/satanizer'
 import type { Sanitizer } from './types'
-
-// Escape a string so a RegExp matches it literally
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 // How a string looks inside a JSON document: special characters escaped
 // (`\n` -> `\\n`), without the surrounding quotes
@@ -46,11 +43,9 @@ export const sanitize = (input: string, sanitizer: Sanitizer) => {
   if (variants.size === 0) return input
 
   try {
-    // Longest variant first, so an overlapping shorter secret cannot shadow a
-    // longer one; the function replacer keeps `$` in the replacement literal
-    const longestFirst = [...variants].sort((a, b) => b.length - a.length)
-    const pattern = new RegExp(longestFirst.map(escapeRegExp).join('|'), 'g')
-    return input.replace(pattern, () => sanitizer.replacer)
+    // satanizer matches every variant literally, merges overlapping matches
+    // and masks each matched character with `*`
+    return satanizer([...variants], input)
   } catch {
     // A secret too large to compile into a matcher throws here. Never fall back
     // to `input`: it may hold that secret. Redact, and report sizes (never

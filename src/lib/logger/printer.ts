@@ -20,9 +20,10 @@ export const dateFormat = (ts: number) => {
   )} ${on(d.getUTCHours())}:${on(d.getUTCMinutes())}:${on(d.getUTCSeconds())}`
 }
 
+// Every record goes to stdout, whatever its level
 export const printer = {
   json<T>(target: T, level: string, sanitizer: Sanitizer) {
-    console[level](stringify(target, sanitizer))
+    console.log(stringify(target, sanitizer))
   },
   simple<T extends { message: string; details?: any; timestamp: number }>(
     target: T,
@@ -37,6 +38,6 @@ export const printer = {
       sanitizer
     )}${white}`
     if (rest.details) printing += ` ${stringify(rest.details, sanitizer)}`
-    console[level](printing)
+    console.log(printing)
   },
 }

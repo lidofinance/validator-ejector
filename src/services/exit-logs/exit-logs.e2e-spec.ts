@@ -81,7 +81,6 @@ describe('exitLogs e2e', () => {
       format: 'simple',
       sanitizer: {
         secrets: secrets,
-        replacer: '<secret>',
       },
     })
     config = mockConfig(logger, {

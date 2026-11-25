@@ -12,7 +12,7 @@ export const makeLogger = (options: LoggerOptions) => {
     format,
     silent,
     causeDepth = 3,
-    sanitizer = { secrets: [], replacer: '*' },
+    sanitizer = { secrets: [] },
   }: LoggerOptions = options
   return LOG_LEVELS.reduce((logger, logLevel) => {
     logger[logLevel] = (message: string, details?: any) => {

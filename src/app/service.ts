@@ -4,6 +4,8 @@ import { getHeapStatistics } from 'v8'
 
 export const makeApp = ({
   config,
+  loggerConfig,
+  webhookConfig,
   logger,
   job,
   metrics,
@@ -19,6 +21,7 @@ export const makeApp = ({
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
+    const { branch, commit } = await appInfoReader.getBuildInfo()
     const mode = config.MESSAGES_LOCATION ? 'message' : 'webhook'
 
     const { heap_size_limit } = getHeapStatistics()
@@ -26,13 +29,20 @@ export const makeApp = ({
 
     logger.info(`Validator Ejector v${version} started in ${mode} mode`, {
       ...config,
+      ...loggerConfig,
+      ...webhookConfig,
       heapLimit,
+      version,
+      branch,
+      commit,
     })
 
     metrics.buildInfo
       .labels({
         version,
         mode,
+        branch,
+        commit,
       })
       .inc()
 

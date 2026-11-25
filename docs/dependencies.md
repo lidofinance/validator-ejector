@@ -1,6 +1,6 @@
 # Dependency maintenance
 
-The supported runtime is Node.js 24.22.1 with Yarn 1.22.22. Direct dependency
+The supported runtime is Node.js 24.22.3 with Yarn 1.22.22. Direct dependency
 versions and security resolutions are exact. `yarn.lock` records the complete
 resolved graph. Use `yarn install --frozen-lockfile --non-interactive` in CI
 and when reproducing a build.

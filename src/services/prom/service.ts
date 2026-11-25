@@ -19,7 +19,7 @@ export const makeMetrics = ({
   const buildInfo = new client.Gauge({
     name: PREFIX + 'build_info',
     help: 'Build information',
-    labelNames: ['version', 'mode'] as const,
+    labelNames: ['version', 'mode', 'branch', 'commit'] as const,
   })
   register.registerMetric(buildInfo)
 
@@ -74,6 +74,22 @@ export const makeMetrics = ({
   })
   register.registerMetric(consensusRequestDurationSeconds)
 
+  const webhookRequestDurationSeconds = new client.Histogram({
+    name: PREFIX + 'webhook_request_duration_seconds',
+    help: 'Exit webhook request duration in seconds',
+    labelNames: ['result', 'status', 'domain'] as const,
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  })
+  register.registerMetric(webhookRequestDurationSeconds)
+
+  const messagesReadDurationSeconds = new client.Histogram({
+    name: PREFIX + 'messages_read_duration_seconds',
+    help: 'Exit messages read duration in seconds, by source: local, s3, gs',
+    labelNames: ['result', 'source'] as const,
+    buckets: [0.1, 0.3, 0.5, 1, 3, 5, 10, 30, 60],
+  })
+  register.registerMetric(messagesReadDurationSeconds)
+
   const jobEjectorCycleDuration = new client.Histogram({
     name: PREFIX + 'job_duration_seconds',
     help: 'Duration of cron jobs',
@@ -122,6 +138,8 @@ export const makeMetrics = ({
     pollingLastBlocksDurationSeconds,
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
+    webhookRequestDurationSeconds,
+    messagesReadDurationSeconds,
     jobEjectorCycleDuration,
     jobMessageReloaderDuration,
     updateLeftMessages,

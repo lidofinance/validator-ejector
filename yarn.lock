@@ -1060,6 +1060,11 @@
   resolved "https://registry.yarnpkg.com/@keyv/serialize/-/serialize-1.1.1.tgz#0c01dd3a3483882af7cf3878d4e71d505c81fc4a"
   integrity sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==
 
+"@lidofinance/satanizer@0.64.0":
+  version "0.64.0"
+  resolved "https://registry.yarnpkg.com/@lidofinance/satanizer/-/satanizer-0.64.0.tgz#9d9485316f1bbd77772c6709169bd32e1ca48ab7"
+  integrity sha512-meEnpvBzvjEDEAhh3MmHd3kHk5ZDfHreqrJGPNll4o4oTnIkZ8S/YHJhAttn/baO+iWllA11F90ywrP/HHHixA==
+
 "@lodestar/params@1.50.0", "@lodestar/params@^1.50.0":
   version "1.50.0"
   resolved "https://registry.yarnpkg.com/@lodestar/params/-/params-1.50.0.tgz#e9e1b85941b8207dd0620a5c2552a1687f14b3f2"

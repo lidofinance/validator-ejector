@@ -14,7 +14,6 @@ export type Logger = Record<
 
 export type Sanitizer = {
   secrets: string[]
-  replacer: string
 }
 
 export type LoggerOptions = {

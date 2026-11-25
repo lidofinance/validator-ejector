@@ -56,7 +56,6 @@ export const prepareDeps = (
     format: 'simple',
     sanitizer: {
       secrets: [],
-      replacer: '<secret>',
     },
   })
 
@@ -121,7 +120,6 @@ export const prepareDeps = (
     format: 'simple',
     sanitizer: {
       secrets: [],
-      replacer: '<secret>',
     },
   })
 
@@ -146,6 +144,8 @@ export const prepareDeps = (
   return {
     messagesProcessor,
     consensusApi,
+    localFileReader,
+    metrics,
     errorLogger: logger,
     logger: infoLogger,
     forkVersionResolver,

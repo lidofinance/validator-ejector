@@ -140,7 +140,7 @@ describe('encrypted exit messages', () => {
       const logger = makeLogger({
         level: 'error',
         format: 'simple',
-        sanitizer: { secrets: [], replacer: '<secret>' },
+        sanitizer: { secrets: [] },
       })
       const config = makeConfig({
         logger,

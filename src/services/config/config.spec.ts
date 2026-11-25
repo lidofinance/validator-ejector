@@ -416,6 +416,70 @@ describe('config module', () => {
       ).toThrow(/EJECTOR_SCOPE, OPERATOR_ID or OPERATOR_IDENTIFIERS/)
     })
   })
+
+  describe('values from *_FILE variables', () => {
+    const elPath = join(tmpdir(), `execution-node-${process.pid}.txt`)
+    const clPath = join(tmpdir(), `consensus-node-${process.pid}.txt`)
+    const webhookPath = join(tmpdir(), `exit-webhook-${process.pid}.txt`)
+
+    afterEach(() => {
+      rmSync(elPath, { force: true })
+      rmSync(clPath, { force: true })
+      rmSync(webhookPath, { force: true })
+    })
+
+    test('EXECUTION_NODE_FILE and CONSENSUS_NODE_FILE with a line feed', () => {
+      writeFileSync(elPath, 'http://el-a:8545, http://el-b:8545/\n')
+      writeFileSync(clPath, 'http://cl-a:5051\n')
+
+      const config = makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          EXECUTION_NODE: undefined,
+          CONSENSUS_NODE: undefined,
+          EXECUTION_NODE_FILE: elPath,
+          CONSENSUS_NODE_FILE: clPath,
+          MESSAGES_LOCATION: 'messages',
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+      expect(config.EXECUTION_NODE).toEqual([
+        'http://el-a:8545',
+        'http://el-b:8545',
+      ])
+      expect(config.CONSENSUS_NODE).toEqual(['http://cl-a:5051'])
+    })
+
+    test('VALIDATOR_EXIT_WEBHOOK_FILE', () => {
+      writeFileSync(webhookPath, 'http://webhook/secret-path')
+
+      const config = makeConfig({
+        logger,
+        env: {
+          ...configBase,
+          VALIDATOR_EXIT_WEBHOOK_FILE: webhookPath,
+        } as unknown as NodeJS.ProcessEnv,
+      })
+
+      expect(config.VALIDATOR_EXIT_WEBHOOK).toBe('http://webhook/secret-path')
+    })
+
+    test('unreadable EXECUTION_NODE_FILE throws', () => {
+      const makeConf = () =>
+        makeConfig({
+          logger,
+          env: {
+            ...configBase,
+            EXECUTION_NODE: undefined,
+            EXECUTION_NODE_FILE: '/nonexistent/execution-node.txt',
+            MESSAGES_LOCATION: 'messages',
+          } as unknown as NodeJS.ProcessEnv,
+        })
+
+      expect(makeConf).toThrow('Unable to load EXECUTION_NODE_FILE')
+    })
+  })
 })
 
 describe('logger config module', () => {
@@ -433,6 +497,12 @@ describe('logger config module', () => {
     const config = makeConf()
 
     expect(config.LOGGER_SECRETS).toEqual(['secret'])
+  })
+
+  test('LOGGER_FORMAT defaults to json', () => {
+    const config = makeLoggerConfig({ env: {} as NodeJS.ProcessEnv })
+
+    expect(config.LOGGER_FORMAT).toBe('json')
   })
 
   test('invalid logger secrets config', () => {
@@ -508,6 +578,34 @@ describe('logger config module', () => {
     ])
   })
 
+  test('secret env vars are masked without LOGGER_SECRETS', () => {
+    const passwordPath = join(tmpdir(), `messages-password-${process.pid}.txt`)
+    writeFileSync(passwordPath, 'messages-password\n')
+
+    try {
+      const env = {
+        EXECUTION_NODE:
+          'https://el-a.example/el-key-a/, https://el-b.example/el-key-b',
+        CONSENSUS_NODE: 'https://cl.example/cl-key',
+        MESSAGES_PASSWORD_FILE: passwordPath,
+        WEBHOOK_TOKEN: 'webhook-token',
+      } as NodeJS.ProcessEnv
+
+      const config = makeLoggerConfig({ env })
+
+      expect(config.LOGGER_SECRETS).toEqual([
+        env.EXECUTION_NODE,
+        'https://el-a.example/el-key-a',
+        'https://el-b.example/el-key-b',
+        env.CONSENSUS_NODE,
+        'messages-password\n',
+        'webhook-token',
+      ])
+    } finally {
+      rmSync(passwordPath)
+    }
+  })
+
   test('dynamic multi-url secrets redact normalized config arrays in json logs', () => {
     const env = {
       ...configBase,
@@ -527,17 +625,16 @@ describe('logger config module', () => {
       format: loggerConfig.LOGGER_FORMAT,
       sanitizer: {
         secrets: loggerConfig.LOGGER_SECRETS,
-        replacer: '<secret>',
       },
     })
     const appConfig = makeConfig({ logger, env })
-    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined)
+    const info = vi.spyOn(console, 'log').mockImplementation(() => undefined)
 
     try {
       logger.info('startup', { ...appConfig })
 
       const output = String(info.mock.calls[0][0])
-      expect(output).toContain('<secret>')
+      expect(output).toContain('*'.repeat('https://el-a.example'.length))
       expect(output).not.toContain('https://el-a.example/secret-el-token-a')
       expect(output).not.toContain('https://el-b.example/secret-el-token-b')
       expect(output).not.toContain('https://cl-a.example/secret-cl-token-a')

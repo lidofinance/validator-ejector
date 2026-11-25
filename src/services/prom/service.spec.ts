@@ -11,7 +11,14 @@ describe('Prometheus client compatibility', () => {
 
   it('keeps application metric names, values, labels, and exposition format', async () => {
     const metrics = makeMetrics({})
-    metrics.buildInfo.labels({ version: 'fixture', mode: 'message' }).inc()
+    metrics.buildInfo
+      .labels({
+        version: 'fixture',
+        mode: 'message',
+        branch: 'fixture-branch',
+        commit: 'fixture-commit',
+      })
+      .inc()
     metrics.exitMessages.labels('true').inc(2)
     metrics.exitActions.labels('success').inc()
     metrics.eventSecurityVerification.labels('error').inc()
@@ -35,6 +42,8 @@ describe('Prometheus client compatibility', () => {
           app: 'validator-ejector',
           version: 'fixture',
           mode: 'message',
+          branch: 'fixture-branch',
+          commit: 'fixture-commit',
         },
       },
     ])

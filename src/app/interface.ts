@@ -1,5 +1,9 @@
 import type { JobRunnerService, LoggerService } from '../lib/index.js'
-import type { ConfigService } from '../services/config/service.js'
+import type {
+  ConfigService,
+  makeLoggerConfig,
+  makeWebhookProcessorConfig,
+} from '../services/config/service.js'
 import type { MetricsService } from '../services/prom/service.js'
 import type { HttpHandlerService } from '../services/http-handler/service.js'
 import type { ExecutionApiService } from '../services/execution-api/service.js'
@@ -10,6 +14,8 @@ import type { ConsistencyChecker } from '../services/consistency/service.js'
 
 export interface Dependencies {
   config: ConfigService
+  loggerConfig: ReturnType<typeof makeLoggerConfig>
+  webhookConfig: ReturnType<typeof makeWebhookProcessorConfig>
   logger: LoggerService
   job: JobRunnerService
   messageReloader: MessageReloader

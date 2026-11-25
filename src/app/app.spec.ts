@@ -5,6 +5,7 @@ import * as ELMocks from '../services/execution-api/fixtures.js'
 import * as CLMocks from '../services/consensus-api/fixtures.js'
 import dotenv from 'dotenv'
 import { configBase } from '../test/config.js'
+import type { Dependencies } from './interface.js'
 
 dotenv.config()
 
@@ -111,3 +112,59 @@ describe('App bootstrap', () => {
     )
   })
 }, 100_000)
+
+describe('App startup record', () => {
+  it('holds the build info and the logger and webhook config, masked', async () => {
+    const { makeApp } = await import('./service.js')
+    const token = 'generated-webhook-token'
+    const loggerConfig = {
+      LOGGER_LEVEL: 'info' as const,
+      LOGGER_FORMAT: 'json' as const,
+      LOGGER_SECRETS: [token],
+    }
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const app = makeApp({
+      config: { MESSAGES_LOCATION: 'messages', EJECTOR_SCOPE: [] },
+      loggerConfig,
+      webhookConfig: {
+        WEBHOOK_ABORT_TIMEOUT_MS: 10_000,
+        WEBHOOK_MAX_RETRIES: 0,
+        WEBHOOK_TOKEN: token,
+        WEBHOOK_HEADER: 'Authorization',
+      },
+      logger: makeLogger({
+        level: 'info',
+        format: 'json',
+        sanitizer: { secrets: loggerConfig.LOGGER_SECRETS },
+      }),
+      appInfoReader: {
+        getVersion: async () => '0.0.0',
+        getBuildInfo: async () => ({ branch: 'main', commit: 'abc1234' }),
+      },
+      metrics: { buildInfo: { labels: () => ({ inc: () => undefined }) } },
+      consistencyChecker: {
+        checkChainIds: async () => {
+          throw new Error('stop after the startup record')
+        },
+      },
+    } as unknown as Dependencies)
+
+    try {
+      await expect(app.run()).rejects.toThrow('stop after the startup record')
+
+      const line = String(log.mock.calls[0][0])
+      expect(JSON.parse(line).details).toMatchObject({
+        version: '0.0.0',
+        branch: 'main',
+        commit: 'abc1234',
+        LOGGER_LEVEL: 'info',
+        LOGGER_FORMAT: 'json',
+        WEBHOOK_HEADER: 'Authorization',
+        WEBHOOK_TOKEN: '*'.repeat(token.length),
+      })
+      expect(line).not.toContain(token)
+    } finally {
+      log.mockRestore()
+    }
+  })
+})
