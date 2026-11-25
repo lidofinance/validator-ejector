@@ -17,7 +17,7 @@ import {
   depositContractDTO,
   validatorsBatchDTO,
 } from './dto.js'
-import { HttpException } from '../../lib/request/errors.js'
+import { HttpException, withStatusCode } from '../../lib/request/errors.js'
 
 export const FAR_FUTURE_EPOCH = String(2n ** 64n - 1n)
 
@@ -53,13 +53,13 @@ export const makeConsensusApi = (
         }
         if (typeof json.message === 'string') message = json.message
       } catch (error) {
-        if (!isRetryable) throw error
+        if (!isRetryable) throw withStatusCode(error, res.status)
         if (error instanceof Error) message = error.message
       }
       if (isRetryable) {
         throw new HttpException(message, res.status)
       }
-      throw new Error(message)
+      throw withStatusCode(new Error(message), res.status)
     }
     return res
   }
