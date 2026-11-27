@@ -4,6 +4,7 @@ import {
   logger as loggerMiddleware,
   abort,
   notOkError,
+  prom,
   retry,
 } from '../../lib/index.js'
 import { MetricsService } from '../prom/service.js'
@@ -22,6 +23,7 @@ export const makeWebhookProcessor = (
 ) => {
   let middlewares = [
     loggerMiddleware(logger),
+    prom(metrics.webhookRequestDurationSeconds),
     notOkError(),
     abort(config.WEBHOOK_ABORT_TIMEOUT_MS),
   ]

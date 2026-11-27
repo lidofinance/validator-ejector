@@ -18,6 +18,14 @@ export class HttpException extends Error {
   }
 }
 
+// Adds the HTTP status to an error that must stay a plain Error: retry and
+// fallback treat a plain Error as final, and the request metric reads the
+// status from it
+export const withStatusCode = <T>(error: T, statusCode: number): T => {
+  if (error instanceof Error) Object.assign(error, { statusCode })
+  return error
+}
+
 const httpExceptionMessage = (
   response: string | Record<string, any>,
   status: number

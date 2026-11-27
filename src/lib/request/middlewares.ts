@@ -9,6 +9,11 @@ type PromReturnTypeSerializer =
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const statusCodeOf = (error: Error) => {
+  const { statusCode } = error as { statusCode?: unknown }
+  return typeof statusCode === 'number' ? statusCode : undefined
+}
+
 const defaultSerializer = (
   config: InternalConfig,
   response: Response,
@@ -18,7 +23,9 @@ const defaultSerializer = (
   const urlStr = typeof url === 'string' ? url : url.toString()
   return {
     result: error ? 'error' : 'success',
-    status: error ? 'unknown' : response.status,
+    // An HTTP error keeps its status: an HttpException, or a plain Error with
+    // `statusCode` (`withStatusCode`). A network error or a timeout has none
+    status: error ? (statusCodeOf(error) ?? 'unknown') : response.status,
     domain: new URL(urlStr).hostname,
   }
 }

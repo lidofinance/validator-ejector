@@ -6,10 +6,17 @@ import {
 
 import { LoggerService } from '../../lib/index.js'
 import type { MessageFile } from '../local-file-reader/service.js'
+import type { MetricsService } from '../prom/service.js'
 
 export type S3StoreService = ReturnType<typeof makeS3Store>
 
-export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
+export const makeS3Store = ({
+  logger,
+  metrics,
+}: {
+  logger: LoggerService
+  metrics: Pick<MetricsService, 'timeStorageRequest'>
+}) => {
   let client: S3Client
   try {
     client = new S3Client({})
@@ -42,7 +49,10 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
 
         do {
           const { Contents, IsTruncated, NextContinuationToken } =
-            await client.send(listCommand)
+            await metrics.timeStorageRequest(
+              { source: 's3', operation: 'list' },
+              () => client.send(listCommand)
+            )
 
           if (!Contents) throw new Error('No contents in AWS S3 response.')
 
@@ -52,8 +62,10 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
             fileNames.push(item.Key)
           }
 
-          if (IsTruncated) {
-            isTruncated = IsTruncated
+          // The flag follows every page: the last page of a truncated
+          // listing sets it back to false and ends the loop
+          isTruncated = Boolean(IsTruncated)
+          if (isTruncated) {
             listCommand.input.ContinuationToken = NextContinuationToken
           }
         } while (isTruncated)
@@ -74,13 +86,18 @@ export const makeS3Store = ({ logger }: { logger: LoggerService }) => {
         })
 
         try {
-          const response = await client.send(downloadCommand)
+          const stringified = await metrics.timeStorageRequest(
+            { source: 's3', operation: 'get' },
+            async () => {
+              const response = await client.send(downloadCommand)
 
-          if (!response.Body) {
-            throw new Error('No body for an object in AWS.')
-          }
+              if (!response.Body) {
+                throw new Error('No body for an object in AWS.')
+              }
 
-          const stringified = await response.Body.transformToString()
+              return response.Body.transformToString()
+            }
+          )
 
           files.push({ filename: fileName, content: stringified })
         } catch (e) {

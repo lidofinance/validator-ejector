@@ -1,10 +1,18 @@
 import nock from 'nock'
+import { Histogram, Registry } from '@prometheus-io/client'
 import {
   ConsensusApiService,
   makeConsensusApi,
   FAR_FUTURE_EPOCH,
 } from './service.js'
-import { LoggerService, RequestService, makeRequest } from '../../lib/index.js'
+import {
+  LoggerService,
+  RequestService,
+  makeRequest,
+  prom,
+  retry,
+} from '../../lib/index.js'
+import { HttpException } from '../../lib/request/errors.js'
 import {
   exitRequestMock,
   genesisMock,
@@ -645,5 +653,94 @@ describe('makeConsensusApi', () => {
         (caught as AggregateError).errors.map((error) => error.message)
       ).toEqual(['primary rejected exit', 'secondary rejected exit'])
     })
+  })
+})
+
+describe('CL request metric on a failed request', () => {
+  const NODE = 'http://metric.cl.example:5051'
+  const exitMessage = {
+    message: { epoch: '1', validator_index: '1' },
+    signature: '1',
+  }
+
+  const setup = () => {
+    const logger = mockLogger()
+    const histogram = new Histogram({
+      name: 'consensus_request_duration_seconds',
+      help: 'Consensus node request duration in seconds',
+      labelNames: ['result', 'status', 'domain'],
+      registers: [new Registry()],
+    })
+    // The CL request chain of the app module, without the pause between retries
+    const request = makeRequest([
+      retry(3, { ignoreAbort: true, sleep: 0 }),
+      prom(histogram),
+    ])
+    const api = makeConsensusApi(
+      request,
+      logger,
+      mockConfig(logger, { CONSENSUS_NODE: NODE })
+    )
+    const errorCounts = async () =>
+      (await histogram.get()).values
+        .map((value) => ({
+          name: value.metricName ?? '',
+          labels: value.labels as Record<string, string | number>,
+          count: value.value,
+        }))
+        .filter(
+          ({ name, labels }) =>
+            name.endsWith('_count') && labels.result === 'error'
+        )
+        .map(({ labels, count }) => ({ status: labels.status, count }))
+    return { api, errorCounts }
+  }
+
+  it.each([
+    [400, { message: 'exit rejected' }],
+    [404, '<html>not found</html>'],
+  ])('sends a rejected exit once and records HTTP %i', async (status, body) => {
+    const { api, errorCounts } = setup()
+    const scope = nock(NODE)
+      .post('/eth/v1/beacon/pool/voluntary_exits')
+      .reply(status, body)
+
+    await expect(api.exitRequest(exitMessage)).rejects.toBeInstanceOf(
+      AggregateError
+    )
+
+    expect(scope.isDone()).toBe(true)
+    expect(await errorCounts()).toEqual([{ status, count: 1 }])
+  })
+
+  it('keeps a plain Error with the status for a status that is not retried', async () => {
+    const { api } = setup()
+    nock(NODE)
+      .get('/eth/v1/beacon/states/head/validators/1')
+      .reply(400, { message: 'invalid validator id' })
+
+    const error = await api.validatorInfo('1').catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error).not.toBeInstanceOf(HttpException)
+    expect(error).toMatchObject({
+      message: 'invalid validator id',
+      statusCode: 400,
+    })
+  })
+
+  it('retries a 503 and records every attempt with its status', async () => {
+    const { api, errorCounts } = setup()
+    const scope = nock(NODE)
+      .post('/eth/v1/beacon/pool/voluntary_exits')
+      .times(3)
+      .reply(503, 'busy')
+
+    await expect(api.exitRequest(exitMessage)).rejects.toBeInstanceOf(
+      AggregateError
+    )
+
+    expect(scope.isDone()).toBe(true)
+    expect(await errorCounts()).toEqual([{ status: 503, count: 3 }])
   })
 })

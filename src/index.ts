@@ -1,19 +1,18 @@
-import { makeLogger } from './lib/index.js'
 import { makeAppModule } from './app/module.js'
-import { exitOnShutdownSignals } from './app/shutdown.js'
+import { makeStartupLogger } from './app/logger.js'
+import { exitOnShutdownSignals, flushOutput } from './app/shutdown.js'
 
 const bootstrap = async () => {
-  const defaultLogger = makeLogger({
-    level: 'debug',
-    format: 'simple',
-  })
+  const startupLogger = makeStartupLogger(process.env)
   try {
     const appModule = await makeAppModule()
     // run() can take minutes to load the initial events.
     exitOnShutdownSignals(appModule.logger)
     await appModule.run()
   } catch (error) {
-    defaultLogger.error('Startup error', error)
+    startupLogger.error('Startup error', error)
+    // The error line must reach the pipe before the exit drops it
+    await flushOutput()
     process.exit(1)
   }
 }

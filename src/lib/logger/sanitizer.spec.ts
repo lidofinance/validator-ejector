@@ -1,22 +1,12 @@
-import { makeLogger, LOG_LEVELS } from './index.js'
+import { makeLogger } from './index.js'
 import { sanitize, stringify } from './sanitizer.js'
 
-import type { LogLevelsUnion } from './types.js'
+const mask = (value: string) => '*'.repeat(value.length)
 
+// Every record goes to stdout through console.log
 const mockConsole = () => {
-  const log = LOG_LEVELS.reduce<Record<LogLevelsUnion, any>>((acc, level) => {
-    const method = vi
-      .spyOn(console, level as LogLevelsUnion)
-      .mockImplementation(() => ({ log: () => vi.fn }))
-    acc[level] = method
-    return acc
-  }, {} as any)
-
-  const restore = () => {
-    Object.values(log).map((mock) => mock.mockRestore())
-  }
-
-  return { restore, log }
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+  return { restore: () => log.mockRestore(), log }
 }
 
 describe('Logger Sanitizer', () => {
@@ -27,16 +17,15 @@ describe('Logger Sanitizer', () => {
       level: 'debug',
       sanitizer: {
         secrets: ['secret'],
-        replacer: '<*>',
       },
     })
 
     logger.debug('test secret')
 
-    expect(log.debug).toHaveBeenCalledTimes(1)
-    expect(
-      JSON.parse(log.debug.mock.lastCall as unknown as string).message
-    ).toBe('test <*>')
+    expect(log).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(log.mock.lastCall as unknown as string).message).toBe(
+      'test ******'
+    )
 
     restore()
   })
@@ -48,14 +37,13 @@ describe('Logger Sanitizer', () => {
       level: 'debug',
       sanitizer: {
         secrets: ['secret'],
-        replacer: '<*>',
       },
     })
 
     logger.debug('test secret')
 
-    expect(log.debug).toHaveBeenCalledTimes(1)
-    expect(log.debug.mock.calls[0][0].includes('test <*>')).toBe(true)
+    expect(log).toHaveBeenCalledTimes(1)
+    expect(log.mock.calls[0][0].includes('test ******')).toBe(true)
 
     restore()
   })
@@ -74,26 +62,25 @@ describe('Logger Sanitizer', () => {
         level: 'debug',
         sanitizer: {
           secrets: [escapedValue],
-          replacer: '<*>',
         },
       })
 
       try {
         logger.debug(`test ${escapedValue}`, details)
 
-        expect(log.debug).toHaveBeenCalledTimes(1)
-        const line = log.debug.mock.calls[0][0]
+        expect(log).toHaveBeenCalledTimes(1)
+        const line = log.mock.calls[0][0]
         const sanitizedDetails = {
-          value: '<*>',
-          nested: { values: ['<*>', 42, null] },
+          value: mask(escapedValue),
+          nested: { values: [mask(escapedValue), 42, null] },
         }
         if (format === 'json') {
           expect(JSON.parse(line)).toMatchObject({
-            message: 'test <*>',
+            message: `test ${mask(escapedValue)}`,
             details: sanitizedDetails,
           })
         } else {
-          expect(line).toContain('test <*>')
+          expect(line).toContain(`test ${mask(escapedValue)}`)
           expect(line).toContain(JSON.stringify(sanitizedDetails))
         }
         expect(line).not.toContain('secret')
@@ -122,29 +109,27 @@ describe('Logger Sanitizer', () => {
       },
       count: 42,
     }
-    const encoded = JSON.stringify({ value: '<*>' })
+    const stars = /^\*+$/
 
-    expect(
-      JSON.parse(
-        stringify(details, { secrets: [escapedValue], replacer: '<*>' })
-      )
-    ).toEqual({
-      '<*>': {
-        raw: '<*>',
-        trimmed: '<*>',
-        encoded,
-        doubleEncoded: JSON.stringify(encoded),
-      },
-      count: 42,
-    })
+    const { count, ...rest } = JSON.parse(
+      stringify(details, { secrets: [escapedValue] })
+    )
+    const [[key, value]] = Object.entries<any>(rest)
+
+    expect(count).toBe(42)
+    expect(key).toBe(mask(escapedValue))
+    expect(value.raw).toBe(mask(escapedValue))
+    expect(value.trimmed).toBe(mask(escapedValue.trim()))
+    expect(JSON.parse(value.encoded).value).toMatch(stars)
+    expect(JSON.parse(JSON.parse(value.doubleEncoded)).value).toMatch(stars)
     expect(details[escapedValue]).toMatchObject({ raw: escapedValue })
   })
 
   test('ignores empty secrets and preserves JSON escape boundaries', () => {
     const details = { value: '\nabc', count: 42 }
-    expect(
-      JSON.parse(stringify(details, { secrets: ['', 'nabc'], replacer: '<*>' }))
-    ).toEqual(details)
+    expect(JSON.parse(stringify(details, { secrets: ['', 'nabc'] }))).toEqual(
+      details
+    )
   })
 
   test('redacts instead of throwing or leaking when a secret is too large to compile', () => {
@@ -154,7 +139,6 @@ describe('Logger Sanitizer', () => {
     const oversizedValue = 'a'.repeat(2_000_000)
     const output = sanitize(`value ${oversizedValue} end`, {
       secrets: [oversizedValue],
-      replacer: '<*>',
     })
 
     expect(output).not.toContain(oversizedValue)
@@ -163,13 +147,12 @@ describe('Logger Sanitizer', () => {
     expect(output).toContain(String(oversizedValue.length))
   })
 
-  test('replaces overlapping secrets once and treats the replacement literally', () => {
+  test('masks overlapping secrets once', () => {
     expect(
       sanitize('fixture-long fixture', {
         secrets: ['fixture', 'fixture-long'],
-        replacer: '$&',
       })
-    ).toBe('$& $&')
+    ).toBe(`${mask('fixture-long')} ${mask('fixture')}`)
   })
 
   test.each(['json', 'simple'] as const)(
@@ -181,18 +164,23 @@ describe('Logger Sanitizer', () => {
         Authorization: runtimeValue,
         'X-Custom': 'custom-fixture',
       }
-      const sanitizer = { secrets: [] as string[], replacer: '<*>' }
+      const sanitizer = { secrets: [] as string[] }
       const logger = makeLogger({ format, level: 'debug', sanitizer })
 
       try {
         logger.debug(`request ${runtimeValue}`, { headers })
-        const line = String(log.debug.mock.calls[0][0])
+        const line = String(log.mock.calls[0][0])
         expect(line).not.toContain(runtimeValue)
         expect(line).not.toContain(headers['X-Custom'])
-        const details = { headers: { Authorization: '<*>', 'X-Custom': '<*>' } }
+        const details = {
+          headers: {
+            Authorization: mask(runtimeValue),
+            'X-Custom': mask(headers['X-Custom']),
+          },
+        }
         if (format === 'json') {
           expect(JSON.parse(line)).toMatchObject({
-            message: 'request <*>',
+            message: `request ${mask(runtimeValue)}`,
             details,
           })
         } else {
@@ -202,7 +190,7 @@ describe('Logger Sanitizer', () => {
         expect(sanitizer.secrets).toEqual([])
 
         logger.debug('next record', { value: runtimeValue })
-        expect(String(log.debug.mock.calls[1][0])).toContain(runtimeValue)
+        expect(String(log.mock.calls[1][0])).toContain(runtimeValue)
       } finally {
         restore()
       }

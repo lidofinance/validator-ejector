@@ -45,7 +45,6 @@ const makeCrossChainProvider = () => {
     format: loggerConfig.LOGGER_FORMAT,
     sanitizer: {
       secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
     },
   })
 

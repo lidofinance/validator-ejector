@@ -20,8 +20,20 @@ export const makeJobRunner = <Initial>(
     handler: (handlerValue: Initial) => Promise<void>
   }
 ) => {
-  const once = async (handlerValue: Initial) => {
-    if (jobLockMap[name]) return
+  /**
+   * One run of the job. A failed run is counted in the metric. By default it
+   * is logged as a warning and the next run retries; with `rethrow` the error
+   * goes to the caller, for the initial run at start, whose failure must end
+   * the process.
+   */
+  const once = async (
+    handlerValue: Initial,
+    { rethrow = false }: { rethrow?: boolean } = {}
+  ) => {
+    if (jobLockMap[name]) {
+      if (rethrow) throw new Error(`Job ${name} is already running`)
+      return
+    }
     jobLockMap[name] = true
 
     const end = metric.startTimer({
@@ -34,8 +46,9 @@ export const makeJobRunner = <Initial>(
       await handler(handlerValue)
       end({ result: 'success' })
     } catch (error) {
-      logger.warn('Job ended with error', error)
       end({ result: 'error' })
+      if (rethrow) throw error
+      logger.warn('Job ended with error', error)
     } finally {
       jobLockMap[name] = false
       logger.debug('Job ended', { name })

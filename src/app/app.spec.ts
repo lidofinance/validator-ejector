@@ -5,10 +5,20 @@ import * as ELMocks from '../services/execution-api/fixtures.js'
 import * as CLMocks from '../services/consensus-api/fixtures.js'
 import dotenv from 'dotenv'
 import { configBase } from '../test/config.js'
+import { getFreePort, getStatus } from '../test/http.js'
+import type { Dependencies } from './interface.js'
 
 dotenv.config()
 
-const mockConfig = async (config) => {
+// The bootstrap tests cover the module wiring and the start sequence. The
+// job cycle has its own specs, so its handler is stubbed here.
+const mockJobProcessor = (handleJob: () => Promise<void>) => {
+  vi.doMock('../services/job-processor/service.js', () => ({
+    makeJobProcessor: () => ({ handleJob }),
+  }))
+}
+
+const mockConfig = async (config, { httpPort }: { httpPort?: number } = {}) => {
   const { makeConfig } = (await vi.importActual(
     '../services/config/service.js'
   )) as typeof import('../services/config/service.js')
@@ -24,7 +34,7 @@ const mockConfig = async (config) => {
               format: 'simple',
             }),
           }),
-          HTTP_PORT: undefined,
+          HTTP_PORT: httpPort,
         }
       },
       makeLoggerConfig() {
@@ -57,6 +67,7 @@ describe('App bootstrap', () => {
       mockEthServer(mock() as any, configBase.CONSENSUS_NODE)
     })
     vi.resetModules()
+    mockJobProcessor(async () => undefined)
   })
 
   afterEach(() => {
@@ -87,6 +98,51 @@ describe('App bootstrap', () => {
     await module.destroy()
   })
 
+  it('fails the start when the initial load fails', async () => {
+    await mockConfig({
+      MESSAGES_LOCATION: 'encryptor',
+      VALIDATOR_EXIT_WEBHOOK: undefined,
+      PROM_PREFIX: 'test_fail',
+    })
+    mockJobProcessor(async () => {
+      throw new Error('initial load failed')
+    })
+
+    const module = await getApp()
+    await expect(module.run()).rejects.toThrow('initial load failed')
+    await module.destroy()
+  })
+
+  it('answers 503 on /ready during the initial load and 200 after it', async () => {
+    const port = await getFreePort()
+    await mockConfig(
+      {
+        MESSAGES_LOCATION: 'encryptor',
+        VALIDATOR_EXIT_WEBHOOK: undefined,
+        PROM_PREFIX: 'test_ready',
+      },
+      { httpPort: port }
+    )
+    let finishInitialLoad: () => void = () => undefined
+    mockJobProcessor(
+      () => new Promise<void>((resolve) => (finishInitialLoad = resolve))
+    )
+
+    const module = await getApp()
+    const running = module.run()
+    // The socket opens before the initial load: the 503 window is observable
+    await vi.waitFor(async () => {
+      expect(await getStatus(port, '/health')).toBe(200)
+    })
+    expect(await getStatus(port, '/ready')).toBe(503)
+
+    finishInitialLoad()
+    await running
+
+    expect(await getStatus(port, '/ready')).toBe(200)
+    await module.destroy()
+  })
+
   it('should throw an error if both MESSAGES_LOCATION and VALIDATOR_EXIT_WEBHOOK are defined', async () => {
     await mockConfig({
       MESSAGES_LOCATION: 'messages',
@@ -111,3 +167,59 @@ describe('App bootstrap', () => {
     )
   })
 }, 100_000)
+
+describe('App startup record', () => {
+  it('holds the build info and the logger and webhook config, masked', async () => {
+    const { makeApp } = await import('./service.js')
+    const token = 'generated-webhook-token'
+    const loggerConfig = {
+      LOGGER_LEVEL: 'info' as const,
+      LOGGER_FORMAT: 'json' as const,
+      LOGGER_SECRETS: [token],
+    }
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const app = makeApp({
+      config: { MESSAGES_LOCATION: 'messages', EJECTOR_SCOPE: [] },
+      loggerConfig,
+      webhookConfig: {
+        WEBHOOK_ABORT_TIMEOUT_MS: 10_000,
+        WEBHOOK_MAX_RETRIES: 0,
+        WEBHOOK_TOKEN: token,
+        WEBHOOK_HEADER: 'Authorization',
+      },
+      logger: makeLogger({
+        level: 'info',
+        format: 'json',
+        sanitizer: { secrets: loggerConfig.LOGGER_SECRETS },
+      }),
+      appInfoReader: {
+        getVersion: async () => '0.0.0',
+        getBuildInfo: async () => ({ branch: 'main', commit: 'abc1234' }),
+      },
+      metrics: { buildInfo: { labels: () => ({ inc: () => undefined }) } },
+      consistencyChecker: {
+        checkChainIds: async () => {
+          throw new Error('stop after the startup record')
+        },
+      },
+    } as unknown as Dependencies)
+
+    try {
+      await expect(app.run()).rejects.toThrow('stop after the startup record')
+
+      const line = String(log.mock.calls[0][0])
+      expect(JSON.parse(line).details).toMatchObject({
+        version: '0.0.0',
+        branch: 'main',
+        commit: 'abc1234',
+        LOGGER_LEVEL: 'info',
+        LOGGER_FORMAT: 'json',
+        WEBHOOK_HEADER: 'Authorization',
+        WEBHOOK_TOKEN: '*'.repeat(token.length),
+      })
+      expect(line).not.toContain(token)
+    } finally {
+      log.mockRestore()
+    }
+  })
+})

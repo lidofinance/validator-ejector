@@ -71,7 +71,7 @@ describe('Request middleware on real Node HTTP and TLS sockets', () => {
           expect.objectContaining({
             metricName: 'request_duration_seconds_count',
             value: 2,
-            labels: { result: 'error', status: 'unknown', domain: '127.0.0.1' },
+            labels: { result: 'error', status, domain: '127.0.0.1' },
           }),
           expect.objectContaining({
             metricName: 'request_duration_seconds_count',

@@ -1,22 +1,11 @@
 import { makeLogger, LOG_LEVELS } from './index.js'
 import { dateFormat } from './printer.js'
-import type { LogLevelsUnion } from './types.js'
 import { HttpException } from '../request/errors.js'
 
+// Every record goes to stdout through console.log
 const mockConsole = () => {
-  const log = LOG_LEVELS.reduce<Record<LogLevelsUnion, any>>((acc, level) => {
-    const method = vi
-      .spyOn(console, level as LogLevelsUnion)
-      .mockImplementation(() => ({ log: () => vi.fn }))
-    acc[level] = method
-    return acc
-  }, {} as any)
-
-  const restore = () => {
-    Object.values(log).map((mock) => mock.mockRestore())
-  }
-
-  return { restore, log }
+  const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+  return { restore: () => log.mockRestore(), log }
 }
 
 describe('Logger', () => {
@@ -40,8 +29,8 @@ describe('Logger', () => {
 
     logger.info(testMessage, testData)
 
-    expect(log.info).toHaveBeenCalledTimes(1)
-    const loggedJson = JSON.parse(log.info.mock.calls[0][0])
+    expect(log).toHaveBeenCalledTimes(1)
+    const loggedJson = JSON.parse(log.mock.calls[0][0])
 
     expect(loggedJson).toHaveProperty('timestamp')
     expect(loggedJson).toHaveProperty('level', 'info')
@@ -59,8 +48,8 @@ describe('Logger', () => {
 
     logger.warn(testMessage)
 
-    expect(log.warn).toHaveBeenCalledTimes(1)
-    const loggedString = log.warn.mock.calls[0][0]
+    expect(log).toHaveBeenCalledTimes(1)
+    const loggedString = log.mock.calls[0][0]
 
     expect(typeof loggedString).toBe('string')
     expect(loggedString).toContain(testMessage)
@@ -78,11 +67,8 @@ describe('Logger', () => {
 
       logger.debug('test')
 
-      expect(log.debug).toHaveBeenCalledTimes(1)
-
-      LOG_LEVELS.filter((level) => level !== 'debug').map((level) =>
-        expect(log[level]).toHaveBeenCalledTimes(0)
-      )
+      expect(log).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(log.mock.calls[0][0])).toHaveProperty('level', 'debug')
 
       restore()
     })
@@ -93,11 +79,7 @@ describe('Logger', () => {
 
       logger.debug('test')
 
-      expect(log.debug).toHaveBeenCalledTimes(0)
-
-      LOG_LEVELS.filter((level) => level !== 'debug').map((level) =>
-        expect(log[level]).toHaveBeenCalledTimes(0)
-      )
+      expect(log).toHaveBeenCalledTimes(0)
 
       restore()
     })
@@ -107,13 +89,25 @@ describe('Logger', () => {
       const logger = makeLogger({ format: 'json', level: 'error' })
 
       logger.error('test')
-
-      expect(log.error).toHaveBeenCalledTimes(1)
-
-      LOG_LEVELS.filter((level) => level !== 'error').map((level) => {
+      LOG_LEVELS.filter((level) => level !== 'error').map((level) =>
         logger[level]('test')
-        expect(log[level]).toHaveBeenCalledTimes(0)
-      })
+      )
+
+      expect(log).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(log.mock.calls[0][0])).toHaveProperty('level', 'error')
+
+      restore()
+    })
+
+    test('every level goes to stdout', () => {
+      const { restore, log } = mockConsole()
+      const logger = makeLogger({ format: 'json', level: 'debug' })
+
+      LOG_LEVELS.map((level) => logger[level]('test'))
+
+      expect(log.mock.calls.map(([line]) => JSON.parse(line).level)).toEqual(
+        LOG_LEVELS
+      )
 
       restore()
     })
@@ -129,8 +123,8 @@ describe('Logger', () => {
 
       logger.error('Test error with cause', level1Error)
 
-      expect(log.error).toHaveBeenCalledTimes(1)
-      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+      expect(log).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.mock.calls[0][0])
 
       expect(loggedError.message).toBe('Test error with cause')
       expect(loggedError.details.message).toBe('Level 1 error')
@@ -155,8 +149,8 @@ describe('Logger', () => {
 
       logger.error('Test error with deeply nested cause', level1Error)
 
-      expect(log.error).toHaveBeenCalledTimes(1)
-      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+      expect(log).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.mock.calls[0][0])
 
       expect(loggedError.message).toBe('Test error with deeply nested cause')
       expect(loggedError.details.message).toBe('Level 1 error')
@@ -176,8 +170,8 @@ describe('Logger', () => {
 
       logger.error('HTTP request failed', error)
 
-      expect(log.error).toHaveBeenCalledTimes(1)
-      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+      expect(log).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.mock.calls[0][0])
 
       expect(loggedError.message).toBe('HTTP request failed')
       expect(loggedError.details).toEqual(
@@ -206,8 +200,8 @@ describe('Logger', () => {
 
       logger.error('Failed to send out exit message', error)
 
-      expect(log.error).toHaveBeenCalledTimes(1)
-      const loggedError = JSON.parse(log.error.mock.calls[0][0])
+      expect(log).toHaveBeenCalledTimes(1)
+      const loggedError = JSON.parse(log.mock.calls[0][0])
 
       expect(loggedError.message).toBe('Failed to send out exit message')
       expect(loggedError.details.message).toBe(

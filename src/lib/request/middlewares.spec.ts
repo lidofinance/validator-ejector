@@ -94,7 +94,7 @@ describe('Fetcher Middlewares', () => {
     expect(startTimer).toHaveBeenCalledTimes(1)
 
     expect(metric).toContain('result="error"')
-    expect(metric).toContain('status="unknown"') // not present on errors
+    expect(metric).toContain('status="500"') // the HttpException status
     expect(metric).toContain('domain="www.example.com"')
 
     expect(requestsReceived).toBe(1)

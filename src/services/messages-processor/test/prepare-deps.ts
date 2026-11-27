@@ -56,7 +56,6 @@ export const prepareDeps = (
     format: 'simple',
     sanitizer: {
       secrets: [],
-      replacer: '<secret>',
     },
   })
 
@@ -103,8 +102,8 @@ export const prepareDeps = (
     async () => messages
   )
 
-  const s3Service = makeS3Store({ logger })
-  const gsService = makeGsStore({ logger })
+  const s3Service = makeS3Store({ logger, metrics })
+  const gsService = makeGsStore({ logger, metrics })
 
   const messagesProcessor = makeMessagesProcessor({
     logger,
@@ -121,7 +120,6 @@ export const prepareDeps = (
     format: 'simple',
     sanitizer: {
       secrets: [],
-      replacer: '<secret>',
     },
   })
 
@@ -146,6 +144,8 @@ export const prepareDeps = (
   return {
     messagesProcessor,
     consensusApi,
+    localFileReader,
+    metrics,
     errorLogger: logger,
     logger: infoLogger,
     forkVersionResolver,

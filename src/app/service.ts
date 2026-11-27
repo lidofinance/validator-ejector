@@ -4,6 +4,8 @@ import { getHeapStatistics } from 'v8'
 
 export const makeApp = ({
   config,
+  loggerConfig,
+  webhookConfig,
   logger,
   job,
   metrics,
@@ -19,6 +21,7 @@ export const makeApp = ({
 
   const run = async () => {
     const version = await appInfoReader.getVersion()
+    const { branch, commit } = await appInfoReader.getBuildInfo()
     const mode = config.MESSAGES_LOCATION ? 'message' : 'webhook'
 
     const { heap_size_limit } = getHeapStatistics()
@@ -26,13 +29,20 @@ export const makeApp = ({
 
     logger.info(`Validator Ejector v${version} started in ${mode} mode`, {
       ...config,
+      ...loggerConfig,
+      ...webhookConfig,
       heapLimit,
+      version,
+      branch,
+      commit,
     })
 
     metrics.buildInfo
       .labels({
         version,
         mode,
+        branch,
+        commit,
       })
       .inc()
 
@@ -58,13 +68,16 @@ export const makeApp = ({
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
     const fetchTimeStart = performance.now()
 
-    await job.once({
-      messageStorage: messageStorage,
-    })
+    // The initial load must succeed: a daemon that failed it would look
+    // healthy and never act. Its error ends the process with exit code 1
+    // (src/index.ts), so the platform sees the failure and restarts the pod.
+    await job.once({ messageStorage: messageStorage }, { rethrow: true })
 
     const fetchTimeEnd = performance.now()
     const fetchTime = Math.ceil(fetchTimeEnd - fetchTimeStart) / 1000
     logger.info(`Initial events loaded in ${fetchTime} seconds`)
+
+    httpHandler.setReady()
 
     logger.info(`Starting ${JOB_INTERVAL / 1000} seconds polling`)
 

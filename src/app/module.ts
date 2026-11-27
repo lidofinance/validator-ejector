@@ -1,4 +1,3 @@
-import { makeLogger } from '../lib/index.js'
 import { makeRequest } from '../lib/index.js'
 import {
   logger as loggerMiddleware,
@@ -13,7 +12,6 @@ import dotenv from 'dotenv'
 
 import {
   makeConfig,
-  makeLoggerConfig,
   makeWebhookProcessorConfig,
 } from '../services/config/service.js'
 import { makeConsensusApi } from '../services/consensus-api/service.js'
@@ -29,6 +27,7 @@ import { makeWebhookProcessor } from '../services/webhook-caller/service.js'
 import { makeS3Store } from '../services/s3-store/service.js'
 import { makeGsStore } from '../services/gs-store/service.js'
 import { makeApp } from './service.js'
+import { makeAppLogger } from './logger.js'
 import { makeMessageReloader } from '../services/message-reloader/message-reloader.js'
 import { makeForkVersionResolver } from '../services/fork-version-resolver/service.js'
 import { makeExitLogsService } from '../services/exit-logs/service.js'
@@ -37,16 +36,7 @@ import { makeConsistencyChecker } from '../services/consistency/service.js'
 dotenv.config({ quiet: true })
 
 export const makeAppModule = async () => {
-  const loggerConfig = makeLoggerConfig({ env: process.env })
-
-  const logger = makeLogger({
-    level: loggerConfig.LOGGER_LEVEL,
-    format: loggerConfig.LOGGER_FORMAT,
-    sanitizer: {
-      secrets: loggerConfig.LOGGER_SECRETS,
-      replacer: '<secret>',
-    },
-  })
+  const { logger, loggerConfig } = makeAppLogger(process.env)
 
   const config = makeConfig({ logger, env: process.env })
 
@@ -109,8 +99,8 @@ export const makeAppModule = async () => {
 
   const localFileReader = makeLocalFileReader({ logger })
 
-  const s3Service = makeS3Store({ logger })
-  const gsService = makeGsStore({ logger })
+  const s3Service = makeS3Store({ logger, metrics })
+  const gsService = makeGsStore({ logger, metrics })
 
   const messagesProcessor = makeMessagesProcessor({
     logger,
@@ -158,6 +148,8 @@ export const makeAppModule = async () => {
 
   const app = makeApp({
     config,
+    loggerConfig,
+    webhookConfig,
     logger,
     job,
     messageReloader,

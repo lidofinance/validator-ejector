@@ -19,7 +19,7 @@ export const makeMetrics = ({
   const buildInfo = new client.Gauge({
     name: PREFIX + 'build_info',
     help: 'Build information',
-    labelNames: ['version', 'mode'] as const,
+    labelNames: ['version', 'mode', 'branch', 'commit'] as const,
   })
   register.registerMetric(buildInfo)
 
@@ -74,6 +74,30 @@ export const makeMetrics = ({
   })
   register.registerMetric(consensusRequestDurationSeconds)
 
+  const webhookRequestDurationSeconds = new client.Histogram({
+    name: PREFIX + 'webhook_request_duration_seconds',
+    help: 'Exit webhook request duration in seconds',
+    labelNames: ['result', 'status', 'domain'] as const,
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  })
+  register.registerMetric(webhookRequestDurationSeconds)
+
+  const messagesReadDurationSeconds = new client.Histogram({
+    name: PREFIX + 'messages_read_duration_seconds',
+    help: 'Exit messages read duration in seconds, by source: local, s3, gs',
+    labelNames: ['result', 'source'] as const,
+    buckets: [0.1, 0.3, 0.5, 1, 3, 5, 10, 30, 60],
+  })
+  register.registerMetric(messagesReadDurationSeconds)
+
+  const storageRequestDurationSeconds = new client.Histogram({
+    name: PREFIX + 'storage_request_duration_seconds',
+    help: 'Exit messages storage request duration in seconds, by source (s3, gs) and operation (list, get)',
+    labelNames: ['result', 'source', 'operation'] as const,
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  })
+  register.registerMetric(storageRequestDurationSeconds)
+
   const jobEjectorCycleDuration = new client.Histogram({
     name: PREFIX + 'job_duration_seconds',
     help: 'Duration of cron jobs',
@@ -114,6 +138,23 @@ export const makeMetrics = ({
     exitMessagesLeftPercent.set(percentLeft)
   }
 
+  // Times one request to the exit messages storage: a bucket listing page or
+  // one object download. A thrown request is recorded as an error.
+  const timeStorageRequest = async <T>(
+    labels: { source: 's3' | 'gs'; operation: 'list' | 'get' },
+    request: () => Promise<T>
+  ): Promise<T> => {
+    const end = storageRequestDurationSeconds.startTimer(labels)
+    try {
+      const response = await request()
+      end({ result: 'success' })
+      return response
+    } catch (error) {
+      end({ result: 'error' })
+      throw error
+    }
+  }
+
   return {
     buildInfo,
     exitMessages,
@@ -122,6 +163,10 @@ export const makeMetrics = ({
     pollingLastBlocksDurationSeconds,
     executionRequestDurationSeconds,
     consensusRequestDurationSeconds,
+    webhookRequestDurationSeconds,
+    messagesReadDurationSeconds,
+    storageRequestDurationSeconds,
+    timeStorageRequest,
     jobEjectorCycleDuration,
     jobMessageReloaderDuration,
     updateLeftMessages,
