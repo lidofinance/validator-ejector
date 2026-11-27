@@ -5,11 +5,20 @@ import * as ELMocks from '../services/execution-api/fixtures.js'
 import * as CLMocks from '../services/consensus-api/fixtures.js'
 import dotenv from 'dotenv'
 import { configBase } from '../test/config.js'
+import { getFreePort, getStatus } from '../test/http.js'
 import type { Dependencies } from './interface.js'
 
 dotenv.config()
 
-const mockConfig = async (config) => {
+// The bootstrap tests cover the module wiring and the start sequence. The
+// job cycle has its own specs, so its handler is stubbed here.
+const mockJobProcessor = (handleJob: () => Promise<void>) => {
+  vi.doMock('../services/job-processor/service.js', () => ({
+    makeJobProcessor: () => ({ handleJob }),
+  }))
+}
+
+const mockConfig = async (config, { httpPort }: { httpPort?: number } = {}) => {
   const { makeConfig } = (await vi.importActual(
     '../services/config/service.js'
   )) as typeof import('../services/config/service.js')
@@ -25,7 +34,7 @@ const mockConfig = async (config) => {
               format: 'simple',
             }),
           }),
-          HTTP_PORT: undefined,
+          HTTP_PORT: httpPort,
         }
       },
       makeLoggerConfig() {
@@ -58,6 +67,7 @@ describe('App bootstrap', () => {
       mockEthServer(mock() as any, configBase.CONSENSUS_NODE)
     })
     vi.resetModules()
+    mockJobProcessor(async () => undefined)
   })
 
   afterEach(() => {
@@ -85,6 +95,51 @@ describe('App bootstrap', () => {
 
     const module = await getApp()
     await module.run()
+    await module.destroy()
+  })
+
+  it('fails the start when the initial load fails', async () => {
+    await mockConfig({
+      MESSAGES_LOCATION: 'encryptor',
+      VALIDATOR_EXIT_WEBHOOK: undefined,
+      PROM_PREFIX: 'test_fail',
+    })
+    mockJobProcessor(async () => {
+      throw new Error('initial load failed')
+    })
+
+    const module = await getApp()
+    await expect(module.run()).rejects.toThrow('initial load failed')
+    await module.destroy()
+  })
+
+  it('answers 503 on /ready during the initial load and 200 after it', async () => {
+    const port = await getFreePort()
+    await mockConfig(
+      {
+        MESSAGES_LOCATION: 'encryptor',
+        VALIDATOR_EXIT_WEBHOOK: undefined,
+        PROM_PREFIX: 'test_ready',
+      },
+      { httpPort: port }
+    )
+    let finishInitialLoad: () => void = () => undefined
+    mockJobProcessor(
+      () => new Promise<void>((resolve) => (finishInitialLoad = resolve))
+    )
+
+    const module = await getApp()
+    const running = module.run()
+    // The socket opens before the initial load: the 503 window is observable
+    await vi.waitFor(async () => {
+      expect(await getStatus(port, '/health')).toBe(200)
+    })
+    expect(await getStatus(port, '/ready')).toBe(503)
+
+    finishInitialLoad()
+    await running
+
+    expect(await getStatus(port, '/ready')).toBe(200)
     await module.destroy()
   })
 

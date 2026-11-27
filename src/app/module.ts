@@ -99,8 +99,8 @@ export const makeAppModule = async () => {
 
   const localFileReader = makeLocalFileReader({ logger })
 
-  const s3Service = makeS3Store({ logger })
-  const gsService = makeGsStore({ logger })
+  const s3Service = makeS3Store({ logger, metrics })
+  const gsService = makeGsStore({ logger, metrics })
 
   const messagesProcessor = makeMessagesProcessor({
     logger,

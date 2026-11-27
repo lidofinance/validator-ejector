@@ -15,7 +15,16 @@ export const makeHttpHandler = ({
   logger: LoggerService
   config: ConfigService
 }) => {
+  // Readiness latch: /ready answers 503 until the initial load is done, then
+  // 200 for the rest of the process life. It never follows the health of the
+  // EL, the CL or the messages storage: a readiness flip does not restart the
+  // pod, and the daemon takes no incoming traffic to gate.
+  let ready = false
+
   return {
+    setReady() {
+      ready = true
+    },
     async run() {
       if (!HTTP_PORT) return
 
@@ -40,6 +49,13 @@ export const makeHttpHandler = ({
             if (RUN_HEALTH_CHECK && route === '/health') {
               res.setHeader('Content-Type', 'application/json')
               return res.end(JSON.stringify({ status: 'ok' }))
+            }
+            if (RUN_HEALTH_CHECK && route === '/ready') {
+              res.statusCode = ready ? 200 : 503
+              res.setHeader('Content-Type', 'application/json')
+              return res.end(
+                JSON.stringify({ status: ready ? 'ready' : 'starting' })
+              )
             }
           } catch (error) {
             logger.error(`Failed to serve ${route}`, error)

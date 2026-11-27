@@ -9,6 +9,17 @@ const flushed = (stream: NodeJS.WriteStream) =>
   new Promise<void>((resolve) => stream.write('', () => resolve()))
 
 /**
+ * Waits for the queued log lines, at most `flushTimeoutMs`. Writes to a pipe
+ * are asynchronous, and process.exit() drops them, so every exit path calls
+ * this first: the stop on a signal, and the exit on a start error.
+ */
+export const flushOutput = (flushTimeoutMs = FLUSH_TIMEOUT_MS) =>
+  Promise.race([
+    Promise.all([flushed(process.stdout), flushed(process.stderr)]),
+    new Promise<void>((resolve) => setTimeout(resolve, flushTimeoutMs)),
+  ])
+
+/**
  * The Docker image runs Node as PID 1. Linux applies no default action to
  * SIGTERM and SIGINT for PID 1, so without these handlers a container stop
  * waits for the grace period and ends with SIGKILL (exit code 137).
@@ -31,10 +42,7 @@ export const exitOnShutdownSignals = (
     if (stopping) return
     stopping = true
     logger.info(`Received ${signal}, shutting down`)
-    await Promise.race([
-      Promise.all([flushed(process.stdout), flushed(process.stderr)]),
-      new Promise((resolve) => setTimeout(resolve, flushTimeoutMs)),
-    ])
+    await flushOutput(flushTimeoutMs)
     process.exit(0)
   }
   process.on('SIGTERM', shutdown)

@@ -1,5 +1,8 @@
 import { makeLogger } from '../lib/index.js'
-import { makeLoggerConfig } from '../services/config/service.js'
+import {
+  makeLoggerConfig,
+  resolveAutomaticLoggerSecrets,
+} from '../services/config/service.js'
 
 export const makeAppLogger = (env: NodeJS.ProcessEnv) => {
   const loggerConfig = makeLoggerConfig({ env })
@@ -16,12 +19,18 @@ export const makeAppLogger = (env: NodeJS.ProcessEnv) => {
 }
 
 // Start errors use the format and the masks of the app logger. Only an invalid
-// logger config falls back to a plain JSON logger: its error names a variable,
-// a level or a format, not a secret value.
+// logger config falls back to a JSON logger that masks the values of the
+// secret env vars: the error it prints names a variable, a level or a format,
+// and an invalid LOGGER_SECRETS error carries no value (see loggerSecrets in
+// the config service).
 export const makeStartupLogger = (env: NodeJS.ProcessEnv) => {
   try {
     return makeAppLogger(env).logger
   } catch {
-    return makeLogger({ level: 'debug', format: 'json' })
+    return makeLogger({
+      level: 'debug',
+      format: 'json',
+      sanitizer: { secrets: resolveAutomaticLoggerSecrets(env) },
+    })
   }
 }

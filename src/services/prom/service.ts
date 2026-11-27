@@ -90,6 +90,14 @@ export const makeMetrics = ({
   })
   register.registerMetric(messagesReadDurationSeconds)
 
+  const storageRequestDurationSeconds = new client.Histogram({
+    name: PREFIX + 'storage_request_duration_seconds',
+    help: 'Exit messages storage request duration in seconds, by source (s3, gs) and operation (list, get)',
+    labelNames: ['result', 'source', 'operation'] as const,
+    buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 7, 10],
+  })
+  register.registerMetric(storageRequestDurationSeconds)
+
   const jobEjectorCycleDuration = new client.Histogram({
     name: PREFIX + 'job_duration_seconds',
     help: 'Duration of cron jobs',
@@ -130,6 +138,23 @@ export const makeMetrics = ({
     exitMessagesLeftPercent.set(percentLeft)
   }
 
+  // Times one request to the exit messages storage: a bucket listing page or
+  // one object download. A thrown request is recorded as an error.
+  const timeStorageRequest = async <T>(
+    labels: { source: 's3' | 'gs'; operation: 'list' | 'get' },
+    request: () => Promise<T>
+  ): Promise<T> => {
+    const end = storageRequestDurationSeconds.startTimer(labels)
+    try {
+      const response = await request()
+      end({ result: 'success' })
+      return response
+    } catch (error) {
+      end({ result: 'error' })
+      throw error
+    }
+  }
+
   return {
     buildInfo,
     exitMessages,
@@ -140,6 +165,8 @@ export const makeMetrics = ({
     consensusRequestDurationSeconds,
     webhookRequestDurationSeconds,
     messagesReadDurationSeconds,
+    storageRequestDurationSeconds,
+    timeStorageRequest,
     jobEjectorCycleDuration,
     jobMessageReloaderDuration,
     updateLeftMessages,

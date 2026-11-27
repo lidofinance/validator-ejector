@@ -4,8 +4,21 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { mockLogger } from '../test/logger.js'
+import { makeMetrics } from './prom/service.js'
 import { makeS3Store } from './s3-store/service.js'
 import { makeGsStore } from './gs-store/service.js'
+
+const metrics = makeMetrics({ PREFIX: 'cloud_storage_spec_' })
+
+// One row per request label set of storage_request_duration_seconds_count
+const requestCounts = async () =>
+  (await metrics.storageRequestDurationSeconds.get()).values
+    .filter(
+      (v) =>
+        v.metricName ===
+        'cloud_storage_spec_storage_request_duration_seconds_count'
+    )
+    .map(({ labels, value }) => ({ ...labels, value }))
 
 const S3_ENDPOINT = 'http://127.0.0.1:46991'
 const GCS_ENDPOINT = 'http://127.0.0.1:46992'
@@ -22,6 +35,7 @@ describe('Cloud storage SDK HTTP compatibility', () => {
   let credentialsDirectory: string | undefined
 
   beforeEach(async () => {
+    metrics.storageRequestDurationSeconds.reset()
     credentialsDirectory = await mkdtemp(join(tmpdir(), 'ejector-sdk-'))
     const configFile = join(credentialsDirectory, 'config')
     const credentialsFile = join(credentialsDirectory, 'credentials')
@@ -101,11 +115,53 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       return scope
     })
 
-    const store = makeS3Store({ logger: mockLogger() })
+    const store = makeS3Store({ logger: mockLogger(), metrics })
     await expect(store.read(`s3://${BUCKET}`)).resolves.toEqual(files)
     expect(listRequests).toBe(1)
     expect(downloads).toBe(files.length)
     expect(objects.every((scope) => scope.isDone())).toBe(true)
+    expect(await requestCounts()).toEqual([
+      { source: 's3', operation: 'list', result: 'success', value: 1 },
+      { source: 's3', operation: 'get', result: 'success', value: 2 },
+    ])
+  })
+
+  it('counts every S3 listing page', async () => {
+    s3()
+      .get(`/${BUCKET}/`)
+      .query({ 'list-type': '2' })
+      .reply(
+        200,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+  <Name>${BUCKET}</Name><IsTruncated>true</IsTruncated>
+  <NextContinuationToken>second-page</NextContinuationToken>
+  <Contents><Key>first.json</Key></Contents>
+</ListBucketResult>`,
+        { 'Content-Type': 'application/xml' }
+      )
+    s3()
+      .get(`/${BUCKET}/`)
+      .query({ 'list-type': '2', 'continuation-token': 'second-page' })
+      .reply(200, s3List(['second.json']), {
+        'Content-Type': 'application/xml',
+      })
+    for (const filename of ['first.json', 'second.json']) {
+      s3()
+        .get(`/${BUCKET}/${filename}`)
+        .query({ 'x-id': 'GetObject' })
+        .reply(200, '{}', { 'Content-Type': 'application/json' })
+    }
+
+    const store = makeS3Store({ logger: mockLogger(), metrics })
+    await expect(store.read(`s3://${BUCKET}`)).resolves.toEqual([
+      { filename: 'first.json', content: '{}' },
+      { filename: 'second.json', content: '{}' },
+    ])
+    expect(await requestCounts()).toEqual([
+      { source: 's3', operation: 'list', result: 'success', value: 2 },
+      { source: 's3', operation: 'get', result: 'success', value: 2 },
+    ])
   })
 
   it('propagates an S3 listing error with the SDK cause', async () => {
@@ -119,11 +175,14 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       )
 
     await expect(
-      makeS3Store({ logger: mockLogger() }).read(`s3://${BUCKET}`)
+      makeS3Store({ logger: mockLogger(), metrics }).read(`s3://${BUCKET}`)
     ).rejects.toMatchObject({
       message: 'Unable to list bucket files from AWS S3.',
       cause: { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } },
     })
+    expect(await requestCounts()).toEqual([
+      { source: 's3', operation: 'list', result: 'error', value: 1 },
+    ])
   })
 
   it('propagates an S3 download error with the SDK cause', async () => {
@@ -138,11 +197,15 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       )
 
     await expect(
-      makeS3Store({ logger: mockLogger() }).read(`s3://${BUCKET}`)
+      makeS3Store({ logger: mockLogger(), metrics }).read(`s3://${BUCKET}`)
     ).rejects.toMatchObject({
       message: 'Unable to read file from AWS S3.',
       cause: { name: 'NoSuchKey', $metadata: { httpStatusCode: 404 } },
     })
+    expect(await requestCounts()).toEqual([
+      { source: 's3', operation: 'list', result: 'success', value: 1 },
+      { source: 's3', operation: 'get', result: 'error', value: 1 },
+    ])
   })
 
   const gcs = () =>
@@ -174,10 +237,14 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       })
 
     await expect(
-      makeGsStore({ logger: mockLogger() }).read(`gs://${BUCKET}`)
+      makeGsStore({ logger: mockLogger(), metrics }).read(`gs://${BUCKET}`)
     ).resolves.toEqual([
       { filename: 'first.json', content: '123456789' },
       { filename: 'empty.json', content: '' },
+    ])
+    expect(await requestCounts()).toEqual([
+      { source: 'gs', operation: 'list', result: 'success', value: 2 },
+      { source: 'gs', operation: 'get', result: 'success', value: 2 },
     ])
   })
 
@@ -187,11 +254,14 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       .reply(403, { error: { code: 403, message: 'fixture denied' } })
 
     await expect(
-      makeGsStore({ logger: mockLogger() }).read(`gs://${BUCKET}`)
+      makeGsStore({ logger: mockLogger(), metrics }).read(`gs://${BUCKET}`)
     ).rejects.toMatchObject({
       message: 'Unable to list bucket files from Google Storage.',
       cause: { code: 403 },
     })
+    expect(await requestCounts()).toEqual([
+      { source: 'gs', operation: 'list', result: 'error', value: 1 },
+    ])
   })
 
   it('propagates a GCS download error', async () => {
@@ -203,11 +273,15 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       .reply(404, { error: { code: 404, message: 'fixture missing' } })
 
     await expect(
-      makeGsStore({ logger: mockLogger() }).read(`gs://${BUCKET}`)
+      makeGsStore({ logger: mockLogger(), metrics }).read(`gs://${BUCKET}`)
     ).rejects.toMatchObject({
       message: 'Unable to read file from Google Storage.',
       cause: { code: 404 },
     })
+    expect(await requestCounts()).toEqual([
+      { source: 'gs', operation: 'list', result: 'success', value: 1 },
+      { source: 'gs', operation: 'get', result: 'error', value: 1 },
+    ])
   })
 
   it('rejects GCS bytes that do not match the CRC32C response header', async () => {
@@ -222,7 +296,7 @@ describe('Cloud storage SDK HTTP compatibility', () => {
       })
 
     await expect(
-      makeGsStore({ logger: mockLogger() }).read(`gs://${BUCKET}`)
+      makeGsStore({ logger: mockLogger(), metrics }).read(`gs://${BUCKET}`)
     ).rejects.toMatchObject({
       message: 'Unable to read file from Google Storage.',
       cause: { code: 'CONTENT_DOWNLOAD_MISMATCH' },

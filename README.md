@@ -78,10 +78,10 @@ Options are configured via environment variables.
 | JOB_INTERVAL                                  | No       | 384000                | Time interval in milliseconds to run checks. Defaults to time of 1 epoch                                                                                                                                                                                                        |
 | HTTP_PORT                                     | No       | 8989                  | Port to serve metrics and health check on                                                                                                                                                                                                                                       |
 | RUN_METRICS                                   | No       | false                 | Enable metrics endpoint                                                                                                                                                                                                                                                         |
-| RUN_HEALTH_CHECK                              | No       | true                  | Enable health check endpoint                                                                                                                                                                                                                                                    |
+| RUN_HEALTH_CHECK                              | No       | true                  | Enable the `/health` and `/ready` endpoints                                                                                                                                                                                                                                                  |
 | LOGGER_LEVEL                                  | No       | info                  | Severity level from which to start showing errors eg info will hide debug messages. One of: debug, info, log, warn, error                                                                                                                                                       |
 | LOGGER_FORMAT                                 | No       | json                  | JSON or simple log output: json/simple. Every record goes to stdout                                                                                                                                                                                                             |
-| LOGGER_SECRETS                                | No       | ["MESSAGES_PASSWORD"] | JSON array of extra env var names or literal values to redact from logs. The values of `EXECUTION_NODE`, `CONSENSUS_NODE`, `VALIDATOR_EXIT_WEBHOOK`, `MESSAGES_PASSWORD` and `WEBHOOK_TOKEN`, also from their `*_FILE` variables, are always redacted. `EXECUTION_NODE` and `CONSENSUS_NODE` also redact each URL from a comma-separated RPC list. |
+| LOGGER_SECRETS                                | No       | []                    | JSON array of extra env var names or literal values to redact from logs. The values of `EXECUTION_NODE`, `CONSENSUS_NODE`, `VALIDATOR_EXIT_WEBHOOK`, `MESSAGES_PASSWORD` and `WEBHOOK_TOKEN`, also from their `*_FILE` variables, are always redacted. `EXECUTION_NODE` and `CONSENSUS_NODE` also redact each URL from a comma-separated RPC list. |
 | DRY_RUN                                       | No       | false                 | Run the service without actually sending out exit messages                                                                                                                                                                                                                      |
 | TRUST_MODE                                    | No       | false                 | Skip security checks for exit requests. Please, use it only if you running your own RPC nodes.                                                                                                                                                                                  |
 | DISABLE_SECURITY_DONT_USE_IN_PRODUCTION       | No       | false                 | Deprecated: Use TRUST_MODE instead. Skip security checks for exit requests                                                                                                                                                                                                      |
@@ -197,10 +197,22 @@ Available metrics:
 - polling_last_blocks_duration_seconds: ['eventsNumber'] - Duration of polling last blocks in microseconds
 - execution_request_duration_seconds: ['result', 'status', 'domain'] - Execution node request duration in microseconds
 - consensus_request_duration_seconds: ['result', 'status', 'domain'] - Consensus node request duration in microseconds
+- webhook_request_duration_seconds: ['result', 'status', 'domain'] - Exit webhook request duration in seconds
+- messages_read_duration_seconds: ['result', 'source'] - Duration of one full read of the exit messages source: local, s3, gs
+- storage_request_duration_seconds: ['result', 'source', 'operation'] - Duration of every request to S3 or Google Storage: a listing page (list) or one object download (get)
 - job_duration_seconds: ['name', 'interval', 'result'] - Duration of Ejector cycle cron job
 - job_message_reloader_duration_seconds: ['name', 'interval', 'result'] - Duration of Pre-signed message reloader cron job
 - exit_messages_left_number - Number of exit messages left
 - exit_messages_left_percent - Percentage of exit messages left
+
+## Health and readiness
+
+With `HTTP_PORT` set and `RUN_HEALTH_CHECK=true`, the daemon serves two endpoints:
+
+- `/health` answers `200` as soon as the HTTP server is up. Use it for the liveness probe. The server starts after the chain-id and sync checks of the nodes, which retry with a 30 second timeout per attempt, so give the liveness probe a `startupProbe` or an initial delay that covers that window.
+- `/ready` answers `503` until the initial events and exit messages are loaded, then `200` for the rest of the process life. Use it for the readiness probe. It does not follow the health of the nodes or the messages storage.
+
+A failed initial load, including an inaccessible messages directory, stops the process with exit code 1. In the polling loop a failed cycle is logged as a warning, counted in `job_duration_seconds` with `result="error"`, and retried on the next interval.
 
 ## Safety Features
 

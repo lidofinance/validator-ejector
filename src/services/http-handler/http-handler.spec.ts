@@ -1,37 +1,14 @@
 import http from 'http'
-import net from 'net'
 import { Registry } from '@prometheus-io/client'
 import { mockLogger } from '../../test/logger.js'
+import { getFreePort, getStatus } from '../../test/http.js'
 import { makeHttpHandler } from './service.js'
-
-const getFreePort = () =>
-  new Promise<number>((resolve, reject) => {
-    const server = net.createServer()
-    server.on('error', reject)
-    server.listen(0, '127.0.0.1', () => {
-      const { port } = server.address() as net.AddressInfo
-      server.close(() => resolve(port))
-    })
-  })
-
-const getStatus = (port: number, path: string) =>
-  new Promise<number>((resolve, reject) => {
-    const req = http.get(
-      { host: '127.0.0.1', port, path, timeout: 2000 },
-      (res) => {
-        res.resume()
-        res.on('end', () => resolve(res.statusCode ?? 0))
-      }
-    )
-    req.on('timeout', () => req.destroy(new Error(`no response to ${path}`)))
-    req.on('error', reject)
-  })
 
 const servers: http.Server[] = []
 
 const startHandler = async (register: Registry, logger = mockLogger()) => {
   const port = await getFreePort()
-  const server = await makeHttpHandler({
+  const handler = makeHttpHandler({
     register,
     logger,
     config: {
@@ -39,9 +16,10 @@ const startHandler = async (register: Registry, logger = mockLogger()) => {
       RUN_METRICS: true,
       RUN_HEALTH_CHECK: true,
     } as any,
-  }).run()
+  })
+  const server = await handler.run()
   if (server) servers.push(server)
-  return port
+  return { port, handler }
 }
 
 describe('http handler', () => {
@@ -58,7 +36,7 @@ describe('http handler', () => {
   })
 
   it('routes by path and ignores the query string', async () => {
-    const port = await startHandler(new Registry())
+    const { port } = await startHandler(new Registry())
 
     expect(await getStatus(port, '/health?probe=1')).toBe(200)
     expect(await getStatus(port, '/metrics')).toBe(200)
@@ -68,12 +46,24 @@ describe('http handler', () => {
   })
 
   it('answers 404 to unnormalized and 400 to malformed targets and keeps serving', async () => {
-    const port = await startHandler(new Registry())
+    const { port } = await startHandler(new Registry())
 
     expect(await getStatus(port, '/missing/../metrics')).toBe(404)
     expect(await getStatus(port, '//example.com/health')).toBe(404)
     expect(await getStatus(port, 'http://[/')).toBe(400)
     expect(await getStatus(port, '/health')).toBe(200)
+  })
+
+  it('answers 503 on /ready until the initial load is done, then 200', async () => {
+    const { port, handler } = await startHandler(new Registry())
+
+    expect(await getStatus(port, '/ready')).toBe(503)
+    expect(await getStatus(port, '/health')).toBe(200)
+
+    handler.setReady()
+
+    expect(await getStatus(port, '/ready')).toBe(200)
+    expect(await getStatus(port, '/ready?probe=1')).toBe(200)
   })
 
   it('answers 500 and logs when metrics collection fails and keeps serving', async () => {
@@ -83,7 +73,7 @@ describe('http handler', () => {
       metrics: () => Promise.reject(error),
     } as unknown as Registry
     const logger = mockLogger()
-    const port = await startHandler(register, logger)
+    const { port } = await startHandler(register, logger)
 
     expect(await getStatus(port, '/metrics')).toBe(500)
     expect(logger.error).toHaveBeenCalledWith('Failed to serve /metrics', error)

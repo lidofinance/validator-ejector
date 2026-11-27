@@ -68,13 +68,16 @@ export const makeApp = ({
     logger.info(`Loading initial events for ${BLOCKS_PRELOAD} last blocks`)
     const fetchTimeStart = performance.now()
 
-    await job.once({
-      messageStorage: messageStorage,
-    })
+    // The initial load must succeed: a daemon that failed it would look
+    // healthy and never act. Its error ends the process with exit code 1
+    // (src/index.ts), so the platform sees the failure and restarts the pod.
+    await job.once({ messageStorage: messageStorage }, { rethrow: true })
 
     const fetchTimeEnd = performance.now()
     const fetchTime = Math.ceil(fetchTimeEnd - fetchTimeStart) / 1000
     logger.info(`Initial events loaded in ${fetchTime} seconds`)
+
+    httpHandler.setReady()
 
     logger.info(`Starting ${JOB_INTERVAL / 1000} seconds polling`)
 

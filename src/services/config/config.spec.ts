@@ -4,6 +4,7 @@ import {
   makeLoggerConfig,
   makeValidationConfig,
   makeWebhookProcessorConfig,
+  resolveAutomaticLoggerSecrets,
 } from './service.js'
 import { mockLogger } from '../../test/logger.js'
 import { makeLogger } from '../../lib/index.js'
@@ -517,6 +518,37 @@ describe('logger config module', () => {
     expect(makeConf).toThrowError(
       'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
     )
+  })
+
+  test('the invalid logger secrets error carries no value', () => {
+    const errorOf = (LOGGER_SECRETS: string) => {
+      try {
+        makeLoggerConfig({ env: { LOGGER_SECRETS } as NodeJS.ProcessEnv })
+      } catch (error) {
+        return error
+      }
+      throw new Error('expected a validation error')
+    }
+
+    const unparsable = errorOf('["generated-literal-secret"')
+    expect(unparsable.validatedData).toBeUndefined()
+    expect(JSON.stringify(unparsable)).not.toContain('generated-literal-secret')
+
+    const nonString = errorOf('[1234567890]')
+    expect(nonString.validatedData).toBeUndefined()
+    expect(nonString.message).toBe('Every LOGGER_SECRETS item must be a string')
+  })
+
+  test('secret env vars are masked without LOGGER_SECRETS', () => {
+    const env = {
+      EXECUTION_NODE: 'https://el.example/generated-el-key/',
+      MESSAGES_PASSWORD_FILE: '/nonexistent/generated-password-file',
+    } as NodeJS.ProcessEnv
+
+    expect(resolveAutomaticLoggerSecrets(env)).toEqual([
+      'https://el.example/generated-el-key/',
+      'https://el.example/generated-el-key',
+    ])
   })
 
   test('dynamic secret values', () => {

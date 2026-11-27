@@ -12,6 +12,10 @@ import {
   url_list,
   normalizeUrlList,
 } from '../../lib/index.js'
+import {
+  ValidationEmptyError,
+  ValidationError,
+} from '../../lib/validator/errors.js'
 import { readFileSync } from 'fs'
 
 export type ConfigService = ReturnType<typeof makeConfig>
@@ -202,33 +206,58 @@ export const makeLoggerConfig = ({ env }: { env: NodeJS.ProcessEnv }) => {
   const config = {
     LOGGER_LEVEL: optional(() => level_attr(env.LOGGER_LEVEL)) ?? 'info',
     LOGGER_FORMAT: optional(() => log_format(env.LOGGER_FORMAT)) ?? 'json',
-    LOGGER_SECRETS:
-      optional(() =>
-        json_arr(
-          env.LOGGER_SECRETS,
-          (secrets) => secrets.map(str),
-          'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
-        )
-      ) ?? [],
+    LOGGER_SECRETS: optional(() => loggerSecrets(env.LOGGER_SECRETS)) ?? [],
   }
-
-  // Secret env vars are always masked when they hold a value. A name without
-  // a value is skipped, so the name itself stays readable in the config dump.
-  const secretNames = [
-    ...config.LOGGER_SECRETS,
-    ...LOGGER_SECRET_ENV_VARS.filter((envVar) => envOrFile(env, envVar)),
-  ]
 
   // Resolve the value of an env var if such exists. RPC endpoints are stored
   // as arrays in config logs, so include each comma-separated endpoint too.
   config.LOGGER_SECRETS = Array.from(
-    new Set(
-      secretNames.flatMap((envVar) => resolveLoggerSecretValues(env, envVar))
-    )
+    new Set([
+      ...config.LOGGER_SECRETS.flatMap((envVar) =>
+        resolveLoggerSecretValues(env, envVar)
+      ),
+      ...resolveAutomaticLoggerSecrets(env),
+    ])
   )
 
   return config
 }
+
+// LOGGER_SECRETS may hold literal secret values, so its validation error
+// carries neither the input nor an item: a start error prints the error
+// object, and the fallback logger has no mask for these values.
+const loggerSecrets = (input: string | undefined) => {
+  try {
+    return json_arr(
+      input,
+      (secrets) =>
+        secrets.map((secret) =>
+          str(secret, 'Every LOGGER_SECRETS item must be a string')
+        ),
+      'Please, setup LOGGER_SECRETS. Example: ["EXECUTION_NODE","CONSENSUS_NODE"]'
+    )
+  } catch (error) {
+    if (error instanceof ValidationEmptyError) throw error
+    throw new ValidationError(error.message)
+  }
+}
+
+/**
+ * The values of the secret env vars, masked without any LOGGER_SECRETS. A name
+ * without a value is skipped, so the name itself stays readable in the config
+ * dump. A secret file that cannot be read is skipped here: the config
+ * validation reports it.
+ */
+export const resolveAutomaticLoggerSecrets = (env: NodeJS.ProcessEnv) =>
+  LOGGER_SECRET_ENV_VARS.flatMap((envVar) => {
+    try {
+      return envOrFile(env, envVar)
+        ? resolveLoggerSecretValues(env, envVar)
+        : []
+    } catch {
+      return []
+    }
+  })
 
 export const makeWebhookProcessorConfig = ({
   env,

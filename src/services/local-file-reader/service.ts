@@ -19,9 +19,10 @@ export const makeLocalFileReader = ({ logger }: { logger: LoggerService }) => {
   }
 
   const readFilesFromFolder = async (path: string) => {
+    // The error fails the read: at start it ends the process with exit code 1,
+    // in the loop the cycle is counted as failed and the next one retries.
     if (!(await dirExists(path))) {
-      logger.error('Messages directory is not accessible, exiting...')
-      process.exit()
+      throw new Error(`Messages directory is not accessible: ${path}`)
     }
 
     const folder = await readdir(path)
